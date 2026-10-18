@@ -9,6 +9,7 @@ import {
   sharedGroupIdsForCohort,
 } from "@/lib/academic-delivery/shared-lectures";
 import { readAllReportRows } from "@/lib/reports/read-all";
+import { readAllRows } from "@/lib/supabase/read-all";
 import { supabase } from "@/integrations/supabase/client";
 import { applyStudySystemFilter, assertSingleVersion } from "@/lib/reports/filters";
 import type { ReportStudySystem } from "@/lib/reports/types";
@@ -56,6 +57,30 @@ export function selectContainsNestedCoursesEmbed(select: string): boolean {
   return /course_offerings\s*\([^)]*courses\s*\(/i.test(select.replace(/\s+/g, " "));
 }
 
+/**
+ * Session ids an instructor co-teaches through imported source rows (H-10:
+ * paginated so a large imported version is never silently truncated).
+ */
+async function fetchInstructorParticipationSessionIds(
+  collegeId: string,
+  versionId: string,
+  instructorId: string,
+): Promise<string[]> {
+  const participation = await readAllRows<{ id: string; schedule_session_id: string | null }>(
+    (from, to) =>
+    supabase
+      .from("existing_schedule_source_rows")
+      .select("id, schedule_session_id")
+      .eq("college_id", collegeId)
+      .eq("schedule_version_id", versionId)
+      .contains("instructor_ids", [instructorId])
+      .not("schedule_session_id", "is", null)
+      .order("id")
+      .range(from, to),
+  );
+  return [...new Set(participation.map((p) => p.schedule_session_id!))];
+}
+
 async function fetchFlatThenHydrate(params: {
   collegeId: string;
   versionId: string;
@@ -70,6 +95,7 @@ async function fetchFlatThenHydrate(params: {
 }): Promise<WorkspaceSessionHydratedRow[]> {
   assertSingleVersion(params.versionId);
 
+  // read-all-ok: filtered builder is paginated below through readAllReportRows.
   let q = supabase
     .from("schedule_sessions")
     .select(TIMETABLE_SESSION_FLAT_SELECT)
@@ -81,15 +107,11 @@ async function fetchFlatThenHydrate(params: {
   q = applyStudySystemFilter(q, params.studySystem);
 
   if (params.instructorId) {
-    const { data: participation, error } = await supabase
-      .from("existing_schedule_source_rows")
-      .select("schedule_session_id")
-      .eq("college_id", params.collegeId)
-      .eq("schedule_version_id", params.versionId!)
-      .contains("instructor_ids", [params.instructorId])
-      .not("schedule_session_id", "is", null);
-    if (error) throw error;
-    const ids = [...new Set((participation ?? []).map((p) => p.schedule_session_id!))];
+    const ids = await fetchInstructorParticipationSessionIds(
+      params.collegeId,
+      params.versionId!,
+      params.instructorId,
+    );
     q = ids.length
       ? q.or(`instructor_id.eq.${params.instructorId},id.in.(${ids.join(",")})`)
       : q.eq("instructor_id", params.instructorId);
@@ -177,6 +199,7 @@ export async function fetchSessionsForVersion<T = Record<string, unknown>>(
     })) as T[];
   }
 
+  // read-all-ok: filtered builder is paginated below through readAllReportRows.
   let q = supabase
     .from("schedule_sessions")
     .select(select)
@@ -188,15 +211,11 @@ export async function fetchSessionsForVersion<T = Record<string, unknown>>(
   q = applyStudySystemFilter(q, params.studySystem);
 
   if (params.instructorId) {
-    const { data: participation, error } = await supabase
-      .from("existing_schedule_source_rows")
-      .select("schedule_session_id")
-      .eq("college_id", params.collegeId)
-      .eq("schedule_version_id", params.versionId!)
-      .contains("instructor_ids", [params.instructorId])
-      .not("schedule_session_id", "is", null);
-    if (error) throw error;
-    const ids = [...new Set((participation ?? []).map((p) => p.schedule_session_id!))];
+    const ids = await fetchInstructorParticipationSessionIds(
+      params.collegeId,
+      params.versionId!,
+      params.instructorId,
+    );
     q = ids.length
       ? q.or(`instructor_id.eq.${params.instructorId},id.in.(${ids.join(",")})`)
       : q.eq("instructor_id", params.instructorId);
@@ -347,6 +366,7 @@ export async function fetchRoomUtilizationSessions(
 ): Promise<RoomUtilizationSession[]> {
   assertSingleVersion(params.versionId);
 
+  // read-all-ok: filtered builder is paginated below through readAllReportRows.
   let q = supabase
     .from("schedule_sessions")
     .select(ROOM_UTILIZATION_SESSION_SELECT)
@@ -558,6 +578,7 @@ export async function fetchInstructorScheduleAcrossColleges(
 ): Promise<CrossCollegeInstructorScheduleRow[]> {
   if (!params.instructorPersonId || params.colleges.length === 0) return [];
 
+  // read-all-ok: one instructor record per listed college (bounded by colleges.length).
   const { data: instructorRows, error: instructorError } = await supabase
     .from("instructors")
     .select("id, college_id")

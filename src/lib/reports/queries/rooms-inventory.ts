@@ -1,3 +1,4 @@
+import { readAllRows } from "@/lib/supabase/read-all";
 import { supabase } from "@/integrations/supabase/client";
 import {
   hydrateWorkspaceSessions,
@@ -66,14 +67,18 @@ export async function fetchRoomDecisionConstraints(collegeId: string) {
       .from("room_unavailability")
       .select("room_id, day_of_week, start_time, end_time, start_date, end_date")
       .eq("college_id", collegeId),
-    supabase
-      .from("teaching_assignments")
-      .select("id, required_room_type")
-      .eq("college_id", collegeId),
+    readAllRows<{ id: string; required_room_type: string | null }>((from, to) =>
+      supabase
+        .from("teaching_assignments")
+        .select("id, required_room_type")
+        .eq("college_id", collegeId)
+        .order("id")
+        .range(from, to),
+    ),
   ]);
-  if (closures.error || assignments.error) throw closures.error ?? assignments.error;
+  if (closures.error) throw closures.error;
   return {
     closures: closures.data ?? [],
-    requiredTypes: new Map((assignments.data ?? []).map((a) => [a.id, a.required_room_type])),
+    requiredTypes: new Map(assignments.map((a) => [a.id, a.required_room_type])),
   };
 }
