@@ -11,6 +11,7 @@ import {
   safeFileName,
   type InstructorPdfSheet,
 } from "@/lib/reports/instructor-pdf-archive";
+import { userErrorMessage } from "@/lib/user-error";
 
 export interface InstructorPdfEntry {
   fileName: string;
@@ -82,9 +83,7 @@ export function InstructorPdfArchive<T>({
       toast.success(`تم تنزيل ${files.length} ملف PDF في ملف مضغوط واحد.`);
     } catch (error) {
       toast.error(
-        error instanceof Error && error.message
-          ? `${error.message} لم يُنزَّل شيء.`
-          : "تعذّر إنشاء ملفات الجداول، ولم يُنزَّل شيء. أعد المحاولة.",
+        `${userErrorMessage(error, "تعذّر إنشاء ملفات الجداول. أعد المحاولة.")} لم يُنزَّل شيء.`,
       );
     } finally {
       setProgress(null);

@@ -12,6 +12,7 @@ import {
   type TimeCapacityRoom,
   type TimeCapacityRoomType,
 } from "./room-time-capacity";
+import { userErrorMessage } from "@/lib/user-error";
 
 /** H-10: every page is read; a failure keeps the same `{ data, error }` contract. */
 async function pagedResult<T>(
@@ -187,9 +188,7 @@ export async function fetchRoomTimeCapacity(
   } catch (e) {
     return {
       unavailable: true,
-      unavailableReasonAr: `تعذر حساب السعة الزمنية للقاعات — أُوقف الانتقال احترازيًا: ${
-        e instanceof Error ? e.message : "خطأ استعلام غير معروف"
-      }`,
+      unavailableReasonAr: `تعذر حساب السعة الزمنية للقاعات — أُوقف الانتقال احترازيًا: ${userErrorMessage(e, "خطأ استعلام غير معروف")}`,
       workingDays: [],
       dailyHours: 0,
       perType: [],

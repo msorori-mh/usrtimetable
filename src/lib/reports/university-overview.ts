@@ -11,6 +11,7 @@ import type { CapacitySources } from "./leadership-room-capacity";
 import { minutes, roomUtilizationMetrics } from "./presentation-metrics";
 import { roomCategoryFromType } from "@/lib/room-category";
 import { formatDecimal } from "@/lib/format";
+import { userErrorMessage } from "@/lib/user-error";
 
 export type OverviewSourceMode = "presentation" | "published";
 export interface OverviewVersion {
@@ -481,10 +482,7 @@ export function buildUniversityOverview(
                 result.issue = `${metrics.outside_hours} ساعة خارج إتاحة سجل الكلية و${result.overlapHours} ساعة تزامن سجلات القاعة`;
             }
           } catch (error) {
-            result.issue =
-              error instanceof Error
-                ? error.message
-                : "بيانات إتاحة المكان غير مكتملة أو غير صالحة";
+            result.issue = userErrorMessage(error, "بيانات إتاحة المكان غير مكتملة أو غير صالحة");
           }
           return result;
         })

@@ -25,6 +25,7 @@ import {
   type PayData,
 } from "@/lib/reports/teaching-pay";
 import { formatNumber } from "@/lib/format";
+import { userErrorMessage } from "@/lib/user-error";
 
 type Api = {
   public: {
@@ -208,7 +209,7 @@ function PayWorkspace({
       await query.refetch();
       return true;
     } catch (error) {
-      setMutationError(error instanceof Error ? error.message : "تعذر الحفظ");
+      setMutationError(userErrorMessage(error, "تعذر الحفظ"));
       return false;
     } finally {
       setBusy(false);
