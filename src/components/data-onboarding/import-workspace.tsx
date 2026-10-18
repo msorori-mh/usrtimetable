@@ -41,6 +41,10 @@ import { preparationLabel } from "@/lib/data-onboarding/preparation";
 import { instructorStatusLabel } from "@/lib/excel-import/instructor-sheet";
 import { HeadcountImportWorkspace } from "./headcount-import-workspace";
 import { userErrorMessage } from "@/lib/user-error";
+import { confirmAction } from "@/components/confirm-dialog";
+import { formatNumber } from "@/lib/format";
+import { withStableKeys } from "@/hooks/stable-keys";
+import { QueryErrorNotice } from "@/components/app-states/query-error-notice";
 
 const ENTITIES = listImportUiEntities().map((m) => ({
   value: m.entity,
@@ -120,10 +124,11 @@ function ImportForm({ entities, onCommitted, onEntityChange }: ImportWorkspacePr
     teachingHoursContractBlockers?: number;
   } | null>(null);
 
-  const { data: collegeTerms = [] } = useQuery({
+  const { data: collegeTerms = [], error: collegeTermsError } = useQuery({
     queryKey: ["import-academic-terms", active?.id],
     enabled: !!active && entity === "teaching_assignments_v2",
     queryFn: async () => {
+      // read-all-ok: active terms of one college (a handful)
       const { data, error } = await supabase
         .from("academic_terms")
         .select("id, code, name, term_type")
@@ -137,7 +142,7 @@ function ImportForm({ entities, onCommitted, onEntityChange }: ImportWorkspacePr
 
   // Programs can only resolve a department of the same college — block the upload
   // with a clear reason until at least one department exists.
-  const { data: departmentCount } = useQuery({
+  const { data: departmentCount, error: departmentCountError } = useQuery({
     queryKey: ["import-department-count", active?.id],
     enabled: !!active && entity === "academic_programs",
     queryFn: async () => {
@@ -363,8 +368,8 @@ function ImportForm({ entities, onCommitted, onEntityChange }: ImportWorkspacePr
             {result.failed > 0 ? "اكتمل الاستيراد مع ملاحظات" : "تم حفظ البيانات"}
           </p>
           <p className="mt-1 text-sm">
-            أُضيف {result.inserted} · حُدّث {result.updated} · تُرك دون تغيير {result.skipped} ·
-            تعذر {result.failed}
+            أُضيف {formatNumber(result.inserted)} · حُدّث {formatNumber(result.updated)} · تُرك دون تغيير{" "}
+            {formatNumber(result.skipped)} · تعذر {formatNumber(result.failed)}
           </p>
           <p className="mt-2 text-sm text-muted-foreground">
             تُحدّث جاهزية هذه الخطوة الآن. راجع حالتها قبل الانتقال للخطوة التالية.
@@ -503,6 +508,12 @@ function ImportForm({ entities, onCommitted, onEntityChange }: ImportWorkspacePr
             </label>
           </div>
 
+          {(collegeTermsError ?? departmentCountError) && (
+            <QueryErrorNotice
+              title="تعذّر تحميل الفصول أو الأقسام اللازمة للاستيراد."
+              error={collegeTermsError ?? departmentCountError}
+            />
+          )}
           {entity === "teaching_assignments_v2" &&
             file &&
             workbookMode === "academic_source_workbook" &&
@@ -715,8 +726,11 @@ function ImportForm({ entities, onCommitted, onEntityChange }: ImportWorkspacePr
                     </tr>
                   </thead>
                   <tbody>
-                    {preview.errors.slice(0, 50).map((e, i) => (
-                      <tr key={i} className="border-t border-border">
+                    {withStableKeys<RowError>(
+                      preview.errors.slice(0, 50),
+                      (e) => `${e.rowNumber}:${e.columnName ?? ""}:${e.errorCode}:${e.message}`,
+                    ).map(({ key, item: e }) => (
+                      <tr key={key} className="border-t border-border">
                         <td className="p-2">{e.rowNumber}</td>
                         <td className="p-2">{e.columnName ?? "—"}</td>
                         <td className="p-2 text-destructive">{preparationLabel(e.message)}</td>
@@ -822,7 +836,17 @@ function ImportForm({ entities, onCommitted, onEntityChange }: ImportWorkspacePr
               إلغاء
             </Button>
             <Button
-              onClick={() => commitMut.mutate()}
+              onClick={async () => {
+                const ok = await confirmAction({
+                  title: `استيراد ${formatNumber(preview.valid.length)} صفًا صالحًا؟`,
+                  description:
+                    preview.errors.length > 0
+                      ? `سيُحفظ الصالح فقط ويُترك ${formatNumber(preview.errors.length)} خطأ دون استيراد. لا يمكن التراجع تلقائيًا عن الاستيراد.`
+                      : "تُحفظ الصفوف في بيانات الكلية مباشرة. لا يمكن التراجع تلقائيًا عن الاستيراد.",
+                  confirmLabel: "استيراد",
+                });
+                if (ok) commitMut.mutate();
+              }}
               disabled={
                 preview.valid.length === 0 ||
                 commitMut.isPending ||
@@ -831,7 +855,7 @@ function ImportForm({ entities, onCommitted, onEntityChange }: ImportWorkspacePr
               }
             >
               {commitMut.isPending ? <Loader2 className="me-2 h-4 w-4 animate-spin" /> : null}
-              تأكيد استيراد الصفوف الصالحة ({preview.valid.length})
+              تأكيد استيراد الصفوف الصالحة ({formatNumber(preview.valid.length)})
             </Button>
           </div>
         </Card>
@@ -880,6 +904,7 @@ function SourceSheetTermPicker({
         <div key={name} className="grid gap-2 md:grid-cols-2 items-center">
           <span className="text-sm text-muted-foreground">{name}</span>
           <select
+            aria-label={`الفصل الأكاديمي لورقة ${name}`}
             className="h-9 rounded-md border border-input bg-background px-2 text-sm"
             value={sheetTermMap[name] ?? ""}
             onChange={(e) => onChange({ ...sheetTermMap, [name]: e.target.value })}
@@ -904,7 +929,7 @@ function Stat({ label, value, tone }: { label: string; value: number; tone?: "ok
       className={`rounded-lg border p-3 ${tone === "ok" ? "border-emerald-500/30 bg-emerald-500/5" : tone === "err" ? "border-destructive/30 bg-destructive/5" : "border-border"}`}
     >
       <p className="text-xs text-muted-foreground">{label}</p>
-      <p className="text-2xl font-bold">{value.toLocaleString("ar-EG")}</p>
+      <p className="text-2xl font-bold">{formatNumber(value)}</p>
     </div>
   );
 }
