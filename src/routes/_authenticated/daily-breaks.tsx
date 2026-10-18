@@ -14,6 +14,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, Dialog
 import { toast } from "sonner";
 import { logAudit } from "@/lib/audit";
 import { Coffee, Pencil, Trash2 } from "lucide-react";
+import { userErrorMessage } from "@/lib/user-error";
 
 export const Route = createFileRoute("/_authenticated/daily-breaks")({
   head: () => ({ meta: [{ title: "الاستراحات اليومية" }] }),
@@ -57,7 +58,7 @@ function DailyBreaksPage() {
       }
     },
     onSuccess: () => { toast.success(editing ? "تم التحديث" : "تمت الإضافة"); qc.invalidateQueries({ queryKey: ["daily-breaks", active?.id] }); setOpen(false); setEditing(null); },
-    onError: (e: Error) => toast.error(e.message),
+    onError: (e: Error) => toast.error(userErrorMessage(e)),
   });
 
   const del = useMutation({
@@ -67,7 +68,7 @@ function DailyBreaksPage() {
       await logAudit({ action: "delete", entity: "daily_breaks", entityId: id, collegeId: active?.id });
     },
     onSuccess: () => { toast.success("تم الحذف"); qc.invalidateQueries({ queryKey: ["daily-breaks", active?.id] }); },
-    onError: (e: Error) => toast.error(e.message),
+    onError: (e: Error) => toast.error(userErrorMessage(e)),
   });
 
   const startEdit = (b: Brk) => { setEditing(b); setForm({ name: b.name, days: b.days ?? [], start_time: b.start_time, end_time: b.end_time, affects_scheduling: b.affects_scheduling }); setOpen(true); };

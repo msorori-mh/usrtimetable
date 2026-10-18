@@ -10,6 +10,7 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogT
 import { toast } from "sonner";
 import { logAudit } from "@/lib/audit";
 import { Pencil, Trash2 } from "lucide-react";
+import { userErrorMessage } from "@/lib/user-error";
 
 export interface LookupRow { id: string; college_id: string; [k: string]: unknown }
 
@@ -64,7 +65,7 @@ export function LookupPage<T extends LookupRow>({ table, title, subtitle, icon, 
       qc.invalidateQueries({ queryKey: [table, active?.id] });
       setOpen(false); setEditing(null);
     },
-    onError: (e: Error) => toast.error(e.message.includes("duplicate") ? "هذا السجل موجود مسبقاً" : e.message),
+    onError: (e: Error) => toast.error(e.message.includes("duplicate") ? "هذا السجل موجود مسبقاً" : userErrorMessage(e)),
   });
 
   const del = useMutation({
@@ -74,7 +75,7 @@ export function LookupPage<T extends LookupRow>({ table, title, subtitle, icon, 
       await logAudit({ action: "delete", entity: table, entityId: id, collegeId: active?.id });
     },
     onSuccess: () => { toast.success("تم الحذف"); qc.invalidateQueries({ queryKey: [table, active?.id] }); },
-    onError: (e: Error) => toast.error(e.message),
+    onError: (e: Error) => toast.error(userErrorMessage(e)),
   });
 
   const startEdit = (r: T) => { setEditing(r); setForm(toForm(r)); setOpen(true); };

@@ -13,6 +13,7 @@ import {
 } from "@/lib/existing-schedules/source-row-import";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { userErrorMessage } from "@/lib/user-error";
 
 type ExistingRow = Parameters<typeof previewSourceRows>[1][number];
 
@@ -63,7 +64,7 @@ export function SourceRowsImport({
       }
       setPreview(previewSourceRows(matrix, existing));
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : String(error));
+      toast.error(userErrorMessage(error));
     }
   }
 
@@ -138,7 +139,7 @@ export function SourceRowsImport({
       toast.success(`حُفظت ${preview.rows.length} من صفوف المصدر في المسودة`);
       setPreview(null);
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : String(error));
+      toast.error(userErrorMessage(error));
       // A partial batch may have been committed; force a fresh preview.
       await onSaved();
       setPreview(null);

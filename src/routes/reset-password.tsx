@@ -12,6 +12,7 @@ import {
   passwordPolicyIssues,
 } from "@/lib/password-policy";
 import { toast } from "sonner";
+import { userErrorMessage } from "@/lib/user-error";
 
 export const Route = createFileRoute("/reset-password")({
   head: () => ({ meta: [{ title: `استعادة كلمة المرور — ${USR_PLATFORM_NAME_AR}` }] }),
@@ -70,7 +71,7 @@ function ResetPasswordPage() {
       toast.success("تم تحديث كلمة المرور بنجاح. سجّل الدخول بكلمة المرور الجديدة.");
       navigate({ to: "/auth", replace: true });
     } catch (err) {
-      const msg = err instanceof Error ? err.message : "حدث خطأ";
+      const msg = userErrorMessage(err, "حدث خطأ");
       console.error("[reset-password] updateUser failed", err);
       toast.error(
         /password should|weak|pwned/i.test(msg)

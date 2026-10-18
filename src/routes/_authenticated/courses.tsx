@@ -41,6 +41,7 @@ import {
   programsForDepartment,
   type CourseComposition,
 } from "@/lib/courses/course-filters";
+import { userErrorMessage } from "@/lib/user-error";
 
 export const Route = createFileRoute("/_authenticated/courses")({
   head: () => ({ meta: [{ title: "المقررات" }] }),
@@ -235,7 +236,7 @@ function CoursesPage() {
       setOpen(false);
       setEditing(null);
     },
-    onError: (e: Error) => toast.error(e.message),
+    onError: (e: Error) => toast.error(userErrorMessage(e)),
   });
 
   const del = useMutation({
@@ -248,7 +249,7 @@ function CoursesPage() {
       toast.success("تم الحذف");
       qc.invalidateQueries({ queryKey: ["courses", active?.id] });
     },
-    onError: (e: Error) => toast.error(e.message),
+    onError: (e: Error) => toast.error(userErrorMessage(e)),
   });
 
   const startEdit = (c: Course) => {

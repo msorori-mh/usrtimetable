@@ -15,6 +15,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
+import { userErrorMessage } from "@/lib/user-error";
 
 export const Route = createFileRoute("/_authenticated/account-security")({
   head: () => ({
@@ -55,7 +56,7 @@ function AccountSecurityPage() {
       supabase.auth.mfa.getAuthenticatorAssuranceLevel(),
     ]);
     if (listErr) {
-      setError(listErr.message);
+      setError(userErrorMessage(listErr));
       return;
     }
     setError(null);
@@ -82,7 +83,7 @@ function AccountSecurityPage() {
       });
       setCode("");
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "تعذّر بدء التسجيل");
+      toast.error(userErrorMessage(e, "تعذّر بدء التسجيل"));
     } finally {
       setBusy(false);
       void refresh();
@@ -107,7 +108,7 @@ function AccountSecurityPage() {
       setPending(null);
       setCode("");
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "رمز غير صحيح");
+      toast.error(userErrorMessage(e, "رمز غير صحيح"));
     } finally {
       setBusy(false);
       void refresh();
@@ -122,7 +123,7 @@ function AccountSecurityPage() {
       toast.success("تم إلغاء العامل");
       if (pending?.id === id) setPending(null);
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "تعذّر الإلغاء");
+      toast.error(userErrorMessage(e, "تعذّر الإلغاء"));
     } finally {
       setBusy(false);
       void refresh();

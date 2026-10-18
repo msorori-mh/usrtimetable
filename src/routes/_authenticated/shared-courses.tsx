@@ -27,6 +27,7 @@ import {
 import { toast } from "sonner";
 import { logAudit } from "@/lib/audit";
 import { Share2 } from "lucide-react";
+import { userErrorMessage } from "@/lib/user-error";
 
 export const Route = createFileRoute("/_authenticated/shared-courses")({
   head: () => ({ meta: [{ title: "المقررات المشتركة" }] }),
@@ -117,7 +118,7 @@ function SharedPage() {
       qc.invalidateQueries({ queryKey: ["course-programs", active?.id] });
       setEditing(null);
     },
-    onError: (e: Error) => toast.error(e.message),
+    onError: (e: Error) => toast.error(userErrorMessage(e)),
   });
 
   return (

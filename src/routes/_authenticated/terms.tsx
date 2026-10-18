@@ -21,6 +21,7 @@ import {
 import { toast } from "sonner";
 import { logAudit } from "@/lib/audit";
 import { CalendarRange, Pencil, Trash2 } from "lucide-react";
+import { userErrorMessage } from "@/lib/user-error";
 
 export const Route = createFileRoute("/_authenticated/terms")({
   head: () => ({ meta: [{ title: "الفصول الأكاديمية" }] }),
@@ -123,7 +124,7 @@ function TermsPage() {
       setOpen(false);
       setEditing(null);
     },
-    onError: (e: Error) => toast.error(e.message),
+    onError: (e: Error) => toast.error(userErrorMessage(e)),
   });
 
   const del = useMutation({
@@ -141,7 +142,7 @@ function TermsPage() {
       toast.success("تم الحذف");
       qc.invalidateQueries({ queryKey: ["terms", active?.id] });
     },
-    onError: (e: Error) => toast.error(e.message),
+    onError: (e: Error) => toast.error(userErrorMessage(e)),
   });
 
   const startEdit = (t: Term) => {

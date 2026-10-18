@@ -24,6 +24,7 @@ import {
   validateHeadcountValues,
 } from "@/lib/scheduling-headcount/rules";
 import type { SchedulingHeadcount } from "@/lib/scheduling-headcount/types";
+import { userErrorMessage } from "@/lib/user-error";
 
 export const Route = createFileRoute("/_authenticated/scheduling-headcounts")({
   head: () => ({ meta: [{ title: "أعداد الدفعات المعتمدة للجدولة" }] }),
@@ -94,7 +95,7 @@ function SchedulingHeadcountsPage() {
       setEditing(null);
       void refresh();
     },
-    onError: (error: Error) => toast.error(error.message),
+    onError: (error: Error) => toast.error(userErrorMessage(error)),
   });
   const approve = useMutation({
     mutationFn: (id: string) => approveSchedulingCohortTermHeadcount(id),
@@ -103,7 +104,7 @@ function SchedulingHeadcountsPage() {
       toast.success("تم اعتماد العدد للجدولة.");
       void refresh();
     },
-    onError: (error: Error) => toast.error(error.message),
+    onError: (error: Error) => toast.error(userErrorMessage(error)),
   });
 
   const termName = new Map(terms.map((term) => [term.id, term.name]));

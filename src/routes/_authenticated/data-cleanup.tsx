@@ -50,6 +50,7 @@ import {
   CheckCircle2,
   ShieldAlert,
 } from "lucide-react";
+import { userErrorMessage } from "@/lib/user-error";
 
 export const Route = createFileRoute("/_authenticated/data-cleanup")({
   head: () => ({ meta: [{ title: "تنظيف البيانات" }] }),
@@ -253,7 +254,7 @@ function DataCleanupPage() {
       {loadError && (
         <Card role="alert" className="border-destructive p-4 text-sm text-destructive">
           فشل تحميل بيانات التنظيف؛ لا تُعرض نتائج قد تكون مضللة.{" "}
-          {loadError instanceof Error ? loadError.message : String(loadError)}
+          {userErrorMessage(loadError)}
         </Card>
       )}
 
@@ -1002,7 +1003,7 @@ function CoursesSection({
         onConfirm={async (ids) => {
           const { error } = await updateByIdChunks("courses", { course_nature: natureVal }, ids);
           if (error) {
-            toast.error(error.message);
+            toast.error(userErrorMessage(error));
             return false;
           }
           await logAudit({
@@ -1171,7 +1172,7 @@ function InstructorsSection({
           }
           const { error } = await updateByIdChunks("instructors", { department_id: deptId }, ids);
           if (error) {
-            toast.error(error.message);
+            toast.error(userErrorMessage(error));
             return false;
           }
           await logAudit({
@@ -1214,7 +1215,7 @@ function InstructorsSection({
           }
           const { error } = await updateByIdChunks("instructors", { specialization: spec.trim() }, ids);
           if (error) {
-            toast.error(error.message);
+            toast.error(userErrorMessage(error));
             return false;
           }
           await logAudit({
@@ -1250,7 +1251,7 @@ function InstructorsSection({
           }
           const { error } = await updateByIdChunks("instructors", { instructor_type_id: typeId }, ids);
           if (error) {
-            toast.error(error.message);
+            toast.error(userErrorMessage(error));
             return false;
           }
           await logAudit({
@@ -1341,7 +1342,7 @@ function RoomsSection({
           }
           const { error } = await updateByIdChunks("rooms", { capacity: cap }, ids);
           if (error) {
-            toast.error(error.message);
+            toast.error(userErrorMessage(error));
             return false;
           }
           await logAudit({
@@ -1395,7 +1396,7 @@ function RoomsSection({
           }
           const { error } = await updateByIdChunks("rooms", upd, ids);
           if (error) {
-            toast.error(error.message);
+            toast.error(userErrorMessage(error));
             return false;
           }
           await logAudit({
@@ -1486,7 +1487,7 @@ function OfferingsSection({
           }
           const { error } = await updateByIdChunks("course_offerings", { expected_students: students }, ids);
           if (error) {
-            toast.error(error.message);
+            toast.error(userErrorMessage(error));
             return false;
           }
           await logAudit({
@@ -1519,7 +1520,7 @@ function OfferingsSection({
         onConfirm={async (ids) => {
           const { error } = await updateByIdChunks("course_offerings", { study_system: system }, ids);
           if (error) {
-            toast.error(error.message);
+            toast.error(userErrorMessage(error));
             return false;
           }
           await logAudit({

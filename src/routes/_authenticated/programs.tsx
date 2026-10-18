@@ -27,6 +27,7 @@ import {
 import { toast } from "sonner";
 import { logAudit } from "@/lib/audit";
 import { GraduationCap, Pencil, Trash2 } from "lucide-react";
+import { userErrorMessage } from "@/lib/user-error";
 
 export const Route = createFileRoute("/_authenticated/programs")({
   head: () => ({ meta: [{ title: "البرامج الأكاديمية" }] }),
@@ -143,7 +144,7 @@ function ProgramsPage() {
       setOpen(false);
       setEditing(null);
     },
-    onError: (e: Error) => toast.error(e.message),
+    onError: (e: Error) => toast.error(userErrorMessage(e)),
   });
 
   const del = useMutation({
@@ -166,7 +167,7 @@ function ProgramsPage() {
       toast.success("تم الحذف");
       qc.invalidateQueries({ queryKey: ["programs", active?.id] });
     },
-    onError: (e: Error) => toast.error(e.message),
+    onError: (e: Error) => toast.error(userErrorMessage(e)),
   });
 
   const startEdit = (p: Prog) => {

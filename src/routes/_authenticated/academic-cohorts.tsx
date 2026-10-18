@@ -51,6 +51,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { userErrorMessage } from "@/lib/user-error";
 
 export const Route = createFileRoute("/_authenticated/academic-cohorts")({
   head: () => ({ meta: [{ title: "الدفعات الدراسية" }] }),
@@ -303,7 +304,7 @@ function AcademicCohortsWorkspace() {
       void queryClient.invalidateQueries({ queryKey: ["cohort-elective-selections", active?.id] });
       toast.success(`تم اعتماد ${result.approved} من ${result.total} اختيارًا للدفعة.`);
     },
-    onError: (error: Error) => toast.error(error.message),
+    onError: (error: Error) => toast.error(userErrorMessage(error)),
   });
   const hasElectivePlaceholder = electiveSelections?.some(
     (choice) =>

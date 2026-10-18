@@ -32,6 +32,7 @@ import {
 } from "@/lib/schedule-builder/v2-assignment-integration";
 import { createScheduleSessionFromAssignmentV2 } from "@/lib/schedule-builder/v2-assignment-service";
 import { entityDisplayName } from "@/lib/entity-display";
+import { userErrorMessage } from "@/lib/user-error";
 
 const DAYS = [6, 0, 1, 2, 3, 4];
 
@@ -105,7 +106,7 @@ export function V2AddSessionDialog({
       onCreated(result);
       onOpenChange(false);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "فشل إنشاء الجلسة.");
+      setError(userErrorMessage(e, "فشل إنشاء الجلسة."));
     } finally {
       setSubmitting(false);
     }

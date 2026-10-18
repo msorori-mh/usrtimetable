@@ -32,6 +32,7 @@ import { activeFilters, studyPlansExportDataset } from "@/lib/admin-export/datas
 import { Archive, BookOpen, Pencil, Trash2 } from "lucide-react";
 import { PrintPlansButton } from "@/components/study-plans/print-plans-button";
 import { PlanCoursesManager } from "@/components/study-plans/plan-courses-manager";
+import { userErrorMessage } from "@/lib/user-error";
 
 export const Route = createFileRoute("/_authenticated/study-plans")({
   head: () => ({ meta: [{ title: "الخطط الدراسية" }] }),
@@ -174,7 +175,7 @@ function StudyPlansPage() {
       setOpen(false);
       setEditing(null);
     },
-    onError: (e: Error) => toast.error(e.message),
+    onError: (e: Error) => toast.error(userErrorMessage(e)),
   });
 
   const startEdit = (p: Plan) => {
@@ -573,7 +574,7 @@ function RetirePlanDialog({
       toast.success(plan.archived_at ? "حُذفت الخطة المؤرشفة وحُفظت نسخة سجليّة" : "أُرشفت الخطة");
       onDone();
     },
-    onError: (e: Error) => toast.error(e.message),
+    onError: (e: Error) => toast.error(userErrorMessage(e)),
   });
   const r = readiness.data;
   const blockers = r
@@ -601,7 +602,7 @@ function RetirePlanDialog({
           {readiness.isLoading ? (
             <p>جارٍ فحص ارتباطات الخطة...</p>
           ) : readiness.error ? (
-            <p className="text-destructive">{readiness.error.message}</p>
+            <p className="text-destructive">{userErrorMessage(readiness.error)}</p>
           ) : (
             <>
               <p>

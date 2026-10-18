@@ -9,6 +9,7 @@ import {
 } from "@/lib/instructors/college-correction";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
+import { userErrorMessage } from "@/lib/user-error";
 
 export function FacultyCollegeTransfer({
   instructorId,
@@ -77,7 +78,7 @@ export function FacultyCollegeTransfer({
       confirmed,
     });
   } catch (error) {
-    blocked = error instanceof Error ? error.message : "راجع بيانات النقل.";
+    blocked = userErrorMessage(error, "راجع بيانات النقل.");
   }
   const transfer = useMutation({
     mutationFn: async () => {

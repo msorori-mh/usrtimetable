@@ -83,6 +83,7 @@ import {
   distinctUniversityRosterHits,
   type UniversityRosterHit,
 } from "@/lib/instructors/university-roster-search";
+import { userErrorMessage } from "@/lib/user-error";
 
 export const Route = createFileRoute("/_authenticated/instructors")({
   head: () => ({ meta: [{ title: "المحاضرون" }] }),
@@ -425,7 +426,7 @@ function InstructorDirectory({
       toast.success("تمت إضافة القسم المساند");
     },
     onError: (e: Error) =>
-      toast.error(e.message.includes("duplicate") ? "القسم المساند موجود بالفعل" : e.message),
+      toast.error(e.message.includes("duplicate") ? "القسم المساند موجود بالفعل" : userErrorMessage(e)),
   });
 
   const {
@@ -599,7 +600,7 @@ function InstructorDirectory({
     },
     onError: (e: Error) =>
       toast.error(
-        e.message.includes("duplicate") ? "رقم الموظف مستخدم بالفعل في هذه الكلّية" : e.message,
+        e.message.includes("duplicate") ? "رقم الموظف مستخدم بالفعل في هذه الكلّية" : userErrorMessage(e),
       ),
   });
 
@@ -621,7 +622,7 @@ function InstructorDirectory({
       qc.invalidateQueries({ queryKey: ["instructors", active?.id] });
       void qc.invalidateQueries({ queryKey: ["faculty-home-profiles"] });
     },
-    onError: (e: Error) => toast.error(e.message),
+    onError: (e: Error) => toast.error(userErrorMessage(e)),
   });
 
   const startEdit = (i: Instructor, field: InstructorReview | null = review ?? null) => {
@@ -996,7 +997,7 @@ function InstructorDirectory({
                   )}
                   {registrationMatches.error && (
                     <p role="alert">
-                      تعذر فحص السجلات الموجودة: {registrationMatches.error.message}
+                      تعذر فحص السجلات الموجودة: {userErrorMessage(registrationMatches.error)}
                     </p>
                   )}
                   <Label>الاسم الرباعي</Label>

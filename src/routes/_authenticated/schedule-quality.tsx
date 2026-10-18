@@ -13,6 +13,7 @@ import { toast } from "sonner";
 import { Gauge, AlertTriangle, Activity } from "lucide-react";
 import { scoreScheduleVersion, type QualityResult } from "@/lib/conflict-engine/scorer";
 import { logAudit } from "@/lib/audit";
+import { userErrorMessage } from "@/lib/user-error";
 
 export const Route = createFileRoute("/_authenticated/schedule-quality")({
   head: () => ({ meta: [{ title: "جودة الجدول الزمني" }] }),
@@ -74,7 +75,7 @@ function ScheduleQualityPage() {
       });
       toast.success(`النتيجة: ${result.total_score}/100`);
     } catch (e) {
-      toast.error((e as Error).message);
+      toast.error(userErrorMessage(e));
     } finally {
       setRunning(false);
     }

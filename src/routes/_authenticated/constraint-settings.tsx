@@ -17,6 +17,7 @@ import {
   fetchInstructorAvailabilityReadiness,
   setInstructorAvailabilityEnforcement,
 } from "@/lib/availability/policy-api";
+import { userErrorMessage } from "@/lib/user-error";
 
 export const Route = createFileRoute("/_authenticated/constraint-settings")({
   head: () => ({ meta: [{ title: "سياسات الجدولة والجودة" }] }),
@@ -207,7 +208,7 @@ function ConstraintSettingsPage() {
       toast.success("تم حفظ إعداد تقييم الجودة");
       qc.invalidateQueries({ queryKey: ["college-quality-settings", active?.id] });
     },
-    onError: (error: Error) => toast.error(error.message || "فشل الحفظ"),
+    onError: (error: Error) => toast.error(userErrorMessage(error, "فشل الحفظ")),
   });
 
   const resetQuality = useMutation({
@@ -236,7 +237,7 @@ function ConstraintSettingsPage() {
       toast.success("أُعيد المؤشر إلى القيمة الافتراضية");
       qc.invalidateQueries({ queryKey: ["college-quality-settings", active?.id] });
     },
-    onError: (error: Error) => toast.error(error.message || "تعذر إعادة الضبط"),
+    onError: (error: Error) => toast.error(userErrorMessage(error, "تعذر إعادة الضبط")),
   });
 
   const setAvailabilityEnforcement = useMutation({
@@ -251,7 +252,7 @@ function ConstraintSettingsPage() {
       qc.invalidateQueries({ queryKey: ["availability-enforcement", active?.id] });
       qc.invalidateQueries({ queryKey: ["instructor-availability-readiness", active?.id] });
     },
-    onError: (error: Error) => toast.error(error.message || "فشل تحديث القيد"),
+    onError: (error: Error) => toast.error(userErrorMessage(error, "فشل تحديث القيد")),
   });
 
   const availabilityEnabled = schedulingPolicy?.enforce_instructor_availability ?? false;

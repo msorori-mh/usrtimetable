@@ -16,6 +16,7 @@ import {
   downloadHeadcountWorkbook,
   readHeadcountWorkbook,
 } from "@/lib/scheduling-headcount/import-workbook";
+import { userErrorMessage } from "@/lib/user-error";
 
 export function HeadcountImportWorkspace({ onCommitted }: { onCommitted?: () => void }) {
   const { active } = useActiveCollege();
@@ -63,7 +64,7 @@ function HeadcountImportForm({
       await task();
     } catch (error) {
       if (alive.current)
-        toast.error(error instanceof Error ? error.message : "تعذر تنفيذ العملية.");
+        toast.error(userErrorMessage(error, "تعذر تنفيذ العملية."));
     } finally {
       running.current = false;
       if (alive.current) setBusy(false);

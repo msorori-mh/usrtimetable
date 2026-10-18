@@ -45,6 +45,7 @@ import {
   TEMPLATE_SYSTEM_LABELS as SYSTEM_LABELS,
   type TimeTemplateRow,
 } from "@/lib/time-templates/template-directory";
+import { userErrorMessage } from "@/lib/user-error";
 
 export const Route = createFileRoute("/_authenticated/time-slot-templates")({
   head: () => ({ meta: [{ title: "قوالب أوقات المحاضرات" }] }),
@@ -298,7 +299,7 @@ function TimeSlotTemplatesWorkspace() {
       qc.invalidateQueries({ queryKey: collegeScopedQueryKey("tst", collegeId) });
     },
     onError: (e: Error) => {
-      if (e.message !== "تم إلغاء الحفظ") toast.error(e.message);
+      if (e.message !== "تم إلغاء الحفظ") toast.error(userErrorMessage(e));
     },
   });
 
@@ -340,7 +341,7 @@ function TimeSlotTemplatesWorkspace() {
       toast.success("تمت إضافة القالب المفرد");
       qc.invalidateQueries({ queryKey: collegeScopedQueryKey("tst", collegeId) });
     },
-    onError: (e: Error) => toast.error(e.message),
+    onError: (e: Error) => toast.error(userErrorMessage(e)),
   });
 
   const toggleActive = useMutation({
@@ -360,7 +361,7 @@ function TimeSlotTemplatesWorkspace() {
       });
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: collegeScopedQueryKey("tst", collegeId) }),
-    onError: (e: Error) => toast.error(e.message),
+    onError: (e: Error) => toast.error(userErrorMessage(e)),
   });
 
   const del = useMutation({
@@ -383,7 +384,7 @@ function TimeSlotTemplatesWorkspace() {
       toast.success("تم الحذف");
       qc.invalidateQueries({ queryKey: collegeScopedQueryKey("tst", collegeId) });
     },
-    onError: (e: Error) => toast.error(e.message),
+    onError: (e: Error) => toast.error(userErrorMessage(e)),
   });
 
   return (

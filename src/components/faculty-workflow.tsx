@@ -12,6 +12,7 @@ import {
 } from "@/lib/instructors/faculty-workflow";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { userErrorMessage } from "@/lib/user-error";
 
 export { FacultyTeachingRequests } from "@/components/faculty-teaching-requests";
 
@@ -77,7 +78,7 @@ export function FacultyHomeReview({ collegeId }: { collegeId: string }) {
       </p>
       {list.error && (
         <p role="alert" className="text-destructive">
-          تعذر تحميل التبعية: {list.error.message}
+          تعذر تحميل التبعية: {userErrorMessage(list.error)}
         </p>
       )}
       <details>

@@ -63,6 +63,7 @@ import { AdminExportMenu } from "@/components/admin-export-menu";
 import { planContentsExportDataset } from "@/lib/admin-export/datasets";
 import { buildPlanContentRows } from "@/lib/admin-export/plan-content-rows";
 import { entityDisplayName } from "@/lib/entity-display";
+import { userErrorMessage } from "@/lib/user-error";
 
 interface PlanComponentRow {
   id: string;
@@ -246,7 +247,7 @@ export function PlanCoursesManager({
       invalidate();
     },
     onError: (e: Error) => {
-      toast.error(e.message);
+      toast.error(userErrorMessage(e));
       invalidate();
     },
   });
@@ -283,7 +284,7 @@ export function PlanCoursesManager({
       setLevelForm({ name: "", level_number: 1 });
       qc.invalidateQueries({ queryKey: ["plan-editor-levels", collegeId, programId] });
     },
-    onError: (e: Error) => toast.error(e.message),
+    onError: (e: Error) => toast.error(userErrorMessage(e)),
   });
 
   const addPlanCourse = useMutation({
@@ -309,7 +310,7 @@ export function PlanCoursesManager({
       setForm({ course_id: "", level_id: "", semester: 1, is_required: true });
       invalidate();
     },
-    onError: (e: Error) => toast.error(e.message),
+    onError: (e: Error) => toast.error(userErrorMessage(e)),
   });
 
   const toggleRequired = useMutation({
@@ -326,7 +327,7 @@ export function PlanCoursesManager({
       toast.success("تم التحديث");
       invalidate();
     },
-    onError: (e: Error) => toast.error(e.message),
+    onError: (e: Error) => toast.error(userErrorMessage(e)),
   });
 
   const updatePlanCourse = useMutation({
@@ -365,7 +366,7 @@ export function PlanCoursesManager({
       setEditRow(null);
       invalidate();
     },
-    onError: (e: Error) => toast.error(e.message),
+    onError: (e: Error) => toast.error(userErrorMessage(e)),
   });
 
   const deletePlanCourse = useMutation({
@@ -400,7 +401,7 @@ export function PlanCoursesManager({
       toast.success("تم الحذف");
       invalidate();
     },
-    onError: (e: Error) => toast.error(e.message),
+    onError: (e: Error) => toast.error(userErrorMessage(e)),
   });
 
   const generateComponents = useMutation({
@@ -426,7 +427,7 @@ export function PlanCoursesManager({
       toast.success("تم توليد محاضرات المقرر من ساعاته");
       invalidate();
     },
-    onError: (e: Error) => toast.error(e.message),
+    onError: (e: Error) => toast.error(userErrorMessage(e)),
   });
 
   const addComponent = useMutation({
@@ -458,7 +459,7 @@ export function PlanCoursesManager({
       setComponentTarget(null);
       invalidate();
     },
-    onError: (e: Error) => toast.error(e.message),
+    onError: (e: Error) => toast.error(userErrorMessage(e)),
   });
 
   const updateComponent = useMutation({
@@ -499,7 +500,7 @@ export function PlanCoursesManager({
       setComponentTarget(null);
       invalidate();
     },
-    onError: (e: Error) => toast.error(e.message),
+    onError: (e: Error) => toast.error(userErrorMessage(e)),
   });
 
   const deleteComponent = useMutation({
@@ -523,7 +524,7 @@ export function PlanCoursesManager({
       invalidate();
     },
     onError: (e: Error) => {
-      toast.error(e.message);
+      toast.error(userErrorMessage(e));
       invalidate();
     },
   });

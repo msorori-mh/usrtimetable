@@ -12,6 +12,7 @@ import { toast } from "sonner";
 import { logAudit } from "@/lib/audit";
 import { School, Pencil, Trash2 } from "lucide-react";
 import { READ_ONLY_VIEW_BADGE_AR, isInstitutionalReadOnlyViewer } from "@/lib/unauthorized-access";
+import { userErrorMessage } from "@/lib/user-error";
 
 export const Route = createFileRoute("/_authenticated/colleges")({
   head: () => ({ meta: [{ title: "إدارة الكلّيات" }] }),
@@ -61,7 +62,7 @@ function CollegesPage() {
       setName(""); setCode(""); setEditingId(null);
       qc.invalidateQueries({ queryKey: ["colleges"] });
     },
-    onError: (e: Error) => toast.error(e.message),
+    onError: (e: Error) => toast.error(userErrorMessage(e)),
   });
 
   const remove = useMutation({
@@ -71,7 +72,7 @@ function CollegesPage() {
       await logAudit({ action: "delete", entity: "college", entityId: id });
     },
     onSuccess: () => { toast.success("تم الحذف"); qc.invalidateQueries({ queryKey: ["colleges"] }); },
-    onError: (e: Error) => toast.error(e.message),
+    onError: (e: Error) => toast.error(userErrorMessage(e)),
   });
 
   if (user && !user.isSuperAdmin && !user.isInstitutionalViewer) throw redirect({ to: "/dashboard" });

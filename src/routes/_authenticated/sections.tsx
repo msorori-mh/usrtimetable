@@ -28,6 +28,7 @@ import { toast } from "sonner";
 import { logAudit } from "@/lib/audit";
 import { Users, Pencil, Trash2 } from "lucide-react";
 import { entityDisplayName } from "@/lib/entity-display";
+import { userErrorMessage } from "@/lib/user-error";
 
 export const Route = createFileRoute("/_authenticated/sections")({
   head: () => ({ meta: [{ title: "Legacy — للعرض التاريخي" }] }),
@@ -151,7 +152,7 @@ function SectionsPage() {
       setOpen(false);
       setEditing(null);
     },
-    onError: (e: Error) => toast.error(e.message),
+    onError: (e: Error) => toast.error(userErrorMessage(e)),
   });
 
   const del = useMutation({
@@ -165,7 +166,7 @@ function SectionsPage() {
       toast.success("تم الحذف");
       qc.invalidateQueries({ queryKey: ["sections", active?.id] });
     },
-    onError: (e: Error) => toast.error(e.message),
+    onError: (e: Error) => toast.error(userErrorMessage(e)),
   });
 
   const startEdit = (s: Section) => {

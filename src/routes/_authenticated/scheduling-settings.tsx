@@ -17,6 +17,7 @@ import {
   fetchInstructorAvailabilityReadiness,
   setInstructorAvailabilityEnforcement,
 } from "@/lib/availability/policy-api";
+import { userErrorMessage } from "@/lib/user-error";
 
 export const Route = createFileRoute("/_authenticated/scheduling-settings")({
   head: () => ({ meta: [{ title: "إعدادات الجدولة" }] }),
@@ -195,7 +196,7 @@ function SettingsPage() {
       qc.invalidateQueries({ queryKey: ["availability-enforcement", active?.id] });
       qc.invalidateQueries({ queryKey: ["instructor-availability-readiness", active?.id] });
     },
-    onError: (e: Error) => toast.error(e.message),
+    onError: (e: Error) => toast.error(userErrorMessage(e)),
   });
 
   const toggleDay = (d: number) => {

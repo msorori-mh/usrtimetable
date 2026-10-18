@@ -10,6 +10,7 @@ import {
   DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog";
+import { userErrorMessage } from "@/lib/user-error";
 
 export interface AdminResetResult {
   email: string;
@@ -44,7 +45,7 @@ export function PasswordResetDialog({
         throw new Error("لم تصل بيانات الاستعادة؛ أعد المحاولة.");
       setResult(response);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "تعذر إعادة التعيين.");
+      setError(userErrorMessage(e, "تعذر إعادة التعيين."));
     } finally {
       setBusy(false);
     }

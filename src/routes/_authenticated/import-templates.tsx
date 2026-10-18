@@ -15,6 +15,7 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogT
 import { toast } from "sonner";
 import { logAudit } from "@/lib/audit";
 import { FileSpreadsheet, Pencil, Trash2, Plus } from "lucide-react";
+import { userErrorMessage } from "@/lib/user-error";
 
 export const Route = createFileRoute("/_authenticated/import-templates")({
   head: () => ({ meta: [{ title: "قوالب الاستيراد" }] }),
@@ -90,13 +91,13 @@ function TemplatesPage() {
       }
     },
     onSuccess: () => { toast.success("تم الحفظ"); qc.invalidateQueries({ queryKey: ["import_tpls", active?.id] }); setOpen(false); setEditing(null); },
-    onError: (e: Error) => toast.error(e.message),
+    onError: (e: Error) => toast.error(userErrorMessage(e)),
   });
 
   const delTpl = useMutation({
     mutationFn: async (id: string) => { const { error } = await supabase.from("import_templates").delete().eq("id", id); if (error) throw error; await logAudit({ action: "delete", entity: "import_templates", entityId: id, collegeId: active?.id }); },
     onSuccess: () => { toast.success("تم الحذف"); qc.invalidateQueries({ queryKey: ["import_tpls", active?.id] }); qc.invalidateQueries({ queryKey: ["import_cols", active?.id] }); },
-    onError: (e: Error) => toast.error(e.message),
+    onError: (e: Error) => toast.error(userErrorMessage(e)),
   });
 
   const saveCol = useMutation({
@@ -122,13 +123,13 @@ function TemplatesPage() {
       await logAudit({ action: colEdit ? "update" : "create", entity: "import_template_columns", entityId: colEdit?.id, collegeId: active.id });
     },
     onSuccess: () => { toast.success("تم الحفظ"); qc.invalidateQueries({ queryKey: ["import_cols", active?.id] }); setColOpen(false); setColEdit(null); },
-    onError: (e: Error) => toast.error(e.message),
+    onError: (e: Error) => toast.error(userErrorMessage(e)),
   });
 
   const delCol = useMutation({
     mutationFn: async (id: string) => { const { error } = await supabase.from("import_template_columns").delete().eq("id", id); if (error) throw error; await logAudit({ action: "delete", entity: "import_template_columns", entityId: id, collegeId: active?.id }); },
     onSuccess: () => { toast.success("تم الحذف"); qc.invalidateQueries({ queryKey: ["import_cols", active?.id] }); },
-    onError: (e: Error) => toast.error(e.message),
+    onError: (e: Error) => toast.error(userErrorMessage(e)),
   });
 
   const startTpl = (t?: Tpl) => {

@@ -17,6 +17,7 @@ import {
   type CutoverManifest,
   type LiveSession,
 } from "@/lib/itcs-cutover/manifest";
+import { userErrorMessage } from "@/lib/user-error";
 
 export const Route = createFileRoute("/_authenticated/itcs-cutover")({
   head: () => ({
@@ -92,7 +93,7 @@ function ItcsCutoverPage() {
       )
       .eq("schedule_version_id", v.manifest.draft_version_id);
     if (error) {
-      setErrors([error.message]);
+      setErrors([userErrorMessage(error)]);
       return;
     }
     const live = (data ?? []) as (LiveSession & {
@@ -110,7 +111,7 @@ function ItcsCutoverPage() {
       ),
     ]);
     if (members.error || preview.error) {
-      setErrors([(members.error ?? preview.error)!.message]);
+      setErrors([userErrorMessage(members.error ?? preview.error)]);
       return;
     }
     const units = new Map<string, string[]>();

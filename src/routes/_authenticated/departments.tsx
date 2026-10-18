@@ -28,6 +28,7 @@ import {
 import { toast } from "sonner";
 import { logAudit } from "@/lib/audit";
 import { Building2, Pencil, Trash2 } from "lucide-react";
+import { userErrorMessage } from "@/lib/user-error";
 
 export const Route = createFileRoute("/_authenticated/departments")({
   head: () => ({ meta: [{ title: "الأقسام" }] }),
@@ -116,7 +117,7 @@ function DepartmentsPage() {
       setEditing(null);
       setForm({ name: "", code: "", study_system: "regular" });
     },
-    onError: (e: Error) => toast.error(e.message),
+    onError: (e: Error) => toast.error(userErrorMessage(e)),
   });
 
   const del = useMutation({
@@ -134,7 +135,7 @@ function DepartmentsPage() {
       toast.success("تم الحذف");
       qc.invalidateQueries({ queryKey: ["departments", active?.id] });
     },
-    onError: (e: Error) => toast.error(e.message),
+    onError: (e: Error) => toast.error(userErrorMessage(e)),
   });
 
   const startEdit = (d: Dept) => {

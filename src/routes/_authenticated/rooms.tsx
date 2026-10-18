@@ -34,6 +34,7 @@ import {
 import { DoorOpen, Pencil, Trash2 } from "lucide-react";
 import { AdminExportMenu } from "@/components/admin-export-menu";
 import { roomsExportDataset } from "@/lib/admin-export/datasets";
+import { userErrorMessage } from "@/lib/user-error";
 
 export const Route = createFileRoute("/_authenticated/rooms")({
   head: () => ({ meta: [{ title: "القاعات والمعامل" }] }),
@@ -151,7 +152,7 @@ function RoomsPage() {
       setEditing(null);
     },
     onError: (e: Error) =>
-      toast.error(e.message.includes("duplicate") ? "رمز القاعة مستخدم في هذه الكلّية" : e.message),
+      toast.error(e.message.includes("duplicate") ? "رمز القاعة مستخدم في هذه الكلّية" : userErrorMessage(e)),
   });
 
   const del = useMutation({
@@ -178,7 +179,7 @@ function RoomsPage() {
         toast.error(roomDeleteBlockedToastMessage());
         return;
       }
-      toast.error(msg);
+      toast.error(userErrorMessage(e));
     },
   });
 

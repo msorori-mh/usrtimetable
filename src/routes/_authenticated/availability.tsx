@@ -45,6 +45,7 @@ import {
   type InstructorSchedulingRequestKind,
   type InstructorWindowKind,
 } from "@/lib/availability/policy-api";
+import { userErrorMessage } from "@/lib/user-error";
 
 export const Route = createFileRoute("/_authenticated/availability")({
   head: () => ({ meta: [{ title: "إتاحة الموارد وطلبات المحاضرين" }] }),
@@ -74,7 +75,7 @@ function rpcErrorMessage(e: unknown): string {
   if (/authentication required/i.test(msg)) {
     return "يجب تسجيل الدخول أولاً.";
   }
-  return msg;
+  return userErrorMessage(e);
 }
 
 function useWorkingDays(collegeId: string | undefined) {
@@ -617,7 +618,7 @@ function InstructorRequests() {
       qc.invalidateQueries({ queryKey: ["instructor-scheduling-requests", active?.id] });
       qc.invalidateQueries({ queryKey: ["instructor-availability-readiness", active?.id] });
     },
-    onError: (error: Error) => toast.error(error.message),
+    onError: (error: Error) => toast.error(userErrorMessage(error)),
   });
 
   const reviewRequest = useMutation({
@@ -634,7 +635,7 @@ function InstructorRequests() {
       qc.invalidateQueries({ queryKey: ["instructor-availability-readiness", active?.id] });
       qc.invalidateQueries({ queryKey: ["iu", active?.id] });
     },
-    onError: (error: Error) => toast.error(error.message),
+    onError: (error: Error) => toast.error(userErrorMessage(error)),
   });
 
   const isWindowRequest = form.requestKind.includes("available");
@@ -1003,7 +1004,7 @@ function RoomUnavailability() {
       qc.invalidateQueries({ queryKey: ["ru", active?.id, roomId] });
     },
     onError: (e: unknown) => {
-      toast.error(readableWriteError(e));
+      toast.error(userErrorMessage(e));
       qc.invalidateQueries({ queryKey: ["ru", active?.id, roomId] });
     },
   });

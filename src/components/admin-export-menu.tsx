@@ -19,6 +19,7 @@ import {
   exportAdminDataset,
   type AdminExportFormat,
 } from "@/lib/admin-export/download";
+import { userErrorMessage } from "@/lib/user-error";
 
 export type AdminExportDatasetProvider = () =>
   | AdminExportDataset<never>
@@ -48,7 +49,7 @@ export function AdminExportMenu({
       const result = await exportAdminDataset(ds, format);
       toast.success(`تم تصدير ${result.rowCount} سجلًا إلى ${result.filename}`);
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "تعذر إنشاء ملف التصدير.");
+      toast.error(userErrorMessage(error, "تعذر إنشاء ملف التصدير."));
     } finally {
       setBusy(false);
     }

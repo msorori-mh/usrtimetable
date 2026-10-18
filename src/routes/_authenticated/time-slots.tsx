@@ -28,6 +28,7 @@ import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
 import { logAudit } from "@/lib/audit";
 import { Clock, Pencil, Trash2 } from "lucide-react";
+import { userErrorMessage } from "@/lib/user-error";
 
 export const Route = createFileRoute("/_authenticated/time-slots")({
   head: () => ({ meta: [{ title: "فترات الجدول اليدوية" }] }),
@@ -115,7 +116,7 @@ function TimeSlotsPage() {
     },
     onError: (e: Error) =>
       toast.error(
-        e.message.includes("duplicate") ? "هناك فترة بنفس اليوم/الترتيب أو وقت البداية" : e.message,
+        e.message.includes("duplicate") ? "هناك فترة بنفس اليوم/الترتيب أو وقت البداية" : userErrorMessage(e),
       ),
   });
 
@@ -134,7 +135,7 @@ function TimeSlotsPage() {
       toast.success("تم الحذف");
       qc.invalidateQueries({ queryKey: ["time-slots", active?.id] });
     },
-    onError: (e: Error) => toast.error(e.message),
+    onError: (e: Error) => toast.error(userErrorMessage(e)),
   });
 
   const startEdit = (t: TS) => {

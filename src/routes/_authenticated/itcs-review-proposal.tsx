@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { useCurrentUser } from "@/hooks/use-current-user";
 import { supabase } from "@/integrations/supabase/client";
 import { invalidateTeachingAssignmentReadModels } from "@/lib/teaching-assignments/query-invalidation";
+import { userErrorMessage } from "@/lib/user-error";
 
 export const Route = createFileRoute("/_authenticated/itcs-review-proposal")({
   head: () => ({ meta: [{ title: "مسودة مقترح الحاسوب 30/9 — مراجعة قبل النشر" }] }),
@@ -178,12 +179,12 @@ function ReviewProposalPage() {
         p_manifest_sha: nativeQuery.data.manifest_sha,
         p_expected_published_snapshot: proposal.source_snapshot,
       });
-      if (r.error) throw new Error(r.error.message);
+      if (r.error) throw r.error;
       setChecked(stage === "review_check");
       if (stage === "review_save") await invalidateTeachingAssignmentReadModels(queryClient);
       await Promise.all([query.refetch(), nativeQuery.refetch()]);
     } catch (e) {
-      setError((e as Error).message);
+      setError(userErrorMessage(e));
     } finally {
       setSaving(false);
     }
@@ -191,7 +192,7 @@ function ReviewProposalPage() {
   if (query.isError)
     return (
       <Card dir="rtl" className="p-6">
-        <p role="alert">تعذر فتح مسودة المقترح: {query.error.message}</p>
+        <p role="alert">تعذر فتح مسودة المقترح: {userErrorMessage(query.error)}</p>
         <Button onClick={() => void query.refetch()}>إعادة المحاولة</Button>
       </Card>
     );
@@ -262,7 +263,7 @@ function ReviewProposalPage() {
       )}
       {(error || nativeQuery.error) && (
         <p role="alert" className="rounded border border-destructive p-3 text-destructive">
-          لم يكتمل الإجراء: {error || nativeQuery.error?.message}
+          لم يكتمل الإجراء: {error || (nativeQuery.error ? userErrorMessage(nativeQuery.error) : null)}
         </p>
       )}
       <div className="grid grid-cols-2 gap-3 md:grid-cols-4">

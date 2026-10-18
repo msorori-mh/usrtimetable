@@ -17,6 +17,7 @@ import {
   type CompactRestorePoint,
   type Applied,
 } from "@/lib/auto-scheduler/compact-service";
+import { userErrorMessage } from "@/lib/user-error";
 
 export function CompactSchedulePanel({
   collegeId,
@@ -175,7 +176,7 @@ export function CompactSchedulePanel({
       }
     } catch (error) {
       setMessage(
-        error instanceof Error ? error.message : "تعذر التحقق. أعد المعاينة قبل المتابعة.",
+        userErrorMessage(error, "تعذر التحقق. أعد المعاينة قبل المتابعة."),
       );
       setProposal(null);
     } finally {

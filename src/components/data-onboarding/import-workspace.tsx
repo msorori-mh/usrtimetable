@@ -40,6 +40,7 @@ import { READ_ONLY_VIEW_BADGE_AR, isInstitutionalReadOnlyViewer } from "@/lib/un
 import { preparationLabel } from "@/lib/data-onboarding/preparation";
 import { instructorStatusLabel } from "@/lib/excel-import/instructor-sheet";
 import { HeadcountImportWorkspace } from "./headcount-import-workspace";
+import { userErrorMessage } from "@/lib/user-error";
 
 const ENTITIES = listImportUiEntities().map((m) => ({
   value: m.entity,
@@ -163,7 +164,7 @@ function ImportForm({ entities, onCommitted, onEntityChange }: ImportWorkspacePr
       a.click();
       URL.revokeObjectURL(url);
     } catch (e) {
-      toast.error((e as Error).message);
+      toast.error(userErrorMessage(e));
     }
   };
 
@@ -183,7 +184,7 @@ function ImportForm({ entities, onCommitted, onEntityChange }: ImportWorkspacePr
       setMode("update_existing");
       toast.success("عُدّل وضع الاستيراد إلى تحديث الموجود فقط. أكمل الكشف ثم ارفعه هنا.");
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "تعذر تنزيل الكشف");
+      toast.error(userErrorMessage(error, "تعذر تنزيل الكشف"));
     } finally {
       setDownloadingCurrent(false);
     }
@@ -265,7 +266,7 @@ function ImportForm({ entities, onCommitted, onEntityChange }: ImportWorkspacePr
       setPreview(r);
       toast.success(`تم تحليل ${r.total} صف`);
     },
-    onError: (e: Error) => toast.error(e.message),
+    onError: (e: Error) => toast.error(userErrorMessage(e)),
   });
 
   const commitMut = useMutation({
@@ -296,7 +297,7 @@ function ImportForm({ entities, onCommitted, onEntityChange }: ImportWorkspacePr
       void qc.invalidateQueries({ predicate: (query) => query.queryKey.includes(active?.id) });
       onCommitted?.();
     },
-    onError: (e: Error) => toast.error(e.message),
+    onError: (e: Error) => toast.error(userErrorMessage(e)),
   });
 
   const reset = () => {

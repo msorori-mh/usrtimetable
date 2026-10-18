@@ -16,6 +16,7 @@ import { toast } from "sonner";
 import { logAudit } from "@/lib/audit";
 import { validateScheduleVersion } from "@/lib/conflict-engine/validator";
 import { ShieldAlert, PlayCircle } from "lucide-react";
+import { userErrorMessage } from "@/lib/user-error";
 
 export const Route = createFileRoute("/_authenticated/conflict-checks")({
   head: () => ({ meta: [{ title: "فحص التعارضات (الجدولة)" }] }),
@@ -106,7 +107,7 @@ function ConflictChecksPage() {
       setSelectedCheck(checkId);
       qc.invalidateQueries({ queryKey: ["conflict_checks", active?.id, versionId] });
     },
-    onError: (e: Error) => toast.error(e.message),
+    onError: (e: Error) => toast.error(userErrorMessage(e)),
   });
 
   return (
