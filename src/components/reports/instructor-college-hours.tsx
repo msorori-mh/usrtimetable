@@ -22,9 +22,9 @@ export function InstructorCollegeHours({
       <table className="w-full text-sm" dir="rtl">
         <thead>
           <tr>
-            <th className="p-2 text-right">الكلية</th>
-            <th className="p-2 text-right">نسخة الجدول</th>
-            <th className="p-2 text-right">الساعات</th>
+            <th className="p-2 text-start">الكلية</th>
+            <th className="p-2 text-start">نسخة الجدول</th>
+            <th className="p-2 text-start">الساعات</th>
           </tr>
         </thead>
         <tbody>

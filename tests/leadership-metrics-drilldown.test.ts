@@ -20,7 +20,10 @@ import {
   uniqueFacultyCount,
 } from "../src/lib/reports/leadership-metrics";
 
-const page = readFileSync("src/routes/_authenticated/reports.leadership.tsx", "utf8");
+// L-14: the dashboard's presentational parts live in leadership-dashboard-parts.tsx.
+const page =
+  readFileSync("src/routes/_authenticated/reports.leadership.tsx", "utf8") +
+  readFileSync("src/components/reports/leadership-dashboard-parts.tsx", "utf8");
 const sheet = readFileSync("src/components/reports/leadership-metric-drilldown.tsx", "utf8");
 const capacityPage = readFileSync(
   "src/routes/_authenticated/reports.teaching-demand-capacity.tsx",

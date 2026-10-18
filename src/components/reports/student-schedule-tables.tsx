@@ -50,7 +50,7 @@ export function StudentScheduleTables({ rows }: { rows: StudentScheduleRow[] }) 
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead colSpan={7} className="h-auto p-3 text-right">
+                  <TableHead colSpan={7} className="h-auto p-3 text-start">
                     <div className="flex flex-wrap gap-x-4 gap-y-1 font-semibold">
                       <span>القسم: {context.department || "غير محدد"}</span>
                       <span>البرنامج: {context.program || "غير محدد"}</span>

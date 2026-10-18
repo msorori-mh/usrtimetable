@@ -8,6 +8,7 @@ import {
   buildStaffingReadiness,
   type StaffingObservation,
 } from "@/lib/reports/academic-staffing";
+import { formatNumber } from "@/lib/format";
 
 export function AcademicStaffingEntry({ onOpen }: { onOpen: () => void }) {
   return (
@@ -88,7 +89,7 @@ export function AcademicStaffingPanel({
         <div className="leadership-section-heading">
           <h2 id="staffing-matrix-title">مصفوفة جاهزية بيانات الكليات</h2>
           <span className="leadership-section-note">
-            {rows.length.toLocaleString("ar")} كلية ضمن النطاق المعروض
+            {formatNumber(rows.length)} كلية ضمن النطاق المعروض
           </span>
         </div>
         {rows.length === 0 ? (

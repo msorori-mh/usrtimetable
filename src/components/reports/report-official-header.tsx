@@ -7,6 +7,7 @@ import { REPORT_COLLEGE_NAME_FALLBACK_AR, REPORT_UNIVERSITY_NAME_AR } from "@/li
 import { STUDY_SYSTEM_LABELS } from "@/lib/reports/filters";
 import { STATUS_LABEL_AR, type SVStatus } from "@/lib/schedule-versions/lifecycle";
 import type { ReportStudySystem } from "@/lib/reports/types";
+import { formatDateTime } from "@/lib/format";
 
 export interface ReportOfficialHeaderMeta {
   termName?: string | null;
@@ -33,10 +34,7 @@ interface Props extends ReportOfficialHeaderMeta {
 }
 
 function formatGeneratedAt(d: Date): string {
-  return d.toLocaleString("ar", {
-    dateStyle: "medium",
-    timeStyle: "short",
-  });
+  return formatDateTime(d);
 }
 
 /**

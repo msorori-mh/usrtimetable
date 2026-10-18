@@ -43,6 +43,9 @@ import {
   sumDetailColumn,
   type LeadershipMetricKey,
 } from "@/lib/reports/leadership-metrics";
+import { formatNumber } from "@/lib/format";
+
+const DETAIL_PAGE_SIZE = 100;
 
 const ALL_COLLEGES = "__all__";
 
@@ -56,7 +59,7 @@ export interface LeadershipDrilldownTarget {
 function cellText(value: unknown, key: string): string {
   if (value === null || value === undefined || value === "") return LEADERSHIP_UNCALCULATED;
   if (typeof value === "boolean") return value ? "نعم" : "لا";
-  if (typeof value === "number") return value.toLocaleString("ar");
+  if (typeof value === "number") return formatNumber(value);
   if (key === "assignment_status")
     return LEADERSHIP_ASSIGNMENT_STATUS_LABELS[String(value)] ?? String(value);
   return String(value);
@@ -116,6 +119,13 @@ export function LeadershipMetricDrilldown({
     [rows, search, college],
   );
 
+  // L-14: a metric can open thousands of records; render 100 at a time (exports keep all).
+  const limitKey = `${target?.metric ?? ""}|${target?.collegeId ?? ""}|${search}|${college}`;
+  const [limitState, setLimitState] = useState({ key: limitKey, limit: DETAIL_PAGE_SIZE });
+  if (limitState.key !== limitKey) setLimitState({ key: limitKey, limit: DETAIL_PAGE_SIZE });
+  const rendered = visible.slice(0, limitState.limit);
+  const remaining = visible.length - rendered.length;
+
   const columns = definition ? LEADERSHIP_DETAIL_COLUMNS[definition.source] : [];
   const detailTotal = definition ? (query.data?.totals?.[definition.totalKey] ?? null) : null;
   const check = reconcileMetric(target?.cardValue ?? null, detailTotal);
@@ -153,13 +163,13 @@ export function LeadershipMetricDrilldown({
             <b className="tabular-nums" data-testid="drilldown-card-value">
               {target?.cardValue === null || target?.cardValue === undefined
                 ? LEADERSHIP_UNCALCULATED
-                : target.cardValue.toLocaleString("ar")}
+                : formatNumber(target.cardValue)}
             </b>
           </div>
           <div>
             <div className="text-xs text-muted-foreground">إجمالي التفاصيل</div>
             <b className="tabular-nums" data-testid="drilldown-detail-total">
-              {detailTotal === null ? LEADERSHIP_UNCALCULATED : detailTotal.toLocaleString("ar")}
+              {detailTotal === null ? LEADERSHIP_UNCALCULATED : formatNumber(detailTotal)}
             </b>
           </div>
           <div>
@@ -168,7 +178,7 @@ export function LeadershipMetricDrilldown({
               <Badge variant="default">مطابق</Badge>
             ) : check.status === "needs_review" ? (
               <Badge variant="destructive" data-testid="drilldown-mismatch">
-                {LEADERSHIP_NEEDS_REVIEW} · الفرق {check.difference?.toLocaleString("ar")}
+                {LEADERSHIP_NEEDS_REVIEW} · الفرق {formatNumber(check.difference)}
               </Badge>
             ) : (
               <Badge variant="outline">{LEADERSHIP_UNCALCULATED}</Badge>
@@ -207,7 +217,7 @@ export function LeadershipMetricDrilldown({
             disabled={visible.length === 0}
             onClick={() => downloadCSV(visible, columns, filename)}
           >
-            <Download className="ml-1 h-4 w-4" />
+            <Download className="me-1 h-4 w-4" />
             CSV
           </Button>
           <Button
@@ -221,8 +231,8 @@ export function LeadershipMetricDrilldown({
         </div>
 
         <div className="text-xs text-muted-foreground" data-testid="drilldown-counts">
-          {visible.length.toLocaleString("ar")} سجلًا · إجمالي الساعات{" "}
-          {visibleHours.toLocaleString("ar")}
+          {formatNumber(visible.length)} سجلًا · إجمالي الساعات{" "}
+          {formatNumber(visibleHours)}
         </div>
 
         <div className="min-h-0 flex-1 overflow-auto rounded border">
@@ -240,31 +250,50 @@ export function LeadershipMetricDrilldown({
               لا توجد سجلات مطابقة لهذا المؤشر في النطاق المحدد.
             </p>
           ) : (
-            <table className="w-full min-w-[720px] text-right text-xs">
-              <thead className="sticky top-0 bg-muted">
-                <tr>
-                  {columns.map((column) => (
-                    <th key={column.key} className="whitespace-nowrap p-2 font-semibold">
-                      {column.label}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {visible.map((row, index) => (
-                  <tr key={`${String(row.id ?? index)}-${index}`} className="border-t">
+            <>
+              <table className="w-full min-w-[720px] text-start text-xs">
+                <thead className="sticky top-0 bg-muted">
+                  <tr>
                     {columns.map((column) => (
-                      <td
-                        key={column.key}
-                        className={column.numeric ? "p-2 tabular-nums" : "p-2 whitespace-pre-wrap"}
-                      >
-                        {cellText(row[column.key], column.key)}
-                      </td>
+                      <th key={column.key} className="whitespace-nowrap p-2 font-semibold">
+                        {column.label}
+                      </th>
                     ))}
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {rendered.map((row, index) => (
+                    <tr key={`${String(row.id ?? index)}-${index}`} className="border-t">
+                      {columns.map((column) => (
+                        <td
+                          key={column.key}
+                          className={column.numeric ? "p-2 tabular-nums" : "p-2 whitespace-pre-wrap"}
+                        >
+                          {cellText(row[column.key], column.key)}
+                        </td>
+                      ))}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              {remaining > 0 && (
+                <div className="flex items-center justify-between gap-3 border-t p-3 text-xs">
+                  <span aria-live="polite">
+                    يُعرض {formatNumber(rendered.length)} من {formatNumber(visible.length)} سجلًا
+                  </span>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() =>
+                      setLimitState({ key: limitKey, limit: limitState.limit + DETAIL_PAGE_SIZE })
+                    }
+                  >
+                    عرض المزيد ({formatNumber(Math.min(remaining, DETAIL_PAGE_SIZE))})
+                  </Button>
+                </div>
+              )}
+            </>
           )}
         </div>
       </SheetContent>

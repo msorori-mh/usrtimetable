@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { readAllRows } from "@/lib/supabase/read-all";
 import { useActiveCollege } from "@/hooks/use-colleges";
 import { ReportShell } from "@/components/reports/report-shell";
 import { ReportFilterBar, ReportFilterField } from "@/components/reports/report-filter-bar";
@@ -15,6 +16,7 @@ import {
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { filterRowsBySearch } from "@/lib/reports/search";
+import { formatDateTime } from "@/lib/format";
 
 export const Route = createFileRoute("/_authenticated/reports/quality-summary")({
   head: () => ({ meta: [{ title: "تقرير ملخّص الجودة" }] }),
@@ -27,7 +29,7 @@ function Page() {
   const [search, setSearch] = useState("");
 
   const { data: versions, error: versionsError } = useQuery({
-    queryKey: ["qs-vers", active?.id],
+    queryKey: ["reports", "quality-summary", "versions", active?.id],
     enabled: !!active,
     queryFn: async () =>
       (
@@ -46,19 +48,29 @@ function Page() {
     error: runsError,
     refetch,
   } = useQuery({
-    queryKey: ["qs-runs", active?.id, versionId],
+    queryKey: ["reports", "quality-summary", "runs", active?.id, versionId],
     enabled: !!active,
-    queryFn: async () => {
-      let q = supabase
-        .from("schedule_quality_runs")
-        .select(
-          "id, schedule_version_id, total_score, hard_conflicts_count, soft_conflicts_count, total_deductions, metrics_breakdown, created_at",
-        )
-        .eq("college_id", active!.id)
-        .order("created_at", { ascending: false });
-      if (versionId !== "all") q = q.eq("schedule_version_id", versionId);
-      return (await q.throwOnError()).data ?? [];
-    },
+    // H-10: quality runs accumulate per college; read every page, newest first.
+    queryFn: () =>
+      readAllRows<{
+        id: string;
+        schedule_version_id: string;
+        total_score: number;
+        hard_conflicts_count: number;
+        soft_conflicts_count: number;
+        total_deductions: number;
+        metrics_breakdown: unknown;
+        created_at: string;
+      }>((from, to) => {
+        let q = supabase
+          .from("schedule_quality_runs")
+          .select(
+            "id, schedule_version_id, total_score, hard_conflicts_count, soft_conflicts_count, total_deductions, metrics_breakdown, created_at",
+          )
+          .eq("college_id", active!.id);
+        if (versionId !== "all") q = q.eq("schedule_version_id", versionId);
+        return q.order("created_at", { ascending: false }).order("id").range(from, to);
+      }),
   });
 
   const latestByVersion = useMemo(() => {
@@ -84,7 +96,7 @@ function Page() {
         breakdown: Object.entries((r.metrics_breakdown as Record<string, any>) ?? {})
           .map(([k, v]) => `${k}:${v.deduction ?? v}`)
           .join(" | "),
-        date: new Date(r.created_at as string).toLocaleString("ar"),
+        date: formatDateTime(r.created_at as string),
       })),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [latestByVersion, versions],

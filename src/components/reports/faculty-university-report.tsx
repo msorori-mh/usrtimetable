@@ -6,6 +6,7 @@ import { withUniversityNumbers } from "@/lib/instructors/university-number";
 import { summarizeFacultySessions, type FacultyReport } from "@/lib/instructors/university-report";
 import { FacultyIdentityLink } from "@/components/faculty-identity-link";
 import { Button } from "@/components/ui/button";
+import { userErrorMessage } from "@/lib/user-error";
 
 type Api = {
   public: {
@@ -27,7 +28,7 @@ type Api = {
 };
 const api = supabase as unknown as SupabaseClient<Api>;
 const days = ["الأحد", "الاثنين", "الثلاثاء", "الأربعاء", "الخميس", "الجمعة", "السبت"];
-const cell = "border p-2 text-right";
+const cell = "border p-2 text-start";
 export function FacultyUniversityReport() {
   const [instructor, setInstructor] = useState("");
   const [term, setTerm] = useState("");
@@ -150,7 +151,7 @@ export function FacultyUniversityReport() {
       {choices.isLoading && <p>جارٍ تحميل دليل المحاضرين…</p>}
       {(choices.error || report.error) && (
         <p role="alert" className="text-destructive">
-          تعذر عرض التقرير: {(choices.error ?? report.error)?.message}. يتطلب التجميع صلاحية الاطلاع
+          تعذر عرض التقرير: {userErrorMessage(choices.error ?? report.error, "تعذر تحميل البيانات")}. يتطلب التجميع صلاحية الاطلاع
           على جميع الكليات المرتبطة وبيانات العام والفصل.
         </p>
       )}

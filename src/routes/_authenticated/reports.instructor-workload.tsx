@@ -1,8 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { FacultyUniversityReport } from "@/components/reports/faculty-university-report";
 import { useQuery } from "@tanstack/react-query";
-import { useMemo, useState } from "react";
+import { useId, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { readAllRows } from "@/lib/supabase/read-all";
 import { useActiveCollege } from "@/hooks/use-colleges";
 import { ReportShell } from "@/components/reports/report-shell";
 import { ReportFilters } from "@/components/reports/report-filters";
@@ -37,10 +38,20 @@ function Page() {
   return (
     <>
       <div className="mb-4 flex gap-3 print:hidden">
-        <button className="rounded border px-4 py-2" onClick={() => setUniversity(false)}>
+        <button
+          type="button"
+          aria-pressed={!university}
+          className="rounded border px-4 py-2"
+          onClick={() => setUniversity(false)}
+        >
           عبء الكلية
         </button>
-        <button className="rounded border px-4 py-2" onClick={() => setUniversity(true)}>
+        <button
+          type="button"
+          aria-pressed={university}
+          className="rounded border px-4 py-2"
+          onClick={() => setUniversity(true)}
+        >
           النصاب والجدول عبر الكليات
         </button>
       </div>
@@ -177,8 +188,8 @@ function WorkloadPage() {
   const [typeId, setTypeId] = useState<string>("all");
   const [search, setSearch] = useState("");
 
-  const { data: depts } = useQuery({
-    queryKey: ["rep-depts", active?.id],
+  const { data: depts, error: deptsError } = useQuery({
+    queryKey: ["reports", "instructor-workload", "departments", active?.id],
     enabled: !!active,
     queryFn: async () =>
       (
@@ -189,8 +200,8 @@ function WorkloadPage() {
           .throwOnError()
       ).data ?? [],
   });
-  const { data: types } = useQuery({
-    queryKey: ["rep-itypes", active?.id],
+  const { data: types, error: typesError } = useQuery({
+    queryKey: ["reports", "instructor-workload", "instructor-types", active?.id],
     enabled: !!active,
     queryFn: async () =>
       (
@@ -209,19 +220,30 @@ function WorkloadPage() {
   } = useQuery({
     queryKey: ["rep-iw-ins", active?.id, deptId, typeId],
     enabled: !!active,
-    queryFn: async () => {
-      let q = supabase
-        .from("instructors")
-        .select(
-          "id, full_name, employee_number, academic_rank, max_weekly_hours, administrative_release_hours, department_id, instructor_type_id, departments(name), instructor_types(name_ar)",
-        )
-        .eq("college_id", active!.id);
-      if (deptId !== "all") q = q.eq("department_id", deptId);
-      if (typeId !== "all") q = q.eq("instructor_type_id", typeId);
-      const { data, error } = await q.throwOnError();
-      if (error) throw error;
-      return data ?? [];
-    },
+    // H-10: a large college can exceed one PostgREST page of instructors.
+    queryFn: () =>
+      readAllRows<{
+        id: string;
+        full_name: string;
+        employee_number: string | null;
+        academic_rank: string | null;
+        max_weekly_hours: number | null;
+        administrative_release_hours: number | null;
+        department_id: string | null;
+        instructor_type_id: string | null;
+        departments: { name: string } | null;
+        instructor_types: { name_ar: string } | null;
+      }>((from, to) => {
+        let q = supabase
+          .from("instructors")
+          .select(
+            "id, full_name, employee_number, academic_rank, max_weekly_hours, administrative_release_hours, department_id, instructor_type_id, departments(name), instructor_types(name_ar)",
+          )
+          .eq("college_id", active!.id);
+        if (deptId !== "all") q = q.eq("department_id", deptId);
+        if (typeId !== "all") q = q.eq("instructor_type_id", typeId);
+        return q.order("id").range(from, to);
+      }),
   });
 
   const {
@@ -232,30 +254,45 @@ function WorkloadPage() {
     queryKey: ["rep-iw-sess", active?.id, context.versionId],
     enabled: !!active && !!context.selectedVersion,
     queryFn: async () => {
-      const query = () =>
-        supabase
-          .from("schedule_sessions")
-          .select(
-            "id, instructor_id, delivery_group_id, start_time, end_time, course_offering_id, source_type",
-          )
-          .eq("college_id", active!.id)
-          .eq("schedule_version_id", context.versionId!)
-          .eq("replaced_by_split", false)
-          .order("id");
-      const rows = [];
-      for (let from = 0; ; from += 500) {
-        const { data, error } = await query().range(from, from + 499);
-        if (error) throw error;
-        rows.push(...(data ?? []));
-        if ((data ?? []).length < 500) break;
-      }
-      const { data: sources, error } = await supabase
-        .from("existing_schedule_source_rows")
-        .select("schedule_session_id,instructor_ids,shared_member")
-        .eq("schedule_version_id", context.versionId!)
-        .eq("shared_member", false);
-      if (error) throw error;
-      const shared = (sources ?? []).filter((s) => s.instructor_ids.length > 1);
+      const rows = await readAllRows<{
+        id: string;
+        instructor_id: string;
+        delivery_group_id: string | null;
+        start_time: string;
+        end_time: string;
+        course_offering_id: string;
+        source_type: string | null;
+      }>(
+        (from, to) =>
+          supabase
+            .from("schedule_sessions")
+            .select(
+              "id, instructor_id, delivery_group_id, start_time, end_time, course_offering_id, source_type",
+            )
+            .eq("college_id", active!.id)
+            .eq("schedule_version_id", context.versionId!)
+            .eq("replaced_by_split", false)
+            .order("id")
+            .range(from, to),
+        500,
+      );
+      const sources = await readAllRows<{
+        id: string;
+        schedule_session_id: string | null;
+        instructor_ids: string[];
+        shared_member: boolean;
+      }>(
+        (from, to) =>
+          supabase
+            .from("existing_schedule_source_rows")
+            .select("id,schedule_session_id,instructor_ids,shared_member")
+            .eq("schedule_version_id", context.versionId!)
+            .eq("shared_member", false)
+            .order("id")
+            .range(from, to),
+        500,
+      );
+      const shared = sources.filter((s) => s.instructor_ids.length > 1);
       const groupIds = rows
         .filter((r) => shared.some((s) => s.schedule_session_id === r.id))
         .map((r) => r.delivery_group_id)
@@ -418,7 +455,7 @@ function WorkloadPage() {
       rows={rows}
       headers={headers}
       isLoading={context.isLoading || ilLoad || sLoad}
-      error={context.error ?? instructorError ?? sessionError}
+      error={context.error ?? deptsError ?? typesError ?? instructorError ?? sessionError}
       reportContext={context}
       filterSummary={context.filterSummary}
       notReadyMessage={context.selectedVersion ? undefined : "اختر فصلاً ونسخة جدول لعرض الساعات."}
@@ -518,11 +555,14 @@ function FilterSelect({
   onChange: (v: string) => void;
   items: { id: string; name: string }[];
 }) {
+  const id = useId();
   return (
     <div className="min-w-0">
-      <label className="text-xs text-muted-foreground">{label}</label>
+      <label htmlFor={id} className="text-xs text-muted-foreground">
+        {label}
+      </label>
       <Select value={value} onValueChange={onChange}>
-        <SelectTrigger aria-label={label}>
+        <SelectTrigger id={id} aria-label={label}>
           <SelectValue />
         </SelectTrigger>
         <SelectContent>

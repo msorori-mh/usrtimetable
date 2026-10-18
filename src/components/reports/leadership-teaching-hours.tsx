@@ -90,7 +90,7 @@ export function LeadershipTeachingHours({
         <p role="status">جارٍ تحميل الساعات…</p>
       ) : (
         <div className="overflow-x-auto">
-          <table className="w-full text-right text-sm">
+          <table className="w-full text-start text-sm">
             <caption className="sr-only">ساعات {SYSTEM_LABELS[system]} حسب الكلية</caption>
             <thead>
               <tr>

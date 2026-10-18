@@ -1,4 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
+import { chunkIds, readAllRows } from "@/lib/supabase/read-all";
 import { fetchStudentPrintMemberships } from "@/lib/print-center/student-memberships-query";
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
@@ -117,35 +118,45 @@ function Page() {
           .eq("college_id", ctx.collegeId!)
           .order("level_number")
           .order("name"),
-        supabase
-          .from("course_offerings")
-          .select("course_id")
-          .eq("college_id", ctx.collegeId!)
-          .eq("term_id", ctx.termId!)
-          .eq("is_active", true),
+        // H-10: a term's offerings can exceed one PostgREST page.
+        readAllRows<{ id: string; course_id: string }>((from, to) =>
+          supabase
+            .from("course_offerings")
+            .select("id, course_id")
+            .eq("college_id", ctx.collegeId!)
+            .eq("term_id", ctx.termId!)
+            .eq("is_active", true)
+            .order("id")
+            .range(from, to),
+        ),
       ]);
       if (departments.error) throw departments.error;
       if (programs.error) throw programs.error;
       if (levels.error) throw levels.error;
-      if (offerings.error) throw offerings.error;
 
-      const courseIds = [...new Set((offerings.data ?? []).map((row) => row.course_id))];
-      const courses = courseIds.length
-        ? await supabase
-            .from("courses")
-            .select("id,name,code")
-            .eq("college_id", ctx.collegeId!)
-            .in("id", courseIds)
-            .order("name")
-            .order("code")
-        : { data: [], error: null };
-      if (courses.error) throw courses.error;
+      const courseIds = [...new Set(offerings.map((row) => row.course_id))];
+      // Chunk the id list so the request URL stays bounded; re-sort the merged chunks.
+      const courses: { id: string; name: string; code: string | null }[] = [];
+      for (const chunk of chunkIds(courseIds)) {
+        const result = await supabase
+          .from("courses")
+          .select("id,name,code")
+          .eq("college_id", ctx.collegeId!)
+          .in("id", chunk);
+        if (result.error) throw result.error;
+        courses.push(...((result.data ?? []) as typeof courses));
+      }
+      courses.sort(
+        (a, b) =>
+          (a.name ?? "").localeCompare(b.name ?? "", "ar") ||
+          (a.code ?? "").localeCompare(b.code ?? "", "ar"),
+      );
 
       return {
         departments: departments.data ?? [],
         programs: programs.data ?? [],
         levels: levels.data ?? [],
-        courses: courses.data ?? [],
+        courses,
       };
     },
   });
@@ -502,6 +513,18 @@ function Page() {
           <p className="font-semibold">
             التغطية الحالية (الكلية كاملة، كل الأنظمة): المجموعات {groupsText} · الساعات {hoursText}
           </p>
+          {coverage.isError && (
+            <p role="alert" className="mt-1 text-destructive">
+              تعذر حساب التغطية.{" "}
+              <button
+                type="button"
+                className="underline underline-offset-4"
+                onClick={() => void coverage.refetch()}
+              >
+                إعادة المحاولة
+              </button>
+            </p>
+          )}
           {filtered && (
             <p className="mt-1 text-muted-foreground">
               أرقام التغطية أعلاه تخص الكلية كاملة بجميع الأنظمة؛ أما الجلسات والصفحات والطباعة

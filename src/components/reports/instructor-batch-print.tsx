@@ -111,7 +111,7 @@ export function InstructorBatchPrint<T>({
         disabled={disabled || busy || !items.length}
         data-testid="instructor-batch-print"
       >
-        <Printer className="ml-2 h-4 w-4" aria-hidden="true" />
+        <Printer className="me-2 h-4 w-4" aria-hidden="true" />
         {progress && !sheets
           ? `جارٍ تحميل الجداول… ${progress.done} من ${progress.total}`
           : `طباعة جداول كل المحاضرين (${items.length})`}

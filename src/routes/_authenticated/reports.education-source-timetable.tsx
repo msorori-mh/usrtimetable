@@ -4,6 +4,8 @@ import { CollegeSourceTimetable } from "@/components/data-onboarding/college-sou
 import { ReportShell } from "@/components/reports/report-shell";
 import { useActiveCollege } from "@/hooks/use-colleges";
 import { supabase } from "@/integrations/supabase/client";
+import type { Tables } from "@/integrations/supabase/types";
+import { readAllRows } from "@/lib/supabase/read-all";
 import {
   EDUCATION_SOURCE_PUBLICATION_NOTICE_AR,
   EDUCATION_SOURCE_PUBLICATION_VERSION_IDS,
@@ -44,15 +46,18 @@ function Page() {
     enabled: allowed && !!versionId,
     queryFn: async () => {
       if (!versionId) throw new Error("لم تُحدّد النسخة المنشورة لجدول المصدر.");
-      const { data, error } = await supabase
-        .from("existing_schedule_source_rows")
-        .select("*")
-        .eq("college_id", COLLEGE_ID)
-        .eq("term_id", TERM_ID)
-        .eq("schedule_version_id", versionId)
-        .order("source_id");
-      if (error) throw error;
-      return data ?? [];
+      // H-10: ten department files exceed one PostgREST page; read every page.
+      return readAllRows<Tables<"existing_schedule_source_rows">>((from, to) =>
+        supabase
+          .from("existing_schedule_source_rows")
+          .select("*")
+          .eq("college_id", COLLEGE_ID)
+          .eq("term_id", TERM_ID)
+          .eq("schedule_version_id", versionId)
+          .order("source_id")
+          .order("id")
+          .range(from, to),
+      );
     },
   });
   const published = version.data?.status === "published";

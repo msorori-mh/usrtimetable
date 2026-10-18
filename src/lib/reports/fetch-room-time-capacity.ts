@@ -4,6 +4,7 @@
  * "unavailable" analysis (a blocker), never as a silent pass.
  */
 import { supabase } from "@/integrations/supabase/client";
+import { readAllRows } from "@/lib/supabase/read-all";
 import {
   analyzeRoomTimeCapacity,
   type RoomTimeCapacityAnalysis,
@@ -11,6 +12,20 @@ import {
   type TimeCapacityRoom,
   type TimeCapacityRoomType,
 } from "./room-time-capacity";
+import { userErrorMessage } from "@/lib/user-error";
+
+/** H-10: every page is read; a failure keeps the same `{ data, error }` contract. */
+async function pagedResult<T>(
+  read: () => Promise<T[]>,
+): Promise<{ data: T[] | null; error: { message: string } | null }> {
+  try {
+    return { data: await read(), error: null };
+  } catch (e) {
+    const message =
+      e && typeof e === "object" && "message" in e ? String((e as { message: unknown }).message) : "";
+    return { data: null, error: { message: message || "خطأ استعلام غير معروف" } };
+  }
+}
 
 export async function fetchRoomTimeCapacity(
   collegeId: string,
@@ -34,22 +49,66 @@ export async function fetchRoomTimeCapacity(
           .select("id, is_active")
           .eq("college_id", collegeId)
           .eq("is_active", true),
-        supabase.from("academic_cohorts").select("id, term_id, active").eq("college_id", collegeId),
-        supabase
-          .from("operational_delivery_groups")
-          .select("id, cohort_id, active, is_obsolete")
-          .eq("college_id", collegeId),
-        supabase
-          .from("teaching_assignments")
-          .select(
-            "id, delivery_group_id, plan_course_component_id, required_room_type, weekly_hours, assigned_component_hours, is_active",
-          )
-          .eq("college_id", collegeId)
-          .not("delivery_group_id", "is", null),
-        supabase
-          .from("plan_course_components")
-          .select("id, required_room_type_id, component_type")
-          .eq("college_id", collegeId),
+        pagedResult(() =>
+          readAllRows<{ id: string; term_id: string; active: boolean | null }>((from, to) =>
+            supabase
+              .from("academic_cohorts")
+              .select("id, term_id, active")
+              .eq("college_id", collegeId)
+              .order("id")
+              .range(from, to),
+          ),
+        ),
+        pagedResult(() =>
+          readAllRows<{
+            id: string;
+            cohort_id: string | null;
+            active: boolean | null;
+            is_obsolete: boolean | null;
+          }>((from, to) =>
+            supabase
+              .from("operational_delivery_groups")
+              .select("id, cohort_id, active, is_obsolete")
+              .eq("college_id", collegeId)
+              .order("id")
+              .range(from, to),
+          ),
+        ),
+        pagedResult(() =>
+          readAllRows<{
+            id: string;
+            delivery_group_id: string | null;
+            plan_course_component_id: string | null;
+            required_room_type: string | null;
+            weekly_hours: number | null;
+            assigned_component_hours: number | null;
+            is_active: boolean | null;
+          }>((from, to) =>
+            supabase
+              .from("teaching_assignments")
+              .select(
+                "id, delivery_group_id, plan_course_component_id, required_room_type, weekly_hours, assigned_component_hours, is_active",
+              )
+              .eq("college_id", collegeId)
+              .not("delivery_group_id", "is", null)
+              .order("id")
+              .range(from, to),
+          ),
+        ),
+        pagedResult(() =>
+          readAllRows<{
+            id: string;
+            required_room_type_id: string | null;
+            component_type: string | null;
+          }>((from, to) =>
+            supabase
+              .from("plan_course_components")
+              .select("id, required_room_type_id, component_type")
+              .eq("college_id", collegeId)
+              .order("id")
+              .range(from, to),
+          ),
+        ),
       ]);
 
     const error =
@@ -129,9 +188,7 @@ export async function fetchRoomTimeCapacity(
   } catch (e) {
     return {
       unavailable: true,
-      unavailableReasonAr: `تعذر حساب السعة الزمنية للقاعات — أُوقف الانتقال احترازيًا: ${
-        e instanceof Error ? e.message : "خطأ استعلام غير معروف"
-      }`,
+      unavailableReasonAr: `تعذر حساب السعة الزمنية للقاعات — أُوقف الانتقال احترازيًا: ${userErrorMessage(e, "خطأ استعلام غير معروف")}`,
       workingDays: [],
       dailyHours: 0,
       perType: [],

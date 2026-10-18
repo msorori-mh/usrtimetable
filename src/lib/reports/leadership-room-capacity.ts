@@ -5,6 +5,7 @@ import {
   type ReportRoomClosure,
 } from "./presentation-metrics";
 import { roomCategoryFromType } from "@/lib/room-category";
+import { userErrorMessage } from "@/lib/user-error";
 
 export const STANDARD_ROOM_DAY_HOURS = 6;
 export const STANDARD_ROOM_WEEK_HOURS = 36;
@@ -277,7 +278,7 @@ export function buildLeadershipRoomCapacity(
                 ? `تزامن سجلات ${overlap} س، وخارج إتاحة سجل الكلية ${metrics.outside_hours} س`
                 : `تداخل ${overlap} س، وخارج الإتاحة ${metrics.outside_hours} س`;
         } catch (error) {
-          result.issue = error instanceof Error ? error.message : "تعذر حساب إتاحة القاعة";
+          result.issue = userErrorMessage(error, "تعذر حساب إتاحة القاعة");
         }
         return result;
       });

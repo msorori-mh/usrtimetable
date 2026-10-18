@@ -48,6 +48,7 @@ import { STATUS_LABEL_AR, type SVStatus } from "@/lib/schedule-versions/lifecycl
 import { isHourlyContractTypeCode } from "@/lib/instructors/effective-hours";
 import { useCurrentUser } from "@/hooks/use-current-user";
 import { useReportContext } from "@/hooks/reports/useReportContext";
+import { formatLongDate } from "@/lib/format";
 
 export const Route = createFileRoute("/_authenticated/reports/instructor-schedule")({
   head: () => ({ meta: [{ title: "تقرير جدول المحاضر" }] }),
@@ -57,7 +58,7 @@ export const Route = createFileRoute("/_authenticated/reports/instructor-schedul
 function normalizeInstructorSearch(value: string) {
   return value
     .trim()
-    .toLocaleLowerCase("ar")
+    .toLowerCase()
     .normalize("NFKD")
     .replace(/[\u064B-\u065F\u0670]/g, "")
     .replace(/[أإآٱ]/g, "ا")
@@ -423,9 +424,7 @@ function Page() {
         versionLabel: universityScope
           ? "نسخ الكليات الموضحة في الملخص"
           : (ctx.selectedVersion?.name ?? null),
-        generatedAt: new Intl.DateTimeFormat("ar-u-nu-latn", { dateStyle: "medium" }).format(
-          new Date(),
-        ),
+        generatedAt: formatLongDate(new Date()),
         rows: ordered.map((session) => {
           const row = timetableSessionToRow(session);
           return {

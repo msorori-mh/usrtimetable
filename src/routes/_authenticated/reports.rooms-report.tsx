@@ -8,10 +8,9 @@ import {
 } from "@/components/reports/report-official-header";
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { useEffect, useMemo, useState } from "react";
+import { Suspense, lazy, useEffect, useMemo, useState } from "react";
 import { ReportShell } from "@/components/reports/report-shell";
 import { ReportFilters } from "@/components/reports/report-filters";
-import { RoomsAnalyticsDashboard } from "@/components/reports/rooms-analytics-dashboard";
 import { Card } from "@/components/ui/card";
 import {
   Table,
@@ -25,7 +24,7 @@ import { PrintSheet } from "@/components/print-center/print-sheet";
 import { useReportContext } from "@/hooks/reports/useReportContext";
 import { useActiveCollege } from "@/hooks/use-colleges";
 import { fetchRoomsInventory } from "@/lib/reports/queries/rooms-inventory";
-import { RoomsDecisionsPanel } from "@/components/reports/rooms-decisions-panel";
+import { ReportLoadingState } from "@/components/reports/report-states";
 import { RoomsComparison } from "@/components/reports/rooms-comparison";
 import { RoomsCategorySummary } from "@/components/reports/rooms-category-summary";
 import { fetchHydratedVersionSessions } from "@/lib/schedule-builder/queries";
@@ -50,6 +49,18 @@ const EMPTY_SESSIONS: PrintSessionLike[] = [];
 
 const DESCRIPTION =
   "ملخص القاعات والمعامل يفصل ساعات الجدول عن الإشغال داخل الإتاحة المعتمدة والساعات الواقعة خارجها، ثم يعرض تفاصيل كل مورد — قراءة فقط وقابل للطباعة/PDF.";
+
+// M-18: recharts is only needed by these two tabs; load it when a tab renders.
+const RoomsAnalyticsDashboard = lazy(() =>
+  import("@/components/reports/rooms-analytics-dashboard").then((m) => ({
+    default: m.RoomsAnalyticsDashboard,
+  })),
+);
+const RoomsDecisionsPanel = lazy(() =>
+  import("@/components/reports/rooms-decisions-panel").then((m) => ({
+    default: m.RoomsDecisionsPanel,
+  })),
+);
 
 export const Route = createFileRoute("/_authenticated/reports/rooms-report")({
   head: () => ({
@@ -463,7 +474,9 @@ function Page() {
         </TabsContent>
         <TabsContent value="analytics">
           {executive.complete ? (
-            <RoomsAnalyticsDashboard summary={summary} analytics={analytics} />
+            <Suspense fallback={<ReportLoadingState label="جارٍ تحميل الرسوم البيانية…" />}>
+              <RoomsAnalyticsDashboard summary={summary} analytics={analytics} />
+            </Suspense>
           ) : (
             <Card className="p-5 text-sm leading-7">
               لا يمكن ترتيب كفاءة الاستخدام قبل استكمال بيانات الإتاحة. الساعات المسجلة موضحة في
@@ -473,14 +486,16 @@ function Page() {
         </TabsContent>
         <TabsContent value="operations">
           {ctx.collegeId && ctx.versionId && inventory.data && (
-            <RoomsDecisionsPanel
-              key={`${ctx.collegeId}:${ctx.versionId}`}
-              collegeId={ctx.collegeId}
-              versionId={ctx.versionId}
-              studySystem={ctx.studySystem}
-              sessions={sessions}
-              inventory={inventory.data}
-            />
+            <Suspense fallback={<ReportLoadingState label="جارٍ تحميل لوحة القرارات…" />}>
+              <RoomsDecisionsPanel
+                key={`${ctx.collegeId}:${ctx.versionId}`}
+                collegeId={ctx.collegeId}
+                versionId={ctx.versionId}
+                studySystem={ctx.studySystem}
+                sessions={sessions}
+                inventory={inventory.data}
+              />
+            </Suspense>
           )}
         </TabsContent>
         <TabsContent value="comparison">

@@ -71,7 +71,7 @@ export function RoomsDecisionsPanel(p: {
                     cursor={{ strokeDasharray: "3 3" }}
                     content={({ active, payload }) =>
                       active && payload?.[0] ? (
-                        <div className="rounded border bg-background p-3 text-right" dir="rtl">
+                        <div className="rounded border bg-background p-3 text-start" dir="rtl">
                           {payload[0].payload.name}
                           <br />
                           السعة: {payload[0].payload.capacity} · متوسط الطلاب:{" "}
