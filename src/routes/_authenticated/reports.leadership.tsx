@@ -600,7 +600,7 @@ function LeadershipDashboard({ viewerKey }: { viewerKey: string }) {
               onClick={() => void query.refetch()}
               disabled={query.isFetching}
             >
-              <RefreshCw className={`ml-1 h-4 w-4 ${query.isFetching ? "animate-spin" : ""}`} />
+              <RefreshCw className={`me-1 h-4 w-4 ${query.isFetching ? "animate-spin" : ""}`} />
               {query.isFetching ? "جارٍ التحديث" : "تحديث"}
             </Button>
           </div>

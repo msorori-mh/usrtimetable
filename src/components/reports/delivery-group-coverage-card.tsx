@@ -50,7 +50,7 @@ export function DeliveryGroupCoverageCard({
       {unscheduled.length > 0 && (
         <Card className="min-w-0 overflow-x-auto p-4" data-testid="unscheduled-groups">
           <h2 className="mb-2 text-sm font-semibold">مجموعات لم تكتمل تغطيتها</h2>
-          <table className="w-full min-w-[640px] text-right text-xs">
+          <table className="w-full min-w-[640px] text-start text-xs">
             <thead className="text-muted-foreground">
               <tr>
                 <th className="p-2">المقرر</th>

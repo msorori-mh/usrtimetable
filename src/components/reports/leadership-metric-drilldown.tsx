@@ -207,7 +207,7 @@ export function LeadershipMetricDrilldown({
             disabled={visible.length === 0}
             onClick={() => downloadCSV(visible, columns, filename)}
           >
-            <Download className="ml-1 h-4 w-4" />
+            <Download className="me-1 h-4 w-4" />
             CSV
           </Button>
           <Button
@@ -240,7 +240,7 @@ export function LeadershipMetricDrilldown({
               لا توجد سجلات مطابقة لهذا المؤشر في النطاق المحدد.
             </p>
           ) : (
-            <table className="w-full min-w-[720px] text-right text-xs">
+            <table className="w-full min-w-[720px] text-start text-xs">
               <thead className="sticky top-0 bg-muted">
                 <tr>
                   {columns.map((column) => (

@@ -312,7 +312,7 @@ export function PrintSheet(props: {
             {/* On program/level sheets the large cohort headline already names the sheet. */}
             {!readable && !(props.comfortable && cohortHeadline.length > 0) && (
               <TableRow className="print-center-context-row">
-                <TableHead colSpan={columnCount} className="text-right font-semibold">
+                <TableHead colSpan={columnCount} className="text-start font-semibold">
                   {page.title}
                 </TableHead>
               </TableRow>

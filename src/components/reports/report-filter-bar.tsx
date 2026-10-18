@@ -71,7 +71,7 @@ export function ReportFilterBar({
             aria-controls={panelId}
             data-testid="report-advanced-filters-toggle"
           >
-            <SlidersHorizontal className="ml-1 h-4 w-4" />
+            <SlidersHorizontal className="me-1 h-4 w-4" />
             خيارات إضافية
             <ChevronDown
               className={cn("ms-1 h-4 w-4 transition-transform", open && "rotate-180")}
@@ -113,7 +113,7 @@ export function ReportFilterBar({
               onClick={onClear}
               aria-label="إعادة ضبط الخيارات الإضافية"
             >
-              <X className="ml-1 h-4 w-4" /> إعادة الضبط
+              <X className="me-1 h-4 w-4" /> إعادة الضبط
             </Button>
           )}
         </div>

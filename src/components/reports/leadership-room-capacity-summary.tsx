@@ -202,7 +202,7 @@ export function LeadershipRoomCapacitySummary({
                     تفاصيل ساعات كل قاعة
                   </summary>
                   <div className="mt-3 overflow-x-auto">
-                    <table className="w-full min-w-[580px] text-right text-xs">
+                    <table className="w-full min-w-[580px] text-start text-xs">
                       <caption className="sr-only">ساعات قاعات {college.name}</caption>
                       <thead>
                         <tr className="border-b bg-muted/40">

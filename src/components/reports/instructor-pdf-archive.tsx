@@ -99,7 +99,7 @@ export function InstructorPdfArchive<T>({
       disabled={disabled || !!progress || !items.length}
       data-testid="instructor-pdf-archive"
     >
-      <FileArchive className="ml-2 h-4 w-4" aria-hidden="true" />
+      <FileArchive className="me-2 h-4 w-4" aria-hidden="true" />
       {progress ?? `تنزيل PDF لكل محاضر في ملف مضغوط (${items.length})`}
     </Button>
   );

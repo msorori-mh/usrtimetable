@@ -27,7 +27,7 @@ type Api = {
 };
 const api = supabase as unknown as SupabaseClient<Api>;
 const days = ["الأحد", "الاثنين", "الثلاثاء", "الأربعاء", "الخميس", "الجمعة", "السبت"];
-const cell = "border p-2 text-right";
+const cell = "border p-2 text-start";
 export function FacultyUniversityReport() {
   const [instructor, setInstructor] = useState("");
   const [term, setTerm] = useState("");

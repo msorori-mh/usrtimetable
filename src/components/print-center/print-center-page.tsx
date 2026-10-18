@@ -448,7 +448,7 @@ export function PrintCenterPage(props: { versionId: string }) {
         </p>
         <Button variant="outline" asChild>
           <Link to="/timetable/$versionId" params={{ versionId }}>
-            <ArrowRight className="h-4 w-4 ml-1" /> عودة للمحرر
+            <ArrowRight className="h-4 w-4 me-1" /> عودة للمحرر
           </Link>
         </Button>
       </div>
@@ -468,7 +468,7 @@ export function PrintCenterPage(props: { versionId: string }) {
       <div className="space-y-4" dir="rtl">
         <Button variant="ghost" size="sm" asChild>
           <Link to="/timetable/$versionId" params={{ versionId }}>
-            <ArrowRight className="h-4 w-4 ml-1" /> عودة للمحرر
+            <ArrowRight className="h-4 w-4 me-1" /> عودة للمحرر
           </Link>
         </Button>
         <div className="rounded-md border border-amber-300 bg-amber-50 dark:bg-amber-950/30 p-4 text-sm">
@@ -498,7 +498,7 @@ export function PrintCenterPage(props: { versionId: string }) {
           <div>
             <Button variant="ghost" size="sm" asChild>
               <Link to="/timetable/$versionId" params={{ versionId }}>
-                <ArrowRight className="h-4 w-4 ml-1" /> عودة لمحرر الجدول
+                <ArrowRight className="h-4 w-4 me-1" /> عودة لمحرر الجدول
               </Link>
             </Button>
             <h1 className="text-2xl font-bold mt-1">مركز الطباعة والتصدير</h1>
@@ -509,12 +509,12 @@ export function PrintCenterPage(props: { versionId: string }) {
           <div className="flex gap-2 flex-wrap">
             <Button variant="default" size="sm" asChild>
               <Link to="/reports/current-timetable">
-                <Printer className="h-4 w-4 ml-1" /> طباعة الجدول الحالي
+                <Printer className="h-4 w-4 me-1" /> طباعة الجدول الحالي
               </Link>
             </Button>
             <Button variant="outline" size="sm" asChild>
               <Link to="/reports/rooms-report">
-                <Printer className="h-4 w-4 ml-1" /> تقرير القاعات
+                <Printer className="h-4 w-4 me-1" /> تقرير القاعات
               </Link>
             </Button>
             <Button
@@ -523,7 +523,7 @@ export function PrintCenterPage(props: { versionId: string }) {
               onClick={handlePrintClick}
               disabled={pages.length === 0 || outputBlocked}
             >
-              <Printer className="h-4 w-4 ml-1" /> طباعة
+              <Printer className="h-4 w-4 me-1" /> طباعة
             </Button>
             <Button
               variant="outline"
@@ -540,7 +540,7 @@ export function PrintCenterPage(props: { versionId: string }) {
                 )
               }
             >
-              <Download className="h-4 w-4 ml-1" /> CSV
+              <Download className="h-4 w-4 me-1" /> CSV
             </Button>
             <Button
               variant="outline"
@@ -557,7 +557,7 @@ export function PrintCenterPage(props: { versionId: string }) {
                 )
               }
             >
-              <FileSpreadsheet className="h-4 w-4 ml-1" /> Excel
+              <FileSpreadsheet className="h-4 w-4 me-1" /> Excel
             </Button>
           </div>
         </div>

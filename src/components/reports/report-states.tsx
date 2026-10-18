@@ -120,7 +120,7 @@ export function ReportErrorState({
       action={
         onRetry ? (
           <Button type="button" variant="outline" size="sm" onClick={onRetry}>
-            <RefreshCw className="ml-1 h-4 w-4" /> إعادة المحاولة
+            <RefreshCw className="me-1 h-4 w-4" /> إعادة المحاولة
           </Button>
         ) : undefined
       }
