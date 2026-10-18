@@ -121,6 +121,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { formatDateTime, formatDecimal } from "@/lib/format";
+import { QueryErrorNotice } from "@/components/app-states/query-error-notice";
 
 export const Route = createFileRoute("/_authenticated/schedule-builder")({
   head: () => ({ meta: [{ title: "بناء الجدول" }] }),
@@ -911,6 +912,17 @@ function ScheduleBuilderWorkspacePage() {
         </div>
       ) : null}
 
+      {(roomsQuery.error ?? settingsQuery.error ?? templatesQuery.error) && (
+        <QueryErrorNotice
+          title="تعذّر تحميل القاعات أو إعدادات الجدولة أو قوالب الأوقات؛ قد تكون الشبكة والقوائم ناقصة."
+          error={roomsQuery.error ?? settingsQuery.error ?? templatesQuery.error}
+          onRetry={() => {
+            void roomsQuery.refetch();
+            void settingsQuery.refetch();
+            void templatesQuery.refetch();
+          }}
+        />
+      )}
       {/* Context bar */}
       <Card className="min-w-0">
         <CardHeader className="pb-3">
@@ -934,7 +946,7 @@ function ScheduleBuilderWorkspacePage() {
                   requestWithUnsavedGuard({ kind: "set-term", termId: v });
                 }}
               >
-                <SelectTrigger>
+                <SelectTrigger aria-label="الفصل الدراسي">
                   <SelectValue placeholder="اختر الفصل" />
                 </SelectTrigger>
                 <SelectContent>
@@ -969,7 +981,7 @@ function ScheduleBuilderWorkspacePage() {
                   requestWithUnsavedGuard({ kind: "set-version", versionId: v });
                 }}
               >
-                <SelectTrigger>
+                <SelectTrigger aria-label="نسخة الجدول">
                   <SelectValue placeholder="اختر النسخة" />
                 </SelectTrigger>
                 <SelectContent>
@@ -994,7 +1006,7 @@ function ScheduleBuilderWorkspacePage() {
                 });
               }}
             >
-              <SelectTrigger>
+              <SelectTrigger aria-label="النظام الدراسي">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -1656,7 +1668,7 @@ function FilterSelect({
     <div className="space-y-2">
       <Label>{label}</Label>
       <Select value={value} onValueChange={onChange}>
-        <SelectTrigger>
+        <SelectTrigger aria-label={label}>
           <SelectValue />
         </SelectTrigger>
         <SelectContent>
@@ -1686,7 +1698,7 @@ function EmptyState({ icon, title, message }: { icon: ReactNode; title: string; 
 
 function ErrorInline({ message }: { message: string }) {
   return (
-    <p className="text-sm text-destructive flex items-center gap-1">
+    <p role="alert" className="text-sm text-destructive flex items-center gap-1">
       <AlertCircle className="h-3.5 w-3.5" />
       {message}
     </p>
