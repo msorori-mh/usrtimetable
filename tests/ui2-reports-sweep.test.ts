@@ -99,7 +99,10 @@ describe("reports sweep (UI-2)", () => {
   });
 
   test("L-14: role checks use the roles helpers", () => {
-    expect(offenders(/roles?\.includes\(\s*"[a-z_]+"\s*\)|role\s*===\s*"[a-z_]+"/)).toEqual([]);
+    expect(offenders(
+      // Only app (user) role names; other `role` fields (e.g. a publication role "source") are not role checks.
+      /roles?\.includes\(\s*"(super_admin|college_admin|read_only|institutional_viewer|university_leadership|college_dean)"\s*\)|role\s*===\s*"(super_admin|college_admin|read_only|institutional_viewer|university_leadership|college_dean)"/,
+    )).toEqual([]);
   });
 });
 

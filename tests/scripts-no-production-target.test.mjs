@@ -28,7 +28,13 @@ test("the production ref is configured", () => {
 });
 
 test("no script or workflow hard-codes the production project ref", () => {
-  const offenders = scripts.filter((file) => readFileSync(file, "utf8").includes(productionRef));
+  // A line marked `deny-guard` names the ref only to refuse it (e.g. the legacy Lovable
+  // project after the move); every other occurrence is a hard-coded target.
+  const offenders = scripts.filter((file) =>
+    readFileSync(file, "utf8")
+      .split("\n")
+      .some((line) => line.includes(productionRef) && !line.includes("deny-guard")),
+  );
   assert.deepEqual(
     offenders.map((file) => path.relative(root, file)),
     [],

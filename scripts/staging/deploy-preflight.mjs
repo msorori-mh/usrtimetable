@@ -9,7 +9,7 @@ const REQUIRED_CONFIRMATION = "DEPLOY_STAGING_ONLY";
 const PRODUCTION_CONFIRMATION = "deploy-production";
 // The former Lovable Cloud-managed project. Production must never target it again after the
 // Lovable exit (docs/operations/lovable-exit-runbook.md); it stays read-only as a rollback.
-export const LEGACY_LOVABLE_PROJECT_REF = "emzytxqkxjjhsivqxdiu";
+export const LEGACY_LOVABLE_PROJECT_REF = "emzytxqkxjjhsivqxdiu"; // deny-guard: refused, never targeted
 
 function required(env, name, errors) {
   const value = String(env[name] ?? "").trim();
