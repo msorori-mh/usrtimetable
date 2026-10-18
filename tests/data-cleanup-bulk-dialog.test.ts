@@ -85,8 +85,12 @@ describe("data-cleanup BulkDialog", () => {
 
   it("surfaces query errors instead of empty lists", () => {
     expect(firstQueryError([{ label: "القاعات", error: null }])).toBeNull();
-    expect(firstQueryError([{ label: "القاعات", error: { message: "denied" } }])).toMatch(
-      /القاعات.*denied/,
+    // L-5: raw (English) database text is no longer shown; Arabic server messages pass through.
+    const raw = firstQueryError([{ label: "القاعات", error: { message: "denied" } }]);
+    expect(raw).toMatch(/القاعات/);
+    expect(raw).not.toMatch(/denied/);
+    expect(firstQueryError([{ label: "القاعات", error: { message: "لا صلاحية" } }])).toMatch(
+      /القاعات.*لا صلاحية/,
     );
     expect(src).toMatch(/if \(loadError\) throw new Error\(loadError\)/);
     expect(shortRef("12345678-aaaa")).toBe("مرجع 12345678");

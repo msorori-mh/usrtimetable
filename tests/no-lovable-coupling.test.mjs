@@ -13,8 +13,6 @@ const LEGACY_PROJECT_REF = ["emzytxqkxjj", "hsivqxdiu"].join(""); // split so th
 // Known cosmetic leftovers: the timetable drag-and-drop payload MIME type. It is an
 // internal string (no Lovable dependency) and is renamed in both files together later.
 const ALLOWED = new Map([
-  ["src/components/timetable/timetable-grid.tsx", ["application/x-lovable-drop"]],
-  ["src/routes/_authenticated/timetable.$versionId.tsx", ["application/x-lovable-drop"]],
 ]);
 
 function walk(dir, out = []) {
@@ -54,7 +52,7 @@ test("src/ never hard-codes the legacy Lovable Cloud project", () => {
   assert.deepEqual(hits, []);
 });
 
-test("src/ has no Lovable identifiers except the allow-listed drag MIME strings", () => {
+test("src/ has no Lovable identifiers at all", () => {
   const offenders = [];
   for (const file of srcFiles) {
     const allowed = ALLOWED.get(file) ?? [];

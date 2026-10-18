@@ -181,7 +181,7 @@ function TimetablePage() {
         // Flat offerings only — no nested courses() embed (PGRST200).
         readAllResult<{
           id: string;
-          course_id: string | null;
+          course_id: string;
           program_id: string | null;
           level_id: string | null;
           expected_students: number | null;
@@ -831,7 +831,7 @@ function TimetablePage() {
                                 draggable={canManage}
                                 onDragStart={(e) => {
                                   e.dataTransfer.setData(
-                                    "application/x-lovable-drop",
+                                    "application/x-usr-timetable-session",
                                     JSON.stringify({
                                       kind: "unscheduled",
                                       id: item.course_offering_id,

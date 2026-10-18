@@ -381,6 +381,7 @@ function AutoSchedulePage() {
                 studySystem={studySystem}
                 coverage={coverage.data}
                 isLoading={coverage.isLoading}
+                error={coverage.error}
               />
             ) : null}
             {runError ? (

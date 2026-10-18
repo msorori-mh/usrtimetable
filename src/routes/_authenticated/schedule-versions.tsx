@@ -508,6 +508,7 @@ function VersionCard({
                 scheduleVersionId={v.id}
                 coverage={coverage.data}
                 isLoading={coverage.isLoading}
+                error={coverage.error}
               />
 
               {elig.data.warnings.length > 0 && (

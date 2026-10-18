@@ -126,7 +126,7 @@ export function TimetableGrid({
   const handleDrop = (e: React.DragEvent, day: number, slotMins: number) => {
     e.preventDefault();
     if (!onDropAt) return;
-    const raw = e.dataTransfer.getData("application/x-lovable-drop");
+    const raw = e.dataTransfer.getData("application/x-usr-timetable-session");
     if (!raw) return;
     try {
       const payload = JSON.parse(raw) as DropPayload;
@@ -224,7 +224,7 @@ export function TimetableGrid({
                         return;
                       }
                       e.dataTransfer.setData(
-                        "application/x-lovable-drop",
+                        "application/x-usr-timetable-session",
                         JSON.stringify({ kind: "session", id: sess.id } as DropPayload),
                       );
                       e.dataTransfer.effectAllowed = "move";

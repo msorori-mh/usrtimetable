@@ -49,6 +49,8 @@ export interface WorkspaceVersion {
   academic_term_id: string;
   updated_at: string;
   created_at: string;
+  /** M-11: protected demo/history version (data, not a hard-coded id). */
+  protected?: boolean | null;
 }
 
 export interface WorkspaceSchedulingSettings {
@@ -76,7 +78,7 @@ export async function fetchWorkspaceVersions(params: {
 }): Promise<WorkspaceVersion[]> {
   const { data, error } = await supabase
     .from("schedule_versions")
-    .select("id, name, status, academic_term_id, updated_at, created_at")
+    .select("id, name, status, academic_term_id, updated_at, created_at, protected")
     .eq("college_id", params.collegeId)
     .eq("academic_term_id", params.termId)
     .order("updated_at", { ascending: false });

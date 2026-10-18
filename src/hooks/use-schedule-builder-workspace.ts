@@ -562,7 +562,8 @@ export function useScheduleBuilderWorkspace() {
   const onGridDrop = (params: { day: number; startTime: string; payload: DropPayload }) => {
     if (!mayEnterEdit || !editModeActive) return;
     if (params.payload.kind !== "session") return;
-    if (isProtectedDemoVersion(versionId)) {
+    const currentVersion = versionsQuery.data?.find((v) => v.id === versionId) ?? versionId;
+    if (isProtectedDemoVersion(currentVersion)) {
       toast.error("نسخة العرض المحمية — التعديل الحي مرفوض في هذه المهمة.");
       return;
     }
