@@ -151,6 +151,12 @@ function validateGeneratedWranglerConfig(configPath, errors, { requireNodeCompat
       errors.push("Generated Wrangler assets directory must be ../public");
     if (requireNodeCompat && !(config.compatibility_flags ?? []).includes("nodejs_compat"))
       errors.push("Generated Wrangler config must enable the nodejs_compat compatibility flag");
+    // process.env is populated from Worker secrets only from this compatibility date on.
+    if (
+      requireNodeCompat &&
+      !(typeof config.compatibility_date === "string" && config.compatibility_date >= "2025-04-01")
+    )
+      errors.push("Generated Wrangler compatibility_date must be 2025-04-01 or later");
   } catch (error) {
     errors.push(
       `Generated Wrangler config is unavailable: ${error instanceof Error ? error.message : error}`,

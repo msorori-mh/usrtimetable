@@ -174,7 +174,16 @@ test("generated config must keep the nitro shape plus nodejs_compat; binding set
   const without = validateProductionEnvironment(safe(), opts({ requireBuild: true, wranglerConfig: configPath }));
   assert.equal(without.ok, false);
   assert.match(without.errors.join("\n"), /nodejs_compat/);
+  assert.match(without.errors.join("\n"), /compatibility_date must be 2025-04-01 or later/);
 
+  writeFileSync(
+    configPath,
+    JSON.stringify({ ...generated, compatibility_flags: ["nodejs_compat"], compatibility_date: "2024-09-23" }),
+  );
+  const old = validateProductionEnvironment(safe(), opts({ requireBuild: true, wranglerConfig: configPath }));
+  assert.match(old.errors.join("\n"), /compatibility_date/);
+
+  Object.assign(generated, { compatibility_date: "2026-06-01" });
   writeFileSync(configPath, JSON.stringify({ ...generated, compatibility_flags: ["nodejs_compat"] }));
   const ok = validateProductionEnvironment(safe(), opts({ requireBuild: true, wranglerConfig: configPath }));
   assert.equal(ok.ok, true, ok.errors.join("\n"));

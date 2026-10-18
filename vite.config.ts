@@ -34,6 +34,9 @@ export default defineConfig(({ command }) => {
     plugins.push(
       nitro({
         preset: "cloudflare_module",
+        // Pinned Workers compatibility date (reproducible deploys). Must stay >= 2025-04-01 so
+        // nodejs_compat populates process.env from Worker secrets (checked by deploy-preflight).
+        compatibilityDate: "2026-06-01",
         cloudflare: {
           // Native Node.js APIs on Workers: nitro adds the `nodejs_compat` compatibility flag
           // to the generated wrangler.json (verified by deploy-preflight in production mode).

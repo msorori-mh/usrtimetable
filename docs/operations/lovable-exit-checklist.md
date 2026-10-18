@@ -15,7 +15,7 @@
 
 - [ ] PR مسار `track/exit-lovable` مدموج في `main` — مالك الإصدار
 - [ ] `scripts/exit-lovable/regenerate-lockfile.sh` شُغّل على جهاز متصل، و`bun.lock` الجديد مدموج، و`pr-gate` أخضر — مالك الإصدار
-- [ ] بناء حقيقي ناجح: `.output/server/wrangler.json` فيه `main=index.mjs` و`no_bundle=true` و`assets.directory=../public` و`nodejs_compat` — مالك الإصدار
+- [ ] بناء حقيقي ناجح: `.output/server/wrangler.json` فيه `main=index.mjs` و`no_bundle=true` و`assets.directory=../public` و`nodejs_compat` و`compatibility_date` ≥ 2025-04-01 — مالك الإصدار
 - [ ] مؤسسة Supabase ومشروع Pro جديد، المنطقة مقررة وموثقة، مالكان بـMFA (1) — مسؤول قاعدة البيانات
 - [ ] Backups يومية ظاهرة؛ قرار PITR موثق (1) — مسؤول قاعدة البيانات
 - [ ] `supabase/config.toml` → `project_id` الجديد (PR) (1.6) — مالك الإصدار

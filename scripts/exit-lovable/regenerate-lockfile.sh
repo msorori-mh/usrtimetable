@@ -64,6 +64,7 @@ if [ "${SKIP_BUILD:-0}" != "1" ]; then
     if (c.no_bundle !== true) problems.push("no_bundle != true");
     if (c.assets?.directory !== "../public") problems.push("assets.directory != ../public");
     if (!(c.compatibility_flags ?? []).includes("nodejs_compat")) problems.push("compatibility_flags lacks nodejs_compat");
+    if (!(String(c.compatibility_date ?? "") >= "2025-04-01")) problems.push("compatibility_date < 2025-04-01");
     if (problems.length) { console.error("FAIL wrangler.json: " + problems.join(", ")); process.exit(1); }
     console.log("OK: generated wrangler.json", JSON.stringify({ main: c.main, compatibility_date: c.compatibility_date, compatibility_flags: c.compatibility_flags }));
   '
