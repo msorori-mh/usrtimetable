@@ -13,7 +13,7 @@ type PublicEnv = Record<string, string | undefined>;
 
 function serverEnv(): PublicEnv {
   // `process` does not exist in the browser bundle; on the Worker it is provided by nodejs_compat.
-  return typeof process !== "undefined" && process.env ? process.env : {};
+  return (globalThis as { process?: { env?: PublicEnv } }).process?.env ?? {};
 }
 
 /**
