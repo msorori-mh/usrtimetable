@@ -2,6 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { chunkIds, readAllResult } from "@/lib/supabase/read-all";
 import { fetchCurrentPublishedVersions } from "@/lib/schedule-versions/current-published";
 import { useEducationSourcePublications } from "@/lib/schedule-versions/education-publication-loader";
 import { useActiveCollege } from "@/hooks/use-colleges";
@@ -108,35 +109,54 @@ function PublishedSchedulesPage() {
     enabled: !!active && (versions?.length ?? 0) > 0,
     queryFn: async () => {
       const ids = (versions ?? []).map((v) => v.id);
-      const { data: sessionRows, error: sessionError } = await supabase
-        .from("schedule_sessions")
-        .select("schedule_version_id, course_offering_id")
-        .in("schedule_version_id", ids);
+      const { data: sessionRows, error: sessionError } = await readAllResult<{
+        schedule_version_id: string;
+        course_offering_id: string | null;
+      }>((from, to) =>
+        supabase
+          .from("schedule_sessions")
+          .select("schedule_version_id, course_offering_id")
+          .in("schedule_version_id", ids)
+          .order("id")
+          .range(from, to),
+      );
       if (sessionError) throw sessionError;
 
       const offeringIds = Array.from(
         new Set((sessionRows ?? []).map((row) => row.course_offering_id).filter(Boolean)),
       );
-      const { data: offeringRows, error: offeringError } = offeringIds.length
-        ? await supabase
-            .from("course_offerings")
-            .select("id, program_id, course_id")
-            .eq("college_id", active!.id)
-            .in("id", offeringIds)
-        : { data: [], error: null };
-      if (offeringError) throw offeringError;
+      // H-10: id lists are chunked (URL length) and each chunk is read in full.
+      const readByIds = async <T,>(table: "course_offerings" | "courses", columns: string, ids: string[]) => {
+        const out: T[] = [];
+        for (const chunk of chunkIds(ids)) {
+          const res = await readAllResult<T>((from, to) =>
+            supabase
+              .from(table)
+              .select(columns)
+              .eq("college_id", active!.id)
+              .in("id", chunk)
+              .order("id")
+              .range(from, to) as unknown as PromiseLike<{ data: T[] | null; error: unknown }>,
+          );
+          if (res.error) throw res.error;
+          out.push(...(res.data ?? []));
+        }
+        return out;
+      };
+      const offeringRows = await readByIds<{ id: string; program_id: string | null; course_id: string | null }>(
+        "course_offerings",
+        "id, program_id, course_id",
+        offeringIds as string[],
+      );
 
       const courseIds = Array.from(
         new Set((offeringRows ?? []).map((row) => row.course_id).filter(Boolean)),
       );
-      const { data: courseRows, error: courseError } = courseIds.length
-        ? await supabase
-            .from("courses")
-            .select("id, department_id")
-            .eq("college_id", active!.id)
-            .in("id", courseIds)
-        : { data: [], error: null };
-      if (courseError) throw courseError;
+      const courseRows = await readByIds<{ id: string; department_id: string | null }>(
+        "courses",
+        "id, department_id",
+        courseIds as string[],
+      );
 
       const offeringsById = new Map((offeringRows ?? []).map((row) => [row.id, row]));
       const departmentsByCourseId = new Map(

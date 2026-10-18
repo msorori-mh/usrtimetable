@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import type { Tables } from "@/integrations/supabase/types";
 import { supabase } from "@/integrations/supabase/client";
+import { readAllResult } from "@/lib/supabase/read-all";
 import { educationSourceVersionFor } from "@/lib/schedule-versions/education-publication";
 import { useEducationSourcePublications } from "@/lib/schedule-versions/education-publication-loader";
 
@@ -120,11 +121,17 @@ export function CollegeSourceTimetable({
     enabled: rows.length > 0 && !!source,
     queryFn: async () => {
       const [sessions, rooms] = await Promise.all([
-        supabase
-          .from("schedule_sessions")
-          .select("id,day_of_week,start_time,end_time,room_id")
-          .eq("schedule_version_id", source!.version_id),
-        supabase.from("rooms").select("id,name").eq("college_id", source!.college_id),
+        readAllResult<{ id: string; day_of_week: number; start_time: string; end_time: string; room_id: string | null }>((from, to) =>
+          supabase
+            .from("schedule_sessions")
+            .select("id,day_of_week,start_time,end_time,room_id")
+            .eq("schedule_version_id", source!.version_id)
+            .order("id")
+            .range(from, to),
+        ),
+        readAllResult<{ id: string; name: string }>((from, to) =>
+          supabase.from("rooms").select("id,name").eq("college_id", source!.college_id).order("id").range(from, to),
+        ),
       ]);
       if (sessions.error) throw sessions.error;
       if (rooms.error) throw rooms.error;

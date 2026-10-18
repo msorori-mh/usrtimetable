@@ -342,6 +342,7 @@ export const adminGeneratePasswordReset = createServerFn({ method: "POST" })
     )
       throw new Error("تعذر مطابقة المستخدم والبريد الإلكتروني؛ حدّث قائمة المستخدمين.");
     const { data: roles, error: rolesError } = await supabaseAdmin
+      // read-all-ok: rows of a single user (one role/college list), far below the page cap
       .from("user_roles")
       .select("role")
       .eq("user_id", user.id);
@@ -400,6 +401,7 @@ export const adminGeneratePasswordReset = createServerFn({ method: "POST" })
 async function loadMembership(userId: string) {
   const supabaseAdmin = await admin();
   const [rolesRes, collegesRes] = await Promise.all([
+    // read-all-ok: rows of a single user (one role/college list), far below the page cap
     supabaseAdmin.from("user_roles").select("role").eq("user_id", userId),
     supabaseAdmin.from("user_colleges").select("college_id").eq("user_id", userId),
   ]);

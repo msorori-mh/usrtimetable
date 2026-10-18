@@ -66,7 +66,7 @@ import {
   sessionMatchesTimetableAcademicFilters,
 } from "@/lib/schedule-builder/timetable-editor-filters";
 import { entityDisplayName } from "@/lib/entity-display";
-import { chunkIds } from "@/lib/supabase/read-all";
+import { chunkIds, readAllResult } from "@/lib/supabase/read-all";
 
 export const Route = createFileRoute("/_authenticated/timetable/$versionId")({
   head: () => ({ meta: [{ title: "بناء الجدول" }] }),
@@ -174,18 +174,35 @@ function TimetablePage() {
           .from("academic_levels")
           .select("id, name, program_id, level_number")
           .eq("college_id", active!.id),
-        supabase.from("instructors").select("id, full_name").eq("college_id", active!.id),
+        readAllResult<{ id: string; full_name: string }>((from, to) =>
+          supabase.from("instructors").select("id, full_name").eq("college_id", active!.id).order("id").range(from, to),
+        ),
         supabase.from("rooms").select("id, code, name, room_type_id").eq("college_id", active!.id),
         // Flat offerings only — no nested courses() embed (PGRST200).
-        supabase
-          .from("course_offerings")
-          .select("id, course_id, program_id, level_id, expected_students, plan_course_id")
-          .eq("college_id", active!.id)
-          .eq("term_id", version?.academic_term_id ?? ""),
-        supabase
-          .from("teaching_assignments")
-          .select("id, course_offering_id, instructor_id")
-          .eq("college_id", active!.id),
+        readAllResult<{
+          id: string;
+          course_id: string | null;
+          program_id: string | null;
+          level_id: string | null;
+          expected_students: number | null;
+          plan_course_id: string | null;
+        }>((from, to) =>
+          supabase
+            .from("course_offerings")
+            .select("id, course_id, program_id, level_id, expected_students, plan_course_id")
+            .eq("college_id", active!.id)
+            .eq("term_id", version?.academic_term_id ?? "")
+            .order("id")
+            .range(from, to),
+        ),
+        readAllResult<{ id: string; course_offering_id: string; instructor_id: string }>((from, to) =>
+          supabase
+            .from("teaching_assignments")
+            .select("id, course_offering_id, instructor_id")
+            .eq("college_id", active!.id)
+            .order("id")
+            .range(from, to),
+        ),
         supabase
           .from("time_slot_templates")
           .select("*")

@@ -35,6 +35,7 @@ export async function fetchCurrentUser(): Promise<CurrentUser | null> {
 
   const [profileRes, rolesRes, collegesRes] = await Promise.all([
     supabase.from("profiles").select("id, full_name, email").eq("id", uid).maybeSingle(),
+    // read-all-ok: rows of a single user (one role/college list), far below the page cap
     supabase.from("user_roles").select("role").eq("user_id", uid),
     supabase.from("user_colleges").select("college_id").eq("user_id", uid),
   ]);

@@ -47,6 +47,7 @@ export function useAccessibleColleges() {
       // Fail closed: without an identity we cannot prove a college is assigned.
       if (!uid) return [];
       const [rolesRes, assignedRes] = await Promise.all([
+        // read-all-ok: rows of a single user (one role/college list), far below the page cap
         supabase.from("user_roles").select("role").eq("user_id", uid),
         supabase.from("user_colleges").select("college_id").eq("user_id", uid),
       ]);

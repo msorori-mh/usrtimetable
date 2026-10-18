@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { readAllResult } from "@/lib/supabase/read-all";
 import type { Database, Tables } from "@/integrations/supabase/types";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -73,19 +74,31 @@ export function ExistingScheduleWorkspace({
     enabled,
     queryFn: async () => {
       const responses = await Promise.all([
-        supabase
-          .from("existing_schedule_source_rows")
-          .select("*")
-          .eq("college_id", collegeId)
-          .eq("term_id", termId!)
-          .order("source_id"),
-        supabase
-          .from("rooms")
-          .select("id,name,code")
-          .eq("college_id", collegeId)
-          .eq("is_active", true),
-        supabase.from("instructors").select("id,full_name").eq("college_id", collegeId),
-        supabase.from("study_plans").select("id,name").eq("college_id", collegeId),
+        readAllResult((from, to) =>
+          supabase
+            .from("existing_schedule_source_rows")
+            .select("*")
+            .eq("college_id", collegeId)
+            .eq("term_id", termId!)
+            .order("source_id")
+            .order("id")
+            .range(from, to),
+        ),
+        readAllResult((from, to) =>
+          supabase
+            .from("rooms")
+            .select("id,name,code")
+            .eq("college_id", collegeId)
+            .eq("is_active", true)
+            .order("id")
+            .range(from, to),
+        ),
+        readAllResult((from, to) =>
+          supabase.from("instructors").select("id,full_name").eq("college_id", collegeId).order("id").range(from, to),
+        ),
+        readAllResult((from, to) =>
+          supabase.from("study_plans").select("id,name").eq("college_id", collegeId).order("id").range(from, to),
+        ),
       ]);
       for (const r of responses) if (r.error) throw r.error;
       return {

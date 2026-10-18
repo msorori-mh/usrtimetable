@@ -505,7 +505,7 @@ export function useInstructorDirectory({
   const lookupError = deptsError ?? affiliationDeptsError;
   const availableRanks = Array.from(
     new Set((rows ?? []).map((i) => i.academic_rank ?? "").filter((r) => r !== "")),
-  ).sort((a, b) => a.localeCompare(b, "ar"));
+  ).sort((a: string, b: string) => a.localeCompare(b, "ar"));
 
   return {
     active, accessibleColleges, canManage, canEdit, qc, scope, setScope, open, setOpen, editing, setEditing, form, setForm, repairField, setRepairField, directory, setDirectory, setDirectoryField, specializationRef, departmentRef, depts, deptsError, types, typesLoading, typesError, supportName, setSupportName, affiliationCollegeId, registrationMatches, affiliationDepts, affiliationDeptsError, supportQuery, addSupport, rows, isLoading, isError, rosterError, refetch, save, del, startEdit, startCreate, deptMap, typeRows, typeMap, selectedType, scopeLabel, rowCategoryLabel, hourlyContract, effectiveQuota, reviewRows, departmentLabel, visibleRows, rowWindow, lookupError, availableRanks,

@@ -94,15 +94,26 @@ interface ExistingSession {
 }
 
 /** `.in()` reads in URL-safe chunks; any error is thrown (never silently empty). */
+type PageableQuery<T> = {
+  order: (column: string) => PageableQuery<T>;
+  range: (from: number, to: number) => PromiseLike<{ data: T[] | null; error: unknown }>;
+};
+
+/**
+ * Reads rows for many ids: ids are chunked (URL length) and every chunk is read
+ * page by page (PostgREST row cap), so availability/assignment rows of a large
+ * college are never silently truncated (H-10).
+ */
 async function selectInChunks<T>(
   ids: readonly string[],
-  build: (chunk: string[]) => PromiseLike<{ data: T[] | null; error: unknown }>,
+  build: (chunk: string[]) => unknown,
 ): Promise<{ data: T[]; error: null }> {
   const data: T[] = [];
   for (const chunk of chunkIds(ids)) {
-    const result = await build(chunk);
-    if (result.error) throw result.error;
-    data.push(...(result.data ?? []));
+    const rows = await readAllRows<T>((from, to) =>
+      (build(chunk) as PageableQuery<T>).order("id").range(from, to),
+    );
+    data.push(...rows);
   }
   return { data, error: null };
 }
@@ -276,6 +287,7 @@ export async function validateProposed(params: {
       availability_type: string | null;
       college_id: string;
     }>(instructorIds, (ids) =>
+      // read-all-ok: selectInChunks pages every chunk (order("id").range)
       supabase
         .from("instructor_availability")
         .select(

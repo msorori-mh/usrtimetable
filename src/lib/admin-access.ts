@@ -150,6 +150,7 @@ export async function verifyCallerAccess(
   if (policy.role === null) return;
   let roles: string[] | null = null;
   try {
+    // read-all-ok: rows of a single user (one role/college list), far below the page cap
     const result = await client.from("user_roles").select("role").eq("user_id", userId);
     if (result.error || !Array.isArray(result.data)) {
       console.error("[admin-access] caller role read failed", result.error);

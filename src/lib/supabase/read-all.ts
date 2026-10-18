@@ -52,3 +52,18 @@ export function chunkIds<T>(ids: readonly T[], size = 150): T[][] {
   for (let i = 0; i < ids.length; i += size) out.push(ids.slice(i, i + size));
   return out;
 }
+
+/**
+ * Same as readAllRows, but returns `{ data, error }` like a Supabase call so it can
+ * replace a builder inside an existing `Promise.all([...])` without restructuring.
+ */
+export async function readAllResult<T>(
+  page: (from: number, to: number) => PromiseLike<{ data: T[] | null; error: unknown }>,
+  pageSize: number = READ_ALL_PAGE_SIZE,
+): Promise<{ data: T[] | null; error: unknown }> {
+  try {
+    return { data: await readAllRows(page, pageSize), error: null };
+  } catch (error) {
+    return { data: null, error };
+  }
+}

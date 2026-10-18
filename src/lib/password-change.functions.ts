@@ -48,6 +48,7 @@ export const completeInitialPasswordChange = createServerFn({ method: "POST" })
     if (limitError || allowed !== true)
       throw new Error("تم تجاوز عدد المحاولات المسموح مؤقتًا. أعد المحاولة بعد قليل.");
     const { data: roles, error: roleError } = await supabaseAdmin
+      // read-all-ok: rows of a single user (one role/college list), far below the page cap
       .from("user_roles")
       .select("role")
       .eq("user_id", context.userId);
