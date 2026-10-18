@@ -47,6 +47,7 @@ import {
   autoRunOutcomeMessage,
   fetchDeliveryCoverage,
 } from "@/lib/schedule-versions/delivery-coverage";
+import { formatDateTime } from "@/lib/format";
 
 export const Route = createFileRoute("/_authenticated/auto-schedule")({
   head: () => ({ meta: [{ title: "الجدولة التلقائية" }] }),
@@ -347,7 +348,7 @@ function AutoSchedulePage() {
                   else setConfirmOpen(true);
                 }}
               >
-                <Sparkles className="h-4 w-4 ml-1" />
+                <Sparkles className="h-4 w-4 me-1" />
                 {run.isPending ? "جارٍ التشغيل..." : "تشغيل الجدولة التلقائية"}
               </Button>
               {run.isPending ? (
@@ -577,8 +578,8 @@ function AutoSchedulePage() {
                             : "إعادة بناء"}
                       </Badge>
                     )}
-                    <span className="text-xs text-muted-foreground mr-auto">
-                      {new Date(latest.created_at).toLocaleString("ar")}
+                    <span className="text-xs text-muted-foreground ms-auto">
+                      {formatDateTime(latest.created_at)}
                     </span>
                   </div>
 
@@ -713,7 +714,7 @@ function AutoSchedulePage() {
               <div className="space-y-1 text-xs">
                 {runs.slice(1).map((r) => (
                   <div key={r.id} className="flex justify-between border-b py-1">
-                    <span>{new Date(r.created_at).toLocaleString("ar")}</span>
+                    <span>{formatDateTime(r.created_at)}</span>
                     <span>
                       وُضع {r.placed_sessions} / غير مجدول {r.unplaced_sessions} / جودة{" "}
                       {r.quality_score_after ?? "—"}

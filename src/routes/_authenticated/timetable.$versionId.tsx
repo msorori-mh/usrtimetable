@@ -509,7 +509,7 @@ function TimetablePage() {
         </p>
         <Button variant="outline" asChild>
           <Link to="/schedule-versions">
-            <ArrowRight className="h-4 w-4 ml-1" /> عودة للنسخ
+            <ArrowRight className="h-4 w-4 me-1" /> عودة للنسخ
           </Link>
         </Button>
       </div>
@@ -532,7 +532,7 @@ function TimetablePage() {
         </p>
         <Button variant="outline" asChild>
           <Link to="/schedule-versions">
-            <ArrowRight className="h-4 w-4 ml-1" /> عودة للنسخ
+            <ArrowRight className="h-4 w-4 me-1" /> عودة للنسخ
           </Link>
         </Button>
       </div>
@@ -544,7 +544,7 @@ function TimetablePage() {
       <div className="space-y-4" dir="rtl">
         <Button variant="ghost" size="sm" asChild>
           <Link to="/schedule-versions">
-            <ArrowRight className="h-4 w-4 ml-1" /> عودة للنسخ
+            <ArrowRight className="h-4 w-4 me-1" /> عودة للنسخ
           </Link>
         </Button>
         <div className="rounded-md border border-amber-300 bg-amber-50 dark:bg-amber-950/30 p-4 text-sm">
@@ -573,7 +573,7 @@ function TimetablePage() {
         <div>
           <Button variant="ghost" size="sm" asChild>
             <Link to="/schedule-versions">
-              <ArrowRight className="h-4 w-4 ml-1" /> عودة للنسخ
+              <ArrowRight className="h-4 w-4 me-1" /> عودة للنسخ
             </Link>
           </Button>
           <h1 className="text-2xl font-bold mt-1">
@@ -596,11 +596,11 @@ function TimetablePage() {
           </div>
           <Button variant="outline" asChild>
             <Link to="/timetable/$versionId/print" params={{ versionId }}>
-              <Printer className="h-4 w-4 ml-1" /> طباعة وتصدير الجدول
+              <Printer className="h-4 w-4 me-1" /> طباعة وتصدير الجدول
             </Link>
           </Button>
           <Button variant="outline" onClick={runQuality} disabled={scoring}>
-            <Gauge className="h-4 w-4 ml-1" /> {scoring ? "..." : "احتساب الجودة"}
+            <Gauge className="h-4 w-4 me-1" /> {scoring ? "..." : "احتساب الجودة"}
           </Button>
           <Button
             disabled={!canManage}
@@ -610,7 +610,7 @@ function TimetablePage() {
               setDialogOpen(true);
             }}
           >
-            <Plus className="h-4 w-4 ml-1" /> محاضرة جديدة
+            <Plus className="h-4 w-4 me-1" /> محاضرة جديدة
           </Button>
         </div>
       </div>
@@ -777,7 +777,7 @@ function TimetablePage() {
                 <button
                   key={session.id}
                   type="button"
-                  className="flex w-full flex-wrap gap-2 rounded border p-2 text-right text-xs hover:bg-accent/30"
+                  className="flex w-full flex-wrap gap-2 rounded border p-2 text-start text-xs hover:bg-accent/30"
                   onClick={() => {
                     setEditId(session.id);
                     setPrefill(undefined);
@@ -822,7 +822,7 @@ function TimetablePage() {
                         {prog}
                       </div>
                       {Array.from(lvlMap.entries()).map(([lvl, items]) => (
-                        <div key={lvl} className="pr-2">
+                        <div key={lvl} className="ps-2">
                           <div className="text-[10px] text-muted-foreground">{lvl}</div>
                           <div className="space-y-1">
                             {items.map((item) => (

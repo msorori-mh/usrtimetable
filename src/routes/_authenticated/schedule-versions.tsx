@@ -54,6 +54,7 @@ import {
   useDeliveryCoverage,
 } from "@/components/schedule-versions/delivery-coverage-card";
 import { coverageBlockers } from "@/lib/schedule-versions/delivery-coverage";
+import { formatDateTime } from "@/lib/format";
 
 export const Route = createFileRoute("/_authenticated/schedule-versions")({
   head: () => ({ meta: [{ title: "نسخ الجدول الزمني" }] }),
@@ -169,7 +170,7 @@ function SchedVersionsPage() {
           <CollegeSwitcher />
           <Button variant="outline" asChild>
             <Link to="/schedule-builder">
-              <CalendarClock className="h-4 w-4 ml-1" /> فتح مساحة البناء
+              <CalendarClock className="h-4 w-4 me-1" /> فتح مساحة البناء
             </Link>
           </Button>
           <Button variant="outline" onClick={() => setShowRetired((v) => !v)}>
@@ -177,13 +178,13 @@ function SchedVersionsPage() {
           </Button>
           <Button variant="outline" asChild>
             <Link to="/published-schedules">
-              <CheckCircle2 className="h-4 w-4 ml-1" /> الجداول المنشورة
+              <CheckCircle2 className="h-4 w-4 me-1" /> الجداول المنشورة
             </Link>
           </Button>
           <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger asChild>
               <Button disabled={!canManage}>
-                <Plus className="h-4 w-4 ml-1" /> نسخة جديدة
+                <Plus className="h-4 w-4 me-1" /> نسخة جديدة
               </Button>
             </DialogTrigger>
             <DialogContent dir="rtl">
@@ -464,13 +465,13 @@ function VersionCard({
       )}
       {v.notes && <div className="break-words text-xs">{v.notes}</div>}
       <div className="text-[10px] text-muted-foreground">
-        {new Date(v.created_at).toLocaleString("ar")}
+        {formatDateTime(v.created_at)}
       </div>
 
       <div className="flex gap-2 flex-wrap">
         <Button variant="outline" size="sm" asChild className="flex-1">
           <Link to="/timetable/$versionId" params={{ versionId: v.id }}>
-            <ExternalLink className="h-4 w-4 ml-1" /> فتح
+            <ExternalLink className="h-4 w-4 me-1" /> فتح
           </Link>
         </Button>
         <Button variant="outline" size="sm" onClick={onToggle}>
@@ -479,9 +480,9 @@ function VersionCard({
         {status === "archived" && canManage && !v.is_coordination && (
           <Button variant="outline" size="sm" onClick={onRetire}>
             {v.retired_at ? (
-              <RotateCcw className="h-4 w-4 ml-1" />
+              <RotateCcw className="h-4 w-4 me-1" />
             ) : (
-              <ArchiveX className="h-4 w-4 ml-1" />
+              <ArchiveX className="h-4 w-4 me-1" />
             )}
             {v.retired_at ? "استعادة" : "إزالة من القوائم"}
           </Button>
@@ -557,7 +558,7 @@ function VersionCard({
                 disabled={!canManage}
                 onClick={onClone}
               >
-                <Copy className="h-4 w-4 ml-1" /> استنساخ النسخة
+                <Copy className="h-4 w-4 me-1" /> استنساخ النسخة
               </Button>
             </div>
           ) : null}
@@ -575,7 +576,7 @@ function VersionCard({
                       {e.from_status && `(${e.from_status}→${e.to_status})`}
                     </span>
                     <span className="text-muted-foreground">
-                      {new Date(e.created_at).toLocaleString("ar")}
+                      {formatDateTime(e.created_at)}
                     </span>
                   </li>
                 ))}

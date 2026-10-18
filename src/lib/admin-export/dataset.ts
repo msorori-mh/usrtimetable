@@ -7,6 +7,7 @@
  * these builders stay pure and unit-testable.
  */
 import { csvField } from "../reports/spreadsheet-safe";
+import { formatDateTime } from "@/lib/format";
 
 export type AdminExportCell = string | number;
 
@@ -112,7 +113,7 @@ export function buildAdminExportMetadata<T>(
     ["التقرير", dataset.title],
     ["الكلية", formatAdminExportValue(dataset.collegeName)],
     ["عدد السجلات المصدَّرة", dataset.rows.length],
-    ["تاريخ التصدير", now.toLocaleString("ar-EG")],
+    ["تاريخ التصدير", formatDateTime(now)],
   ];
   if (dataset.scopeNote) rows.push(["نطاق التصدير", dataset.scopeNote]);
   rows.push([ADMIN_EXPORT_CRITERIA_SHEET_AR, ""]);

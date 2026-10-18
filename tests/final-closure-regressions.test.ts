@@ -11,8 +11,10 @@ describe("final closure regressions", () => {
 
     expect(source.includes("course_offerings!inner(program_id")).toBe(false);
     expect(source.includes('.select("schedule_version_id, course_offering_id")')).toBe(true);
-    expect(source.includes('.select("id, program_id, course_id")')).toBe(true);
-    expect(source.includes('.select("id, department_id")')).toBe(true);
+    // H-10: offerings and courses are read by chunked id lists through readByIds(table, columns, ids).
+    expect(source.includes('"id, program_id, course_id"')).toBe(true);
+    expect(source.includes('"id, department_id"')).toBe(true);
+    expect(source.includes("chunkIds(ids)")).toBe(true);
     expect(source.includes("offeringsById")).toBe(true);
     expect(source.includes("departmentsByCourseId")).toBe(true);
   });

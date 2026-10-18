@@ -200,10 +200,10 @@ export function CollegeSourceTimetable({
         </p>
         <div className="overflow-x-auto">
           <table
-            className="w-full min-w-[760px] border-collapse text-right text-sm"
+            className="w-full min-w-[760px] border-collapse text-start text-sm"
             aria-label="ملخص ساعات أقسام كلية التربية والعلوم"
           >
-            <caption className="py-2 text-right font-semibold">
+            <caption className="py-2 text-start font-semibold">
               إجمالي ساعات الأقسام والمستويات بحسب حصر الكلية
             </caption>
             <thead>
@@ -320,7 +320,7 @@ export function CollegeSourceTimetable({
         </div>
         <div className="overflow-x-auto">
           <table
-            className="w-full border-collapse text-right text-sm"
+            className="w-full border-collapse text-start text-sm"
             aria-label={`جدول ${selectedDepartment.name} من ملف القسم`}
           >
             <thead>

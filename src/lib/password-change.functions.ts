@@ -65,11 +65,12 @@ export const completeInitialPasswordChange = createServerFn({ method: "POST" })
     if (data.newPassword === data.currentPassword)
       throw new Error("اختر كلمة مرور مختلفة عن كلمة المرور المؤقتة.");
     // M-3: personal context (email local part, account name) is known only here.
-    const { data: profile } = await supabaseAdmin
+    const { data: profile, error: profileError } = await supabaseAdmin
       .from("profiles")
       .select("full_name")
       .eq("id", context.userId)
       .maybeSingle();
+    if (profileError) throw new Error("تعذر التحقق من بيانات الحساب.");
     const contextIssues = passwordPolicyIssues(data.newPassword, {
       email: user.email,
       name: profile?.full_name ?? null,

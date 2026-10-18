@@ -521,15 +521,27 @@ export const setUserCollege = createServerFn({ method: "POST" })
     if (!plan.ok) throw new Error(plan.error);
     if (plan.add.length === 0 && plan.remove.length === 0) return { ok: true, changed: false };
 
-    // Insert first, then remove: a dean is never left with zero colleges.
-    if (plan.add.length > 0) {
+    // A dean moving to another college: one UPDATE, so the database rule "a dean holds at most
+    // one college" (DEAN_SINGLE_COLLEGE) and "never zero colleges" both hold at every moment.
+    const isDeanMove =
+      current.roles.includes("college_dean") && plan.add.length === 1 && plan.remove.length === 1;
+    if (isDeanMove) {
+      const { error } = await supabaseAdmin
+        .from("user_colleges")
+        .update({ college_id: plan.add[0] })
+        .eq("user_id", data.userId)
+        .eq("college_id", plan.remove[0]);
+      if (error) throw serverFailure("تعذّر نقل العميد إلى الكلية.", error, "college-move");
+    }
+    // Otherwise insert first, then remove: a dean is never left with zero colleges.
+    if (!isDeanMove && plan.add.length > 0) {
       const { error } = await supabaseAdmin.from("user_colleges").upsert(
         plan.add.map((collegeId) => ({ user_id: data.userId, college_id: collegeId })),
         { onConflict: "user_id,college_id", ignoreDuplicates: true },
       );
       if (error) throw serverFailure("تعذّر إسناد الكلية.", error, "college-insert");
     }
-    if (plan.remove.length > 0) {
+    if (!isDeanMove && plan.remove.length > 0) {
       const { error } = await supabaseAdmin
         .from("user_colleges")
         .delete()

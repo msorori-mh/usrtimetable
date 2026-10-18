@@ -57,7 +57,19 @@ export function buildContentSecurityPolicy(options: SecurityHeaderOptions): stri
     ],
     ["style-src", ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"]],
     ["font-src", ["'self'", "https://fonts.gstatic.com", "data:"]],
-    ["img-src", ["'self'", "data:", "blob:", "https://*.supabase.co"]],
+    [
+      "img-src",
+      [
+        ...new Set([
+          "'self'",
+          "data:",
+          "blob:",
+          "https://*.supabase.co",
+          // A custom Supabase domain serves images too (only its https origin, not wss).
+          ...supabaseOrigins(options.supabaseUrl).filter((o) => o.startsWith("https://")),
+        ]),
+      ],
+    ],
     ["connect-src", [...new Set(connect)]],
     ["worker-src", ["'self'", "blob:"]],
     ["frame-src", ["'self'", "blob:", "data:"]],

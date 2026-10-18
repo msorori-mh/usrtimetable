@@ -44,9 +44,6 @@ CREATE POLICY initial_password_ready ON public.user_feature_flags
   USING ((SELECT NOT public.password_change_required()))
   WITH CHECK ((SELECT NOT public.password_change_required()));
 
--- Preserve current behaviour: the account previously special-cased by e-mail.
-INSERT INTO public.user_feature_flags (user_id, flag)
-SELECT u.id, 'omit_leadership_title'
-FROM auth.users u
-WHERE lower(u.email) = 'ahaider@usr.edu.ye'
-ON CONFLICT (user_id, flag) DO NOTHING;
+-- The account previously special-cased by e-mail is flagged by an operator after deployment
+-- (docs/operations/release-runbook.md, "user feature flags"), so no personal e-mail address
+-- is stored in the repository (L-7).

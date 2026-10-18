@@ -14,6 +14,10 @@ const KNOWN_ERRORS: Array<{ match: (code: string, message: string) => boolean; a
     ar: "لا يمكن إزالة آخر مدير نظام (Super Admin) في المنصة.",
   },
   {
+    match: (_c, m) => m.includes("DEAN_SINGLE_COLLEGE"),
+    ar: "عميد الكلية يُسند إلى كلية واحدة فقط.",
+  },
+  {
     match: (_c, m) => m.includes("RATE_LIMITED_MEMBERSHIP_CHANGE"),
     ar: "تم تجاوز الحد المسموح لتغيير الأدوار مؤقتًا. أعد المحاولة بعد قليل.",
   },

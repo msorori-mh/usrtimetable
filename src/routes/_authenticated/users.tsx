@@ -71,6 +71,7 @@ import {
   ShieldAlert,
   AlertTriangle,
 } from "lucide-react";
+import { formatDateTime } from "@/lib/format";
 
 export const Route = createFileRoute("/_authenticated/users")({
   head: () => ({ meta: [{ title: "إدارة المستخدمين" }] }),
@@ -401,7 +402,7 @@ function UsersPage() {
               presetRole="college_admin"
               triggerLabel="إنشاء مدير كلّية"
               triggerVariant="outline"
-              triggerIcon={<ShieldCheck className="ml-1 h-4 w-4" />}
+              triggerIcon={<ShieldCheck className="me-1 h-4 w-4" />}
               onCreate={async (input) => {
                 await createUserFn({ data: input });
                 qc.invalidateQueries({ queryKey: ["all-users-admin"] });
@@ -460,9 +461,9 @@ function UsersPage() {
                     </span>
                     <span className="mx-2 text-muted-foreground">·</span>
                     <span className="text-xs text-muted-foreground">
-                      {new Date(event.created_at).toLocaleString("ar")}
+                      {formatDateTime(event.created_at)}
                     </span>
-                    <Badge variant="outline" className="mr-2">
+                    <Badge variant="outline" className="ms-2">
                       {event.severity}
                     </Badge>
                   </summary>
@@ -591,7 +592,7 @@ function UsersPage() {
                         <p className="mt-2 text-[11px] text-muted-foreground">
                           آخر دخول:{" "}
                           {u.last_sign_in_at
-                            ? new Date(u.last_sign_in_at).toLocaleString("ar")
+                            ? formatDateTime(u.last_sign_in_at)
                             : "لم يُسجَّل دخول بعد"}
                         </p>
                       )}
@@ -611,7 +612,7 @@ function UsersPage() {
                           }
                           disabled={!u.email}
                         >
-                          <KeyRound className="ml-1 h-3.5 w-3.5" />
+                          <KeyRound className="me-1 h-3.5 w-3.5" />
                           إعادة تعيين كلمة المرور
                         </Button>
                         <Button
@@ -625,7 +626,7 @@ function UsersPage() {
                           }
                           disabled={setEnabled.isPending || u.id === me?.id}
                         >
-                          <Power className="ml-1 h-3.5 w-3.5" />
+                          <Power className="me-1 h-3.5 w-3.5" />
                           {disabled ? "تمكين" : "تعطيل"}
                         </Button>
                         <Button
@@ -675,7 +676,7 @@ function UsersPage() {
                                     </span>
                                   )}
                                 </label>
-                                <p className="mt-1 pr-6 text-[11px] leading-relaxed text-muted-foreground">
+                                <p className="mt-1 ps-6 text-[11px] leading-relaxed text-muted-foreground">
                                   {ROLE_HINTS[role]}
                                 </p>
                               </div>
@@ -889,7 +890,7 @@ function CreateUserDialog({
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         <Button variant={triggerVariant}>
-          {triggerIcon ?? <Plus className="ml-1 h-4 w-4" />}
+          {triggerIcon ?? <Plus className="me-1 h-4 w-4" />}
           {triggerLabel}
         </Button>
       </DialogTrigger>

@@ -777,10 +777,11 @@ export async function validateScheduleVersion(params: {
   if (result.conflicts.length > 0) {
     // Map codes → constraint_type_id (best-effort)
     const codes = Array.from(new Set(result.conflicts.map((c) => c.code)));
-    const { data: ctypes } = await supabase
+    const { data: ctypes, error: ctypesError } = await supabase
       .from("constraint_types")
       .select("id, code")
       .in("code", codes);
+    if (ctypesError) throw ctypesError;
     const codeMap = new Map((ctypes ?? []).map((c) => [c.code, c.id]));
 
     const rows = result.conflicts.map((c) => ({

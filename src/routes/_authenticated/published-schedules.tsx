@@ -24,6 +24,7 @@ import {
   EDUCATION_SOURCE_PUBLICATION_NOTICE_AR,
   isEducationSourcePublication,
 } from "@/lib/schedule-versions/education-publication";
+import { formatDateTime } from "@/lib/format";
 
 export const Route = createFileRoute("/_authenticated/published-schedules")({
   head: () => ({ meta: [{ title: "الجداول المنشورة" }] }),
@@ -42,11 +43,12 @@ function PublishedSchedulesPage() {
     queryKey: ["pub-terms", active?.id],
     enabled: !!active,
     queryFn: async () => {
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from("academic_terms")
         .select("id, name, academic_year")
         .eq("college_id", active!.id)
         .order("start_date", { ascending: false });
+      if (error) throw error;
       return data ?? [];
     },
   });
@@ -55,10 +57,11 @@ function PublishedSchedulesPage() {
     queryKey: ["pub-depts", active?.id],
     enabled: !!active,
     queryFn: async () => {
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from("departments")
         .select("id, name")
         .eq("college_id", active!.id);
+      if (error) throw error;
       return data ?? [];
     },
   });
@@ -72,7 +75,8 @@ function PublishedSchedulesPage() {
         .select("id, name, department_id")
         .eq("college_id", active!.id);
       if (fDept !== "all") q = q.eq("department_id", fDept);
-      const { data } = await q;
+      const { data, error } = await q;
+      if (error) throw error;
       return data ?? [];
     },
   });
@@ -311,12 +315,12 @@ function PublishedSchedulesPage() {
                 </div>
                 {v.notes && <div className="text-xs">{v.notes}</div>}
                 <div className="text-[10px] text-muted-foreground">
-                  {new Date(v.updated_at).toLocaleString("ar")}
+                  {formatDateTime(v.updated_at)}
                 </div>
                 <div className="flex w-full min-w-0 flex-col gap-2 sm:flex-row">
                   <Button variant="outline" size="sm" asChild className="w-full sm:flex-1">
                     <Link to="/timetable/$versionId" params={{ versionId: v.id }}>
-                      <ExternalLink className="h-4 w-4 ml-1" /> عرض (للقراءة فقط)
+                      <ExternalLink className="h-4 w-4 me-1" /> عرض (للقراءة فقط)
                     </Link>
                   </Button>
                   {/*
@@ -331,7 +335,7 @@ function PublishedSchedulesPage() {
                     data-testid="published-print-link"
                   >
                     <Link to="/timetable/$versionId/print" params={{ versionId: v.id }}>
-                      <Printer className="h-4 w-4 ml-1" /> طباعة وتصدير
+                      <Printer className="h-4 w-4 me-1" /> طباعة وتصدير
                     </Link>
                   </Button>
                 </div>

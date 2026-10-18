@@ -130,6 +130,20 @@ where n.nspname = 'public' and has_function_privilege('anon', p.oid, 'EXECUTE')
 - أكمل سجل الإصدار: SHA، الترحيلات، نتائج التحقق، معرّف النشر، من نفّذ كل خطوة.
 - أبلغ أصحاب المصلحة.
 
+## ملحق: أعلام المستخدمين (user feature flags)
+
+بعد تطبيق `20261025090000_user_feature_flags.sql` لأول مرة، يضيف المشغّل علم حذف لقب «رئيس الجامعة»
+من التحية للحساب المعني (كان مثبتًا ببريده في الكود، وأُزيل البريد من المستودع — L-7). نفّذ في SQL Editor
+مع البريد الفعلي، ثم تأكد أن الاستعلام أعاد صفًا واحدًا:
+
+```sql
+INSERT INTO public.user_feature_flags (user_id, flag)
+SELECT u.id, 'omit_leadership_title' FROM auth.users u
+WHERE lower(u.email) = lower('<بريد الحساب>')
+ON CONFLICT (user_id, flag) DO NOTHING
+RETURNING user_id;
+```
+
 ## § الانحراف (drift)
 
 - `missing_in_db`: ترحيلة في المستودع لم تطبق. إن كانت جزءًا من هذا الإصدار فطبقها؛ إن كانت قديمة

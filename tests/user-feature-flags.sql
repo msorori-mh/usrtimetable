@@ -1,9 +1,9 @@
--- L-7: the greeting special case is data-driven, seeded by the migration,
+-- L-7: the greeting special case is data-driven, set by an operator (no e-mail in the repo),
 -- readable only by the owner (and super admins) and managed only by super admins.
 BEGIN;
 
 INSERT INTO auth.users (id, email) VALUES
-  ('00000000-0000-4000-8000-0000000000a1', 'ahaider@usr.edu.ye'),
+  ('00000000-0000-4000-8000-0000000000a1', 'leader@example.edu'),
   ('00000000-0000-4000-8000-0000000000a2', 'other@example.edu'),
   ('00000000-0000-4000-8000-0000000000a3', 'admin@example.edu');
 -- New accounts are marked must_change_password by a trigger; these fixtures are ready accounts.
@@ -18,10 +18,10 @@ INSERT INTO public.user_roles (user_id, role) VALUES
   ('00000000-0000-4000-8000-0000000000a2', 'read_only'),
   ('00000000-0000-4000-8000-0000000000a3', 'super_admin');
 
--- Re-run the migration's seed statement (idempotent) now that the user exists.
+-- The operator step from the release runbook (flag one account by e-mail).
 INSERT INTO public.user_feature_flags (user_id, flag)
 SELECT u.id, 'omit_leadership_title' FROM auth.users u
-WHERE lower(u.email) = 'ahaider@usr.edu.ye'
+WHERE lower(u.email) = 'leader@example.edu'
 ON CONFLICT (user_id, flag) DO NOTHING;
 
 DO $$ BEGIN

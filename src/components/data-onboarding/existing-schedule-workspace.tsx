@@ -364,7 +364,7 @@ export function ExistingScheduleWorkspace({
           <p role="status">جارٍ تحميل الجداول…</p>
         ) : (
           <div className="max-h-[650px] overflow-auto">
-            <table className="w-full text-right text-sm">
+            <table className="w-full text-start text-sm">
               <thead className="sticky top-0 bg-background">
                 <tr>
                   {[
