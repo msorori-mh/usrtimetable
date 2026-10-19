@@ -39,54 +39,6 @@ function assert(cond: boolean, msg: string) {
 
 const tests: Array<{ name: string; run: () => void }> = [];
 
-// Pre-Q-2 wiring check, kept for reference.
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-function assertExceptionWiring(src: string) {
-  const source = ts.createSourceFile("validator.ts", src, ts.ScriptTarget.Latest, true);
-  const fn = source.statements.find(
-    (node): node is ts.FunctionDeclaration =>
-      ts.isFunctionDeclaration(node) && node.name?.text === "validateScheduleVersion",
-  );
-  assert(!!fn?.body, "validateScheduleVersion must exist");
-  const declarations = fn!.body!.statements.flatMap((node) =>
-    ts.isVariableStatement(node) ? [...node.declarationList.declarations] : [],
-  );
-  const loaded = declarations.find((node) => node.name.getText(source) === "approvedExceptions");
-  const result = declarations.find((node) => node.name.getText(source) === "result");
-  const awaited = loaded?.initializer;
-  assert(!!awaited && ts.isAwaitExpression(awaited), "must await approved exceptions");
-  const loader = (awaited as ts.AwaitExpression).expression;
-  assert(ts.isCallExpression(loader), "must call approved exception loader");
-  const call = loader as ts.CallExpression;
-  assert(call.expression.getText(source) === "loadApprovedExceptions", "must use approved loader");
-  const scope = call.arguments[0];
-  assert(
-    !!scope && ts.isObjectLiteralExpression(scope),
-    "loader must receive version and college scope",
-  );
-  for (const name of ["scheduleVersionId", "collegeId"]) {
-    assert(
-      (scope as ts.ObjectLiteralExpression).properties.some(
-        (property) => ts.isShorthandPropertyAssignment(property) && property.name.text === name,
-      ),
-      `loader must be scoped by ${name}`,
-    );
-  }
-  const applied = result?.initializer;
-  assert(!!applied && ts.isCallExpression(applied), "must apply loaded exceptions");
-  const apply = applied as ts.CallExpression;
-  assert(
-    apply.expression.getText(source) === "applyApprovedExceptions",
-    "must apply approved exceptions",
-  );
-  assert(
-    JSON.stringify(apply.arguments.map((arg) => arg.getText(source))) ===
-      JSON.stringify(["conflicts", "scheduleVersionId", "approvedExceptions"]),
-    "must pass loaded exceptions for the same version",
-  );
-  assert(loaded!.pos < result!.pos, "load must precede apply");
-}
-
 const root = path.join(path.dirname(fileURLToPath(import.meta.url)), "../..");
 const validatorSource = readFileSync(
   path.join(root, "src/lib/conflict-engine/validator.ts"),
@@ -97,7 +49,12 @@ const validatorSource = readFileSync(
 tests.push({
   name: "validateScheduleVersion uses the server-computed result, exceptions included",
   run: () => {
-    const source = ts.createSourceFile("validator.ts", validatorSource, ts.ScriptTarget.Latest, true);
+    const source = ts.createSourceFile(
+      "validator.ts",
+      validatorSource,
+      ts.ScriptTarget.Latest,
+      true,
+    );
     const fn = source.statements.find(
       (node): node is ts.FunctionDeclaration =>
         ts.isFunctionDeclaration(node) && node.name?.text === "validateScheduleVersion",
@@ -108,7 +65,10 @@ tests.push({
       /await fetchServerVersionValidation\(\s*scheduleVersionId\s*\)/.test(body),
       "must await the server validation for the same version",
     );
-    assert(body.includes("server.approvedCount") && body.includes("server.hardCount"), "counts come from the server");
+    assert(
+      body.includes("server.approvedCount") && body.includes("server.hardCount"),
+      "counts come from the server",
+    );
     assert(!body.includes("applyApprovedExceptions"), "must not re-apply exceptions on the client");
   },
 });
