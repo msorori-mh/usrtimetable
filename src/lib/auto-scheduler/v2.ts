@@ -79,7 +79,10 @@ const ALGORITHM_VERSION = "v2-atomic-generation-repair-2-single-component-instru
  * against a truncated session or cohort list.
  */
 async function pagedRead<T>(
-  page: (from: number, to: number) => PromiseLike<{ data: T[] | readonly unknown[] | null; error: unknown }>,
+  page: (
+    from: number,
+    to: number,
+  ) => PromiseLike<{ data: T[] | readonly unknown[] | null; error: unknown }>,
 ): Promise<{ data: T[] | null; error: { message: string } | null }> {
   try {
     return { data: await readAllRows<T>(page), error: null };
@@ -95,7 +98,7 @@ async function pagedRead<T>(
 /** `.in("id", ids)` reads chunked so long id lists never overflow the request URL. */
 async function readByIdChunks<T>(
   ids: string[],
-  page: (chunk: string[]) => PromiseLike<{ data: T[] | readonly unknown[] | null; error: unknown }>,
+  page: (chunk: string[]) => PromiseLike<{ data: T[] | null; error: unknown }>,
 ): Promise<{ data: T[] | null; error: { message: string } | null }> {
   const out: T[] = [];
   for (const chunk of chunkIds(ids)) {
