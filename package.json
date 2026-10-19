@@ -106,7 +106,7 @@
     "seroval": "1.6.8",
     "undici": "7.29.0",
     "minimatch": "10.2.3",
-    "js-yaml": "4.3.0",
+    "js-yaml": "4.3.2",
     "postcss": "8.5.18",
     "esbuild": "0.28.1",
     "@babel/core": "7.29.7"

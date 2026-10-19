@@ -51,7 +51,8 @@ describe("instructor edit wiring", () => {
   it("keeps create/delete admin-only", () => {
     expect(src).toContain("صلاحيتك تسمح بتعديل المحاضرين الحاليين فقط");
     expect(src).toContain("{canManage && (");
-    expect(src).toContain("حذف المحاضر؟");
+    expect(src).toContain("title: `حذف المحاضر «${i.full_name}»؟`");
+    expect(src).toContain("typedConfirmation: i.full_name");
   });
 
   it("migration whitelists the academic-affairs role without widening can_manage_college", () => {

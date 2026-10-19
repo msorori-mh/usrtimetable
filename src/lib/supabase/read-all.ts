@@ -17,7 +17,9 @@
 export const READ_ALL_PAGE_SIZE = 1000;
 
 export async function readAllRows<T>(
-  page: (from: number, to: number) => PromiseLike<{ data: T[] | null; error: unknown }>,
+  // `readonly unknown[]` lets a caller name the row type it selects (T) even when the
+  // generated builder type differs (embeds, casts); T is still inferred when omitted.
+  page: (from: number, to: number) => PromiseLike<{ data: T[] | readonly unknown[] | null; error: unknown }>,
   pageSize: number = READ_ALL_PAGE_SIZE,
 ): Promise<T[]> {
   const rows: T[] = [];
@@ -25,7 +27,7 @@ export async function readAllRows<T>(
     const result = await page(from, from + pageSize - 1);
     if (result.error) throw result.error;
     if (!result.data) throw new Error("تعذر قراءة البيانات كاملة");
-    rows.push(...result.data);
+    rows.push(...(result.data as T[]));
     if (result.data.length < pageSize) return rows;
   }
 }
@@ -58,7 +60,9 @@ export function chunkIds<T>(ids: readonly T[], size = 150): T[][] {
  * replace a builder inside an existing `Promise.all([...])` without restructuring.
  */
 export async function readAllResult<T>(
-  page: (from: number, to: number) => PromiseLike<{ data: T[] | null; error: unknown }>,
+  // `readonly unknown[]` lets a caller name the row type it selects (T) even when the
+  // generated builder type differs (embeds, casts); T is still inferred when omitted.
+  page: (from: number, to: number) => PromiseLike<{ data: T[] | readonly unknown[] | null; error: unknown }>,
   pageSize: number = READ_ALL_PAGE_SIZE,
 ): Promise<{ data: T[] | null; error: unknown }> {
   try {

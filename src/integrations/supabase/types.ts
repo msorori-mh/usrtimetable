@@ -3636,6 +3636,7 @@ export type Database = {
           is_coordination: boolean
           name: string
           notes: string | null
+          protected: boolean
           retired_at: string | null
           retired_by: string | null
           status: string
@@ -3653,6 +3654,7 @@ export type Database = {
           is_coordination?: boolean
           name: string
           notes?: string | null
+          protected?: boolean
           retired_at?: string | null
           retired_by?: string | null
           status?: string
@@ -3670,6 +3672,7 @@ export type Database = {
           is_coordination?: boolean
           name?: string
           notes?: string | null
+          protected?: boolean
           retired_at?: string | null
           retired_by?: string | null
           status?: string

@@ -11,7 +11,7 @@
 | `seroval` | `1.6.8` | ثغرة **حرجة** GHSA-mv8w-475r-vwqw في نسخ seroval الأقدم التي تسحبها `@tanstack/react-router` / `@tanstack/react-start` (تسلسل/فك تسلسل حالة SSR). | عندما تعتمد نسخ TanStack المثبتة مباشرة على seroval ≥ 1.6.8. |
 | `undici` | `7.29.0` | إصلاحات أمنية في عميل HTTP الذي تستخدمه أدوات البناء/nitro (تسريب ترويسات عند إعادة التوجيه واستهلاك موارد). | عند ترقية nitro/miniflare إلى نسخة تعتمد على undici ≥ 7.29. |
 | `minimatch` | `10.2.3` | ثغرة ReDoS في نسخ minimatch الأقدم التي تسحبها أدوات lint/build. | عندما لا يطلب أي اعتماد نسخة أقدم (`bun pm why minimatch`). |
-| `js-yaml` | `4.3.0` | ثغرة prototype pollution في `merge` (`<<`) في نسخ js-yaml الأقدم (أدوات ESLint/البناء). | عند خلو الشجرة من js-yaml < 4.3. |
+| `js-yaml` | `4.3.2` | ثغرتان عاليتان مؤكدتان من `bun audit` في 4.3.0: GHSA-5p4m-2wfm-xmqj (استهلاك CPU تربيعي في `!!omap`) وGHSA-2883-xcg3-v3hh (`maxTotalMergeKeys` لا يحدّ مفاتيح الدمج الفارغة)، تسحبها ESLint و`@tanstack/start-plugin-core` (xmlbuilder2). | عند خلو الشجرة من js-yaml < 4.3.2. |
 | `postcss` | `8.5.18` | إصلاح تحليل CSS (line-return parsing) في نسخ postcss الأقدم ضمن Tailwind/Vite. | عند ترقية Vite/Tailwind لنسخ تطلبه أصلًا. |
 | `esbuild` | `0.28.1` | خادم التطوير في esbuild < 0.25 يسمح لأي موقع بقراءة الردود (GHSA-67mh-4wv8-2f99)؛ ونسخة موحدة لكل الأدوات. | عند اعتماد Vite المثبت على esbuild ≥ 0.28. |
 | `@babel/core` | `7.29.7` | ثغرات ReDoS في مساعدات Babel الأقدم المستخدمة في `@vitejs/plugin-react`. | عند ترقية plugin-react. |

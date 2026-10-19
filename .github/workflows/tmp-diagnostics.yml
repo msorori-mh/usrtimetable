@@ -10,33 +10,53 @@ permissions:
 jobs:
   diag:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 40
     strategy:
       fail-fast: false
       matrix:
         include:
+          - name: lockfile
+            cmd: |
+              npm view js-yaml@4.3.2 time.4.3.2 version
+              SKIP_BUILD=1 bash scripts/exit-lovable/regenerate-lockfile.sh > "$RUNNER_TEMP/regen.log" 2>&1; echo "regen exit $?" >> "$RUNNER_TEMP/regen.log"
+              bun audit --audit-level=high >> "$RUNNER_TEMP/regen.log" 2>&1; echo "audit exit $?" >> "$RUNNER_TEMP/regen.log"
+              sha256sum bun.lock >> "$RUNNER_TEMP/regen.log"
+              tail -c 3000 "$RUNNER_TEMP/regen.log"
+              echo "=====BUNLOCK====="
+              cat bun.lock
           - name: tsc
             flags: --tsc
             cmd: bunx tsc --noEmit --pretty false
-          - name: vitest
-            cmd: node scripts/run-all-tests.mjs --group=vitest
           - name: leadership
-            cmd: node --import tsx --test tests/leadership.test.ts tests/academic-affairs.test.ts tests/leadership-room-capacity.test.ts tests/leadership-decisions.test.tsx tests/leadership-metrics-drilldown.test.ts tests/university-overview.test.tsx tests/teaching-demand-capacity.test.mjs
-          - name: consistency
-            cmd: bunx vitest run --config tests/vitest-bun-compat.config.mjs tests/report-assignment-scope.test.ts tests/teaching-assignment-query-invalidation.test.ts tests/schedule-assignment-eligibility.test.ts tests/program-timetable-coverage.test.ts tests/assignment-placement-context.test.ts && node --test tests/assignment-workspace-version-view.test.mjs
-          - name: audit
-            cmd: bun audit --audit-level=high
+            cmd: node --import tsx --test tests/leadership.test.ts tests/academic-affairs.test.ts tests/leadership-room-capacity.test.ts tests/leadership-decisions.test.tsx tests/leadership-metrics-drilldown.test.ts tests/university-overview.test.tsx tests/teaching-demand-capacity.test.mjs 2>&1 | grep -E "^(✖|ℹ|  Error|  AssertionError)" | head -80
+          - name: vitest
+            cmd: node scripts/run-all-tests.mjs --group=vitest 2>&1 | grep -E "FAIL|×|Test Files|Tests  |Error" | head -80
           - name: physical-pages
             cmd: |
-              node --import tsx --test tests/rooms-executive.test.ts
-              bun test tests/university-instructor-schedule.test.ts tests/student-print-memberships.test.ts
-              npm install --prefix "$RUNNER_TEMP/report-qa" --no-package-lock @playwright/test@1.63.0
-              node "$RUNNER_TEMP/report-qa/node_modules/@playwright/test/cli.js" install --with-deps chromium
-              pip install "pymupdf==1.24.10"
-              bunx vite --config scripts/reports-proof/vite.config.mts > "$RUNNER_TEMP/report-preview.log" 2>&1 &
-              for i in {1..60}; do curl -fsS http://127.0.0.1:4173/repeated-header.html >/dev/null && break; sleep 1; done
-              REPORT_QA_MODULES="$RUNNER_TEMP/report-qa/node_modules" node scripts/reports-proof/repeated-header.cjs
-              echo "---- vite preview log"; cat "$RUNNER_TEMP/report-preview.log"
+              npm install --prefix "$RUNNER_TEMP/report-qa" --no-package-lock @playwright/test@1.63.0 >/dev/null 2>&1
+              node "$RUNNER_TEMP/report-qa/node_modules/@playwright/test/cli.js" install --with-deps chromium >/dev/null 2>&1
+              pip install -q "pymupdf==1.24.10" >/dev/null 2>&1
+              dump() {
+                bunx vite --config scripts/reports-proof/vite.config.mts > /dev/null 2>&1 &
+                VP=$!
+                for i in {1..60}; do curl -fsS http://127.0.0.1:4173/repeated-header.html >/dev/null && break; sleep 1; done
+                REPORT_QA_MODULES="$RUNNER_TEMP/report-qa/node_modules" node scripts/reports-proof/repeated-header.cjs > /dev/null 2>&1
+                kill $VP; sleep 2
+                python3 - <<'PY'
+              import fitz, glob
+              for p in sorted(glob.glob("repeated-header-proof/instructor*.pdf")):
+                  d = fitz.open(p)
+                  print("##", p, "pages", len(d))
+                  for n, pg in enumerate(d, 1):
+                      words = pg.get_text("words")
+                      rows = [w for w in words if w[4].startswith("ROW")]
+                      t = " ".join(pg.get_text().split())
+                      print(f"-- page {n} rows={len(rows)} last_y={max([w[3] for w in words] or [0]):.1f} :: {t[:700]}")
+              PY
+              }
+              echo "######## HEAD"; dump
+              git fetch -q --depth=1 origin main && git worktree add -q "$RUNNER_TEMP/main" FETCH_HEAD
+              cd "$RUNNER_TEMP/main" && bun install >/dev/null 2>&1 && echo "######## MAIN" && dump
     name: diag ${{ matrix.name }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
@@ -46,7 +66,7 @@ jobs:
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: "24"
-      - run: bun install --frozen-lockfile
+      - run: bun install
       - name: Run
         shell: bash
         run: |
