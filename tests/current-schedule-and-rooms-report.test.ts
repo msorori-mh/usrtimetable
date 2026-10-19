@@ -472,7 +472,10 @@ test("current timetable course filter is term-scoped and searchable", () => {
   assert.match(route, /eq\("is_active", true\)/);
   assert.match(route, /from\("courses"\)/);
   assert.match(route, /\.in\("id", courseIds\)/);
-  assert.match(route, /label="المادة — جميع أقسام الكلية"/);
+  assert.match(route, /"المادة — جميع أقسام الكلية"/);
+  // A chosen department/program/level narrows the course list to the courses taught there.
+  assert.match(route, /courseIdsInScope\(/);
+  assert.match(route, /"المادة — ضمن النطاق المختار"/);
   assert.match(route, /current-print-course-search/);
   assert.match(route, /اكتب اسم المادة أو رمزها/);
   assert.match(route, /normalizedMatchKey\(courseSearch\)/);

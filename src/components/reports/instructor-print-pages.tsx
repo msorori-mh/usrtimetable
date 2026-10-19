@@ -43,14 +43,21 @@ export async function prepareInstructorPrintPages(
           margin: 0 !important;
           @bottom-center { content: none !important; }
         }
-        .instructor-canonical-pages { width: 210mm !important; margin: 0 !important; padding: 0 !important; }
+        /* The page images are A4-shaped. They fill the printable width and keep their ratio, so
+           a page still fits on one sheet when the shared 12/15 mm report margins (or browser
+           margins) apply instead of the zero-margin named page; a fixed 210x297 mm box overflowed
+           those margins, clipping the left edge and pushing each footer onto its own sheet. */
+        .instructor-canonical-pages { width: 100% !important; margin: 0 !important; padding: 0 !important; }
         .instructor-canonical-page {
-          page: instructor-individual; width: 210mm !important; height: 297mm !important;
+          page: instructor-individual; width: 100% !important; height: auto !important;
           margin: 0 !important; padding: 0 !important; line-height: 0; break-inside: avoid;
-          break-after: page;
+          break-after: page; overflow: hidden;
         }
         .instructor-canonical-page:last-child { break-after: auto; }
-        .instructor-canonical-page img { display: block; width: 100% !important; height: 100% !important; max-width: none !important; }
+        .instructor-canonical-page img {
+          display: block; width: 100% !important; height: auto !important; max-width: 100% !important;
+          max-height: 296mm !important; margin: 0 auto !important; object-fit: contain;
+        }
       }`}</style>
       {images.map((src, index) => (
         <div key={index} className="instructor-canonical-page">
