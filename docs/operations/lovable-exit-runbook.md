@@ -25,7 +25,7 @@ export NEW_REF='<project-ref الجديد>'                 # مثل abcdefghijk
 export NEW_DB_URL='postgresql://postgres:<pw>@db.'"$NEW_REF"'.supabase.co:5432/postgres?sslmode=require'
 export OLD_DB_READONLY_URL='postgresql://…'            # اتصال قراءة فقط بالقديم إن أتاحه Lovable، وإلا استخدم SQL Editor
 export BACKUP=~/secure/lovable-export-$(date -u +%Y%m%d).backup
-export DOMAIN='timetable.usr.edu.ye'                   # النطاق النهائي (مثال)
+export DOMAIN='gomufadhala.com'                        # النطاق النهائي (قرار 19 أكتوبر: النطاق الحالي)
 ```
 
 استخدم اتصال **Direct connection** (المنفذ 5432) أو **Session pooler** للاستعادة، لا Transaction
@@ -379,9 +379,11 @@ psql "$NEW_DB_URL" -v ON_ERROR_STOP=1 -f tests/security-anon-definer-guard.sql  
 ## 7) Cloudflare
 
 1. **الحساب:** حساب Cloudflare باسم الجامعة، مالكان على الأقل، MFA إلزامي.
-2. **النطاق:** يجب أن تكون منطقة DNS للنطاق (`usr.edu.ye` أو نطاق فرعي مخصص) **مفعلة على Cloudflare**
-   (Full setup) لاستخدام *Custom Domains* للـWorker. إن كانت DNS الجامعة خارج Cloudflare فالقرار أحد:
-   نقل المنطقة، أو نطاق مخصص جديد للمنصة على Cloudflare. سجّل القرار.
+2. **النطاق (قرار 19 أكتوبر: `gomufadhala.com`، النطاق الحالي):** تُضاف منطقته إلى Cloudflare
+   (Full setup) لاستخدام *Custom Domains* للـWorker. أثناء الإضافة تُستورد سجلات DNS الحالية كما هي
+   (الموقع يبقى على Lovable، وسجلات البريد MX/TXT إن وُجدت)، ثم تُغيَّر خوادم الأسماء عند المسجّل.
+   لا يتغير شيء للمستخدمين حتى يوم الانتقال، حين يحل Custom Domain للـWorker محل سجل Lovable ويُفصل
+   النطاق من إعدادات Lovable.
 3. **رمز API:** My Profile → API Tokens → Create Token → قالب *Edit Cloudflare Workers* مقيد بالحساب
    والمنطقة (Workers Scripts:Edit، Workers Routes:Edit، Zone:Read، DNS:Edit للنطاق المخصص). مدة صلاحية
    سنة، ويُدوَّر.
