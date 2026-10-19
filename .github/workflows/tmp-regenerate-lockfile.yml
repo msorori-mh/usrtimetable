@@ -1,0 +1,31 @@
+name: tmp-regenerate-lockfile
+# Temporary (Lovable exit, step A): regenerates bun.lock against the public npm
+# registry and uploads it as an artifact. Read-only token; nothing is pushed.
+# Removed in the commit that adds the regenerated bun.lock.
+on:
+  push:
+    branches: [audit-remediation]
+    paths: [".github/workflows/tmp-regenerate-lockfile.yml"]
+permissions:
+  contents: read
+jobs:
+  lockfile:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
+        with:
+          bun-version: "1.4.2"
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: "22"
+      - name: Regenerate, verify frozen install and build
+        run: bash scripts/exit-lovable/regenerate-lockfile.sh
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        if: always()
+        with:
+          name: bun-lock
+          path: |
+            bun.lock
+          if-no-files-found: warn
