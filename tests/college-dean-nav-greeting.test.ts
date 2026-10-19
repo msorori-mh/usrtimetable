@@ -154,7 +154,7 @@ describe("university president greeting", () => {
     expect(layout).toMatch(/isUniversityLeadershipOnly: universityLeadershipOnly/);
     expect(layout).toMatch(/university-president/);
     expect(layout).toMatch(/text-xl font-extrabold/);
-    expect(layout).toMatch(/border-r-\[var\(--usr-gold\)\]/);
+    expect(layout).toMatch(/border-s-\[var\(--usr-gold\)\]/);
   });
 });
 

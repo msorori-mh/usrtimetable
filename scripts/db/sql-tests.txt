@@ -21,6 +21,7 @@ empty   tests/instructor-extra-hours-limit.sql
 empty   tests/itcs-theory-room-policy.sql
 empty   tests/itcs-v2-delivery-baseline-db.sql
 empty   tests/itcs-version-scoped-guards-db.sql
+empty   tests/version-shared-lecture-merge.sql
 
 migrated tests/itcs-partition-daily-hours.sql
 
@@ -42,3 +43,4 @@ skip    tests/faculty-employment-numbers.sql           # needs the disposable TE
 skip    tests/education-term-completion.sql            # needs Education college source revision data (COMPLETION_COVERAGE_DRIFT on replay)
 skip    tests/jawf-term-completion.sql                 # needs Jawf source data (its migration fails on a fresh replay)
 skip    tests/shared-lecture-load.sql                  # read-only invariant over published production timetables
+skip    tests/timetable-work-items-live.sql            # needs production data (the ITCS acceptance account and published version)

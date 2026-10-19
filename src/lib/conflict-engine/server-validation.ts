@@ -32,4 +32,3 @@ export async function fetchServerVersionValidation(
   if (error) throw new Error(`تعذر فحص تعارضات النسخة على الخادم: ${error.message}`);
   return mapServerValidation(data);
 }
-

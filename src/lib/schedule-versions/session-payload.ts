@@ -56,4 +56,3 @@ export function buildManualSessionPayload(
   if (scheduleVersionId) payload.schedule_version_id = scheduleVersionId;
   return payload;
 }
-

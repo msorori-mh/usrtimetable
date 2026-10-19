@@ -100,7 +100,7 @@ if [[ "$tier" == all || "$tier" == empty ]]; then
     cluster="$work/cluster"
     rm -rf "$cluster"; mkdir -p "$cluster"
     [[ ${#as[@]} -eq 0 ]] || chown 65534:65534 "$cluster" "$work"
-    "${as[@]}" "$pg_bin/initdb" -D "$cluster/data" -U postgres -A trust >/dev/null 2>&1
+    "${as[@]}" "$pg_bin/initdb" -D "$cluster/data" -U postgres -A trust -E UTF8 --locale=C.UTF-8 >/dev/null 2>&1
     "${as[@]}" "$pg_bin/pg_ctl" -D "$cluster/data" -o "-p $port -k $cluster -c listen_addresses=''" -w start >/dev/null 2>&1
     if PGHOST="$cluster" PGPORT="$port" PGUSER=postgres PGPASSWORD="" run_psql_file postgres "$f"; then
       pass=$((pass + 1)); report PASS "$f" "(empty cluster)"
