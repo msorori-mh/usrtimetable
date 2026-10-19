@@ -38,25 +38,23 @@ export async function prepareInstructorPrintPages(
   return (
     <div className="instructor-canonical-pages" data-testid="instructor-canonical-pages">
       <style>{`@media print {
-        @page instructor-individual {
-          size: A4 portrait !important;
-          margin: 0 !important;
-          @bottom-center { content: none !important; }
-        }
-        /* The page images are A4-shaped. They fill the printable width and keep their ratio, so
-           a page still fits on one sheet when the shared 12/15 mm report margins (or browser
-           margins) apply instead of the zero-margin named page; a fixed 210x297 mm box overflowed
-           those margins, clipping the left edge and pushing each footer onto its own sheet. */
+        /* Each image already carries the sheet's own footer and "صفحة x من y", so the
+           report's shared page counter is not printed under it. */
+        @page { @bottom-center { content: none !important; } }
+        /* No named page: a page-name change forces a sheet break, so any element after the
+           pages (even an empty one) printed an extra blank sheet. The A4-shaped images fill
+           95% of the printable width and keep their ratio, so each fits one sheet whatever
+           margins apply (report 12/15 mm, browser default or none). Pages are separated with
+           break-before, so nothing breaks after the last one. */
         .instructor-canonical-pages { width: 100% !important; margin: 0 !important; padding: 0 !important; }
         .instructor-canonical-page {
-          page: instructor-individual; width: 100% !important; height: auto !important;
-          margin: 0 !important; padding: 0 !important; line-height: 0; break-inside: avoid;
-          break-after: page; overflow: hidden;
+          width: 100% !important; height: auto !important; margin: 0 !important;
+          padding: 0 !important; line-height: 0; break-inside: avoid; overflow: hidden;
         }
-        .instructor-canonical-page:last-child { break-after: auto; }
+        .instructor-canonical-page + .instructor-canonical-page { break-before: page; }
         .instructor-canonical-page img {
-          display: block; width: 100% !important; height: auto !important; max-width: 100% !important;
-          max-height: 296mm !important; margin: 0 auto !important; object-fit: contain;
+          display: block; width: 95% !important; height: auto !important; max-width: 95% !important;
+          max-height: 282mm !important; margin: 0 auto !important; object-fit: contain;
         }
       }`}</style>
       {images.map((src, index) => (
