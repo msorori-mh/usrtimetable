@@ -26,11 +26,24 @@ import {
   SCHEDULE_BUILDER_UNSAVED_BADGE_AR,
   SCHEDULE_BUILDER_VERSION_NOT_EDITABLE_AR,
 } from "@/lib/schedule-builder/edit-access";
-import { hasPendingChanges, snapshotOriginalFromSession } from "@/lib/schedule-builder/pending-change";
-import { buildEvaluateDropTargetInput, evaluateDropTarget } from "@/lib/schedule-builder/drag-drop-safety";
-import { formatInstructorWindow, instructorSlotBlockReason } from "@/lib/schedule-builder/instructor-perspective";
+import {
+  hasPendingChanges,
+  snapshotOriginalFromSession,
+} from "@/lib/schedule-builder/pending-change";
+import {
+  buildEvaluateDropTargetInput,
+  evaluateDropTarget,
+} from "@/lib/schedule-builder/drag-drop-safety";
+import {
+  formatInstructorWindow,
+  instructorSlotBlockReason,
+} from "@/lib/schedule-builder/instructor-perspective";
 import { INSTRUCTOR_REQUEST_KIND_LABEL_AR } from "@/lib/availability/policy-api";
-import { STATUS_BADGE_VARIANT, STATUS_LABEL_AR, type SVStatus } from "@/lib/schedule-versions/lifecycle";
+import {
+  STATUS_BADGE_VARIANT,
+  STATUS_LABEL_AR,
+  type SVStatus,
+} from "@/lib/schedule-versions/lifecycle";
 import {
   AlertCircle,
   CalendarClock,
@@ -44,8 +57,16 @@ import {
 import { cn } from "@/lib/utils";
 import { formatDecimal } from "@/lib/format";
 import { QueryErrorNotice } from "@/components/app-states/query-error-notice";
-import { useScheduleBuilderWorkspace, formatUpdatedAt } from "@/hooks/use-schedule-builder-workspace";
-import { StatCard, FilterSelect, EmptyState, ErrorInline } from "@/components/schedule-builder/builder-ui";
+import {
+  useScheduleBuilderWorkspace,
+  formatUpdatedAt,
+} from "@/hooks/use-schedule-builder-workspace";
+import {
+  StatCard,
+  FilterSelect,
+  EmptyState,
+  ErrorInline,
+} from "@/components/schedule-builder/builder-ui";
 import { BuilderContextBar } from "@/components/schedule-builder/builder-context-bar";
 
 export const Route = createFileRoute("/_authenticated/schedule-builder")({
@@ -326,9 +347,7 @@ function ScheduleBuilderWorkspacePage() {
                 </div>
                 <div className="flex flex-wrap gap-2 text-sm">
                   <Badge variant="secondary">{perspectiveSessions.length} محاضرة في النسخة</Badge>
-                  <Badge variant="outline">
-                    {formatDecimal(instructorHours)} ساعة أسبوعيًا
-                  </Badge>
+                  <Badge variant="outline">{formatDecimal(instructorHours)} ساعة أسبوعيًا</Badge>
                 </div>
               </div>
 

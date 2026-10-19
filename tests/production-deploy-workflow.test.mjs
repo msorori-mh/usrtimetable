@@ -45,7 +45,11 @@ test("the SHA must be on main and have passed every pr-gate job before anything 
     "Post-deploy smoke check",
   ].map((name) => workflow.indexOf(name));
   for (const [i, pos] of order.entries()) assert.ok(pos >= 0, `step ${i} missing`);
-  assert.deepEqual([...order].sort((a, b) => a - b), order, "steps out of order");
+  assert.deepEqual(
+    [...order].sort((a, b) => a - b),
+    order,
+    "steps out of order",
+  );
   assert.match(workflow, /git merge-base --is-ancestor "\$DEPLOY_SHA" origin\/main/);
   for (const job of [
     "typecheck, lint, repository rules",
@@ -79,7 +83,10 @@ test("build uses production public vars; the Worker gets exactly the four runtim
     workflow,
     /VITE_SUPABASE_PUBLISHABLE_KEY: \$\{\{ secrets\.PROD_SUPABASE_PUBLISHABLE_KEY \}\}/,
   );
-  const secretsBlock = workflow.match(/secrets: \|\n((?:\s{12}\S+\n)+)/)[1].trim().split(/\s+/);
+  const secretsBlock = workflow
+    .match(/secrets: \|\n((?:\s{12}\S+\n)+)/)[1]
+    .trim()
+    .split(/\s+/);
   assert.deepEqual(secretsBlock, [
     "SUPABASE_URL",
     "SUPABASE_PUBLISHABLE_KEY",
@@ -169,23 +176,44 @@ test("rejects missing confirmation, SHA drift, swapped keys, platform routes and
 test("generated config must keep the nitro shape plus nodejs_compat; binding sets name + custom domain", () => {
   const dir = mkdtempSync(path.join(tmpdir(), "usr-prod-preflight-"));
   const configPath = path.join(dir, "wrangler.json");
-  const generated = { name: "usrtimetable", main: "index.mjs", no_bundle: true, assets: { directory: "../public" } };
+  const generated = {
+    name: "usrtimetable",
+    main: "index.mjs",
+    no_bundle: true,
+    assets: { directory: "../public" },
+  };
   writeFileSync(configPath, JSON.stringify(generated));
-  const without = validateProductionEnvironment(safe(), opts({ requireBuild: true, wranglerConfig: configPath }));
+  const without = validateProductionEnvironment(
+    safe(),
+    opts({ requireBuild: true, wranglerConfig: configPath }),
+  );
   assert.equal(without.ok, false);
   assert.match(without.errors.join("\n"), /nodejs_compat/);
   assert.match(without.errors.join("\n"), /compatibility_date must be 2025-04-01 or later/);
 
   writeFileSync(
     configPath,
-    JSON.stringify({ ...generated, compatibility_flags: ["nodejs_compat"], compatibility_date: "2024-09-23" }),
+    JSON.stringify({
+      ...generated,
+      compatibility_flags: ["nodejs_compat"],
+      compatibility_date: "2024-09-23",
+    }),
   );
-  const old = validateProductionEnvironment(safe(), opts({ requireBuild: true, wranglerConfig: configPath }));
+  const old = validateProductionEnvironment(
+    safe(),
+    opts({ requireBuild: true, wranglerConfig: configPath }),
+  );
   assert.match(old.errors.join("\n"), /compatibility_date/);
 
   Object.assign(generated, { compatibility_date: "2026-06-01" });
-  writeFileSync(configPath, JSON.stringify({ ...generated, compatibility_flags: ["nodejs_compat"] }));
-  const ok = validateProductionEnvironment(safe(), opts({ requireBuild: true, wranglerConfig: configPath }));
+  writeFileSync(
+    configPath,
+    JSON.stringify({ ...generated, compatibility_flags: ["nodejs_compat"] }),
+  );
+  const ok = validateProductionEnvironment(
+    safe(),
+    opts({ requireBuild: true, wranglerConfig: configPath }),
+  );
   assert.equal(ok.ok, true, ok.errors.join("\n"));
   prepareProductionWranglerConfig("usrtimetable", "timetable.usr.example.edu", configPath);
   assert.deepEqual(JSON.parse(readFileSync(configPath, "utf8")), {
@@ -199,7 +227,10 @@ test("generated config must keep the nitro shape plus nodejs_compat; binding set
 test("staging validation is unchanged: it still does not require nodejs_compat", () => {
   const dir = mkdtempSync(path.join(tmpdir(), "usr-staging-unchanged-"));
   const configPath = path.join(dir, "wrangler.json");
-  writeFileSync(configPath, JSON.stringify({ main: "index.mjs", no_bundle: true, assets: { directory: "../public" } }));
+  writeFileSync(
+    configPath,
+    JSON.stringify({ main: "index.mjs", no_bundle: true, assets: { directory: "../public" } }),
+  );
   const result = validateStagingEnvironment(
     {
       STAGING_DEPLOY_CONFIRM: "DEPLOY_STAGING_ONLY",
@@ -214,7 +245,12 @@ test("staging validation is unchanged: it still does not require nodejs_compat",
       STAGING_ADMIN_EMAIL: "a@example.invalid",
       STAGING_ADMIN_PASSWORD: "x",
     },
-    { productionRef: PROD_REF, currentSha: "a".repeat(40), requireBuild: true, wranglerConfig: configPath },
+    {
+      productionRef: PROD_REF,
+      currentSha: "a".repeat(40),
+      requireBuild: true,
+      wranglerConfig: configPath,
+    },
   );
   assert.equal(result.ok, true, result.errors.join("\n"));
 });
@@ -239,7 +275,10 @@ test("smoke check passes only for 200 with the security headers", () => {
     /X-Frame-Options/,
   );
   assert.match(
-    checkSmokeResponse(200, { ...goodHeaders, "content-security-policy": "default-src 'self'" }).join(),
+    checkSmokeResponse(200, {
+      ...goodHeaders,
+      "content-security-policy": "default-src 'self'",
+    }).join(),
     /frame-ancestors/,
   );
 });

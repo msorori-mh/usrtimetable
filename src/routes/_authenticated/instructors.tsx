@@ -10,7 +10,13 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   Dialog,
   DialogContent,
@@ -49,7 +55,6 @@ export const Route = createFileRoute("/_authenticated/instructors")({
   validateSearch: parseInstructorReviewSearch,
   component: InstructorsPage,
 });
-
 
 function InstructorsPage() {
   const { active, setActiveId } = useActiveCollege();
@@ -430,8 +435,7 @@ function InstructorDirectory({
           <p className="font-semibold">{INSTRUCTOR_REVIEW_LABELS[review]}</p>
           <p className="text-sm">
             السجلات التي تحتاج استكمالًا: {formatNumber(visibleRows?.length ?? 0)} من إجمالي{" "}
-            {formatNumber(rows?.length ?? 0)}{" "}
-            مدرسًا في {active.name}.
+            {formatNumber(rows?.length ?? 0)} مدرسًا في {active.name}.
           </p>
           <p className="text-sm text-muted-foreground">
             {canManage
@@ -473,109 +477,109 @@ function InstructorDirectory({
           </div>
         ) : (
           <>
-          <ul className="divide-y divide-border">
-            {rowWindow.visible.map((i) => (
-              <li key={i.id} className="flex flex-wrap items-center justify-between gap-3 p-4">
-                <div className="min-w-0">
-                  <p className="font-semibold">
-                    {i.full_name}{" "}
-                    {!i.is_active && (
-                      <span className="ms-2 rounded bg-muted px-2 py-0.5 text-[10px]">
-                        {instructorStatusLabel(i.is_active, i.notes)}
-                      </span>
-                    )}
-                  </p>
-                  <p className="text-xs text-muted-foreground">
-                    الحالة: {availabilityStatusLabelAr(i.availability_status)}
-                  </p>
-                  <p className="text-xs text-muted-foreground">
-                    الرقم الجامعي: <span dir="ltr">{i.university_number ?? "—"}</span>
-                  </p>
-                  <FacultyIdentityLink
-                    instructorId={i.id}
-                    collegeId={i.college_id}
-                    name={i.full_name}
-                  />
-                  <p
-                    className={`mt-1 text-sm ${isMissingInstructorSpecialization(i) ? "font-medium text-amber-800" : "text-muted-foreground"}`}
-                  >
-                    التخصص:{" "}
-                    {isMissingInstructorSpecialization(i)
-                      ? "غير محدد — يحتاج استكمالًا"
-                      : i.specialization}
-                  </p>
-                  <p className="text-xs text-muted-foreground">
-                    {i.academic_rank ?? "—"} · {formatDecimal(i.max_weekly_hours)} س/أسبوع
-                  </p>
-                  <InstructorHomeAffiliation
-                    home={{
-                      home_college_id: i.home_college_id,
-                      home_college: i.home_college_name,
-                      home_department: i.home_department,
-                    }}
-                    currentCollegeId={active.id}
-                    defaultCategoryLabel={rowCategoryLabel(i)}
-                  />
-                  {(i.email || i.phone) && (
-                    <p className="text-xs text-muted-foreground" dir="ltr">
-                      {i.email ?? ""} {i.phone ? ` · ${i.phone}` : ""}
+            <ul className="divide-y divide-border">
+              {rowWindow.visible.map((i) => (
+                <li key={i.id} className="flex flex-wrap items-center justify-between gap-3 p-4">
+                  <div className="min-w-0">
+                    <p className="font-semibold">
+                      {i.full_name}{" "}
+                      {!i.is_active && (
+                        <span className="ms-2 rounded bg-muted px-2 py-0.5 text-[10px]">
+                          {instructorStatusLabel(i.is_active, i.notes)}
+                        </span>
+                      )}
                     </p>
-                  )}
-                  {i.admin_tasks && (
-                    <p className="text-xs text-muted-foreground">الصفة: {i.admin_tasks}</p>
-                  )}
-                </div>
-                {canEdit && i.can_edit && (
-                  <div className="flex flex-wrap gap-1">
-                    {(review || isMissingInstructorSpecialization(i)) && (
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => startEdit(i, review ?? "missing_specialization")}
-                      >
-                        {review === "missing_department" ? "استكمال القسم" : "استكمال التخصص"}
-                      </Button>
-                    )}
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      aria-label={`تعديل ${i.full_name}`}
-                      onClick={() => startEdit(i)}
+                    <p className="text-xs text-muted-foreground">
+                      الحالة: {availabilityStatusLabelAr(i.availability_status)}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      الرقم الجامعي: <span dir="ltr">{i.university_number ?? "—"}</span>
+                    </p>
+                    <FacultyIdentityLink
+                      instructorId={i.id}
+                      collegeId={i.college_id}
+                      name={i.full_name}
+                    />
+                    <p
+                      className={`mt-1 text-sm ${isMissingInstructorSpecialization(i) ? "font-medium text-amber-800" : "text-muted-foreground"}`}
                     >
-                      <Pencil className="h-3.5 w-3.5" />
-                    </Button>
-                    {canManage && i.can_delete && (
+                      التخصص:{" "}
+                      {isMissingInstructorSpecialization(i)
+                        ? "غير محدد — يحتاج استكمالًا"
+                        : i.specialization}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      {i.academic_rank ?? "—"} · {formatDecimal(i.max_weekly_hours)} س/أسبوع
+                    </p>
+                    <InstructorHomeAffiliation
+                      home={{
+                        home_college_id: i.home_college_id,
+                        home_college: i.home_college_name,
+                        home_department: i.home_department,
+                      }}
+                      currentCollegeId={active.id}
+                      defaultCategoryLabel={rowCategoryLabel(i)}
+                    />
+                    {(i.email || i.phone) && (
+                      <p className="text-xs text-muted-foreground" dir="ltr">
+                        {i.email ?? ""} {i.phone ? ` · ${i.phone}` : ""}
+                      </p>
+                    )}
+                    {i.admin_tasks && (
+                      <p className="text-xs text-muted-foreground">الصفة: {i.admin_tasks}</p>
+                    )}
+                  </div>
+                  {canEdit && i.can_edit && (
+                    <div className="flex flex-wrap gap-1">
+                      {(review || isMissingInstructorSpecialization(i)) && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => startEdit(i, review ?? "missing_specialization")}
+                        >
+                          {review === "missing_department" ? "استكمال القسم" : "استكمال التخصص"}
+                        </Button>
+                      )}
                       <Button
                         size="sm"
                         variant="ghost"
-                        aria-label={`حذف ${i.full_name}`}
-                        onClick={async () => {
-                          const ok = await confirmAction({
-                            title: `حذف المحاضر «${i.full_name}»؟`,
-                            description:
-                              "يُحذف سجل المحاضر من كليته الأصلية. لا يمكن التراجع عن هذا الإجراء.",
-                            confirmLabel: "حذف",
-                            destructive: true,
-                            typedConfirmation: i.full_name,
-                          });
-                          if (ok) del.mutate(i.id);
-                        }}
+                        aria-label={`تعديل ${i.full_name}`}
+                        onClick={() => startEdit(i)}
                       >
-                        <Trash2 className="h-3.5 w-3.5" />
+                        <Pencil className="h-3.5 w-3.5" />
                       </Button>
-                    )}
-                  </div>
-                )}
-              </li>
-            ))}
-          </ul>
-          <ShowMoreRows
-            shown={rowWindow.shown}
-            total={rowWindow.total}
-            hasMore={rowWindow.hasMore}
-            onShowMore={rowWindow.showMore}
-            onShowAll={rowWindow.showAll}
-          />
+                      {canManage && i.can_delete && (
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          aria-label={`حذف ${i.full_name}`}
+                          onClick={async () => {
+                            const ok = await confirmAction({
+                              title: `حذف المحاضر «${i.full_name}»؟`,
+                              description:
+                                "يُحذف سجل المحاضر من كليته الأصلية. لا يمكن التراجع عن هذا الإجراء.",
+                              confirmLabel: "حذف",
+                              destructive: true,
+                              typedConfirmation: i.full_name,
+                            });
+                            if (ok) del.mutate(i.id);
+                          }}
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
+                      )}
+                    </div>
+                  )}
+                </li>
+              ))}
+            </ul>
+            <ShowMoreRows
+              shown={rowWindow.shown}
+              total={rowWindow.total}
+              hasMore={rowWindow.hasMore}
+              onShowMore={rowWindow.showMore}
+              onShowAll={rowWindow.showAll}
+            />
           </>
         )}
       </Card>

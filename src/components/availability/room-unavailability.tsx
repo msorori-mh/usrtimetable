@@ -7,12 +7,22 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { toast } from "sonner";
 import { logAudit } from "@/lib/audit";
 import { DAYS } from "@/routes/_authenticated/time-slots";
 import { Trash2 } from "lucide-react";
-import { ALL_ACTIVE_DAYS_SENTINEL, formatBulkSuccessMessage, isValidTimeRange } from "@/lib/availability/active-days";
+import {
+  ALL_ACTIVE_DAYS_SENTINEL,
+  formatBulkSuccessMessage,
+  isValidTimeRange,
+} from "@/lib/availability/active-days";
 import { upsertRoomUnavailabilityBulk } from "@/lib/availability/bulk-api";
 import { readableWriteError } from "@/lib/availability/errors";
 import { entityDisplayName } from "@/lib/entity-display";
@@ -20,7 +30,12 @@ import { userErrorMessage } from "@/lib/user-error";
 import { confirmAction } from "@/components/confirm-dialog";
 import { QueryErrorNotice } from "@/components/app-states/query-error-notice";
 import { formatDate } from "@/lib/format";
-import { rpcErrorMessage, useWorkingDays, AffectedDaysPreview, DaySelectItems } from "@/components/availability/availability-shared";
+import {
+  rpcErrorMessage,
+  useWorkingDays,
+  AffectedDaysPreview,
+  DaySelectItems,
+} from "@/components/availability/availability-shared";
 
 /** Room unavailability tab. */
 interface RU {
@@ -55,10 +70,10 @@ export function RoomUnavailability() {
     queryFn: async () => {
       // read-all-ok: rooms per college are bounded (tens to low hundreds)
       const { data, error } = await supabase
-          .from("rooms")
-          .select("id, code, name")
-          .eq("college_id", active!.id)
-          .order("code");
+        .from("rooms")
+        .select("id, code, name")
+        .eq("college_id", active!.id)
+        .order("code");
       if (error) throw error;
       return data ?? [];
     },
@@ -208,7 +223,8 @@ export function RoomUnavailability() {
             </div>
             <div>
               <Label htmlFor="availability-f9">من ساعة</Label>
-              <Input id="availability-f9"
+              <Input
+                id="availability-f9"
                 dir="ltr"
                 type="time"
                 value={form.start_time}
@@ -217,7 +233,8 @@ export function RoomUnavailability() {
             </div>
             <div>
               <Label htmlFor="availability-f10">إلى ساعة</Label>
-              <Input id="availability-f10"
+              <Input
+                id="availability-f10"
                 dir="ltr"
                 type="time"
                 value={form.end_time}
@@ -226,7 +243,8 @@ export function RoomUnavailability() {
             </div>
             <div>
               <Label htmlFor="availability-f11">من تاريخ</Label>
-              <Input id="availability-f11"
+              <Input
+                id="availability-f11"
                 dir="ltr"
                 type="date"
                 value={form.start_date}
@@ -235,7 +253,8 @@ export function RoomUnavailability() {
             </div>
             <div>
               <Label htmlFor="availability-f12">إلى تاريخ</Label>
-              <Input id="availability-f12"
+              <Input
+                id="availability-f12"
                 dir="ltr"
                 type="date"
                 value={form.end_date}
@@ -244,7 +263,8 @@ export function RoomUnavailability() {
             </div>
             <div>
               <Label htmlFor="availability-f13">السبب</Label>
-              <Input id="availability-f13"
+              <Input
+                id="availability-f13"
                 value={form.reason}
                 onChange={(e) => setForm({ ...form, reason: e.target.value })}
               />
@@ -290,7 +310,8 @@ export function RoomUnavailability() {
                     {(r.start_date || r.end_date) && (
                       <span dir="ltr">
                         {" "}
-                        · {r.start_date ? formatDate(r.start_date) : "?"} → {r.end_date ? formatDate(r.end_date) : "?"}
+                        · {r.start_date ? formatDate(r.start_date) : "?"} →{" "}
+                        {r.end_date ? formatDate(r.end_date) : "?"}
                       </span>
                     )}
                   </p>
@@ -305,7 +326,8 @@ export function RoomUnavailability() {
                     onClick={async () => {
                       const ok = await confirmAction({
                         title: "حذف فترة عدم توفّر القاعة؟",
-                        description: "تصبح القاعة متاحة للجدولة في هذه الفترة. لا يمكن التراجع عن هذا الإجراء.",
+                        description:
+                          "تصبح القاعة متاحة للجدولة في هذه الفترة. لا يمكن التراجع عن هذا الإجراء.",
                         confirmLabel: "حذف",
                         destructive: true,
                       });

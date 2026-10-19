@@ -4,14 +4,25 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { toast } from "sonner";
 import { logAudit } from "@/lib/audit";
 import { userErrorMessage } from "@/lib/user-error";
 import { formatNumber } from "@/lib/format";
 import { updateByIdChunks, fetchAll } from "@/components/data-cleanup/cleanup-data";
 import { Diagnostics } from "@/components/data-cleanup/cleanup-diagnostics";
-import { IssueRow, courseItems, planCourseItems, BulkDialog } from "@/components/data-cleanup/cleanup-shared";
+import {
+  IssueRow,
+  courseItems,
+  planCourseItems,
+  BulkDialog,
+} from "@/components/data-cleanup/cleanup-shared";
 
 /** Courses cleanup section. */
 // ---------- COURSES ----------
@@ -126,7 +137,8 @@ export function CoursesSection({
       >
         <div className="space-y-2">
           <Label htmlFor="cleanup-f1">البادئة الجديدة (بدون شرطة)</Label>
-          <Input id="cleanup-f1"
+          <Input
+            id="cleanup-f1"
             value={codePrefix}
             onChange={(e) => setCodePrefix(e.target.value)}
             placeholder="مثال: CS, IT, CYS"

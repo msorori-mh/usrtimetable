@@ -50,7 +50,9 @@ export function WeeklyPreviewResults({
           <p className="font-semibold">تعارضات تمنع الحفظ:</p>
           <ul className="mt-1 list-disc ps-5">
             {previewMeta.conflictDetails.slice(0, 5).map((c) => (
-              <li key={`${c.study_system}:${c.day_of_week}:${c.start_time}:${c.end_time}:${c.slot_duration_minutes}`}>
+              <li
+                key={`${c.study_system}:${c.day_of_week}:${c.start_time}:${c.end_time}:${c.slot_duration_minutes}`}
+              >
                 {DAY_LABELS_AR[c.day_of_week]} {c.start_time}–{c.end_time} (
                 {c.slot_duration_minutes}د): {c.reason}
               </li>

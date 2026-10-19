@@ -250,9 +250,7 @@ export async function improveDistribution(
   const before = measure(snapshot);
   // Use the actual maximum, never the smallest level's day count.
   const cap = Math.max(3, Math.min(5, Math.max(0, ...Object.values(before.levelDays)))) as
-    | 3
-    | 4
-    | 5;
+    3 | 4 | 5;
   let sessions = snapshot.sessions.map((s) => ({ ...s }));
   let score = before;
   let evaluated = 0,
@@ -338,7 +336,10 @@ export async function improveDistribution(
       };
       let repairModel: ReturnType<Highs["createModel"]> | undefined;
       try {
-        const built = buildJointModel(repairSnapshot, cap, false, { deadline, signal: options.signal });
+        const built = buildJointModel(repairSnapshot, cap, false, {
+          deadline,
+          signal: options.signal,
+        });
         if (stop()) break;
         repairModel = highs.createModel(built.model);
         solverAttempts++;
@@ -408,7 +409,10 @@ export async function improveDistribution(
     for (const lecture of [...trial]) {
       if (
         lecture.is_locked ||
-        roomRank(lecture, snapshot.rooms.find((r) => r.id === lecture.room_id)!) !== 1
+        roomRank(
+          lecture,
+          snapshot.rooms.find((r) => r.id === lecture.room_id)!,
+        ) !== 1
       )
         continue;
       for (const room of rooms(lecture).filter((r) => roomRank(lecture, r) === 0)) {
@@ -444,7 +448,11 @@ export async function improveDistribution(
   const rank = (s: Session) => {
     const peers = sessions.filter((x) => x.instructor_id === s.instructor_id);
     return (
-      (roomRank(s, snapshot.rooms.find((r) => r.id === s.room_id)!) ?? 0) * 100 +
+      (roomRank(
+        s,
+        snapshot.rooms.find((r) => r.id === s.room_id)!,
+      ) ?? 0) *
+        100 +
       new Set(peers.map((x) => x.day_of_week)).size * 10 +
       (peers.filter((x) => x.day_of_week === s.day_of_week).length === 1 ? 5 : 0)
     );

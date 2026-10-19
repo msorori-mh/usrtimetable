@@ -8,7 +8,10 @@ const rollback = readFileSync("supabase/rollbacks/20260922_account_provisioning_
 test("super-admin proof and rate limit precede grant issuance and user creation", () => {
   // H-11: the secure middleware (caller session + aal2 + caller-RLS role) runs before the handler.
   const createFn = users.slice(users.indexOf("export const adminCreateUser"));
-  assert.match(createFn, /^export const adminCreateUser = createServerFn\(\{ method: "POST" \}\)\s*\.middleware\(\[requireSecureAdmin\]\)/);
+  assert.match(
+    createFn,
+    /^export const adminCreateUser = createServerFn\(\{ method: "POST" \}\)\s*\.middleware\(\[requireSecureAdmin\]\)/,
+  );
   const limit = users.indexOf('assertRateLimit(context.userId, "user_create")');
   const issue = users.indexOf('"issue_account_provisioning_grant"');
   const create = users.indexOf("supabaseAdmin.auth.admin.createUser");

@@ -26,11 +26,14 @@ for (const file of walk(root)) {
   readFileSync(file, "utf8")
     .split("\n")
     .forEach((line, i) => {
-      if (PATTERN.test(line) && !line.includes("rtl-ok")) offenders.push(`${file}:${i + 1}: ${line.trim().slice(0, 140)}`);
+      if (PATTERN.test(line) && !line.includes("rtl-ok"))
+        offenders.push(`${file}:${i + 1}: ${line.trim().slice(0, 140)}`);
     });
 }
 if (offenders.length) {
-  console.error(`Physical direction classes found (use logical ms-/me-/ps-/pe-/start-/end-):\n${offenders.join("\n")}`);
+  console.error(
+    `Physical direction classes found (use logical ms-/me-/ps-/pe-/start-/end-):\n${offenders.join("\n")}`,
+  );
   process.exit(1);
 }
 console.log("rtl class check: OK");

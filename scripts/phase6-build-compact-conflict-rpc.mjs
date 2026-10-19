@@ -487,7 +487,9 @@ for (const p of parts) {
     overs.push(`${p.name}:data_apply`);
   }
   rows.push(
-    [p.name, order++, buf.length, sha, p.creates, `"${p.stop}"`, "NO", p.definer, p.client].join(","),
+    [p.name, order++, buf.length, sha, p.creates, `"${p.stop}"`, "NO", p.definer, p.client].join(
+      ",",
+    ),
   );
   console.log(String(buf.length).padStart(4), p.name);
 }

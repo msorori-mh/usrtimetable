@@ -86,7 +86,9 @@ export async function fetchAll(collegeId: string) {
     instructorTypes,
     roomTypes,
   ] = await Promise.all([
-    readCollegeRows(() => supabase.from("courses").select("id, code, name, course_nature, department_id")),
+    readCollegeRows(() =>
+      supabase.from("courses").select("id, code, name, course_nature, department_id"),
+    ),
     readCollegeRows(() =>
       supabase
         .from("plan_courses")
@@ -100,7 +102,9 @@ export async function fetchAll(collegeId: string) {
         .select("id, full_name, specialization, department_id, instructor_type_id"),
     ),
     readCollegeRows(() => supabase.from("instructor_availability").select("id, instructor_id")),
-    readCollegeRows(() => supabase.from("rooms").select("id, code, name, capacity, room_type_id, is_active")),
+    readCollegeRows(() =>
+      supabase.from("rooms").select("id, code, name, capacity, room_type_id, is_active"),
+    ),
     readCollegeRows(() =>
       supabase
         .from("course_offerings")
@@ -109,7 +113,9 @@ export async function fetchAll(collegeId: string) {
     readCollegeRows(() => supabase.from("teaching_assignments").select("id, course_offering_id")),
     readCollegeRows(() => supabase.from("departments").select("id, name")),
     readCollegeRows(() => supabase.from("instructor_types").select("id, name_ar, code, is_active")),
-    readCollegeRows(() => supabase.from("room_types").select("id, name_ar, code, default_capacity, is_active")),
+    readCollegeRows(() =>
+      supabase.from("room_types").select("id, name_ar, code, default_capacity, is_active"),
+    ),
   ]);
   const loadError = firstQueryError([
     { label: "المقررات", error: courses.error },

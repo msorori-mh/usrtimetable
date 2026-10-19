@@ -27,9 +27,9 @@ export function useTeachingAssignmentFilterOptions({
     queryFn: async () => {
       // read-all-ok: programs of one college (tens)
       const { data, error } = await supabase
-          .from("academic_programs")
-          .select("id, name, code")
-          .eq("college_id", collegeId!);
+        .from("academic_programs")
+        .select("id, name, code")
+        .eq("college_id", collegeId!);
       if (error) throw error;
       return data ?? [];
     },
@@ -40,11 +40,11 @@ export function useTeachingAssignmentFilterOptions({
     queryFn: async () => {
       // read-all-ok: levels of one program
       const { data, error } = await supabase
-          .from("academic_levels")
-          .select("id, name, level_number")
-          .eq("college_id", collegeId!)
-          .eq("program_id", programId)
-          .order("level_number");
+        .from("academic_levels")
+        .select("id, name, level_number")
+        .eq("college_id", collegeId!)
+        .eq("program_id", programId)
+        .order("level_number");
       if (error) throw error;
       return data ?? [];
     },

@@ -12,7 +12,8 @@ const AR: Record<string, string> = {
   room_conflict: "تعارض القاعة: نفس القاعة محجوزة في نفس الوقت.",
   section_conflict: "تعارض المجموعة: نفس المجموعة لديها محاضرة أخرى في نفس الوقت.",
   subgroup_conflict: "تعارض المجموعة الفرعية: نفس المجموعة الفرعية لديها جلسة متداخلة.",
-  delivery_group_conflict: "تعارض مجموعة التدريس: طلاب هذه المجموعة لديهم محاضرة أخرى في الوقت نفسه.",
+  delivery_group_conflict:
+    "تعارض مجموعة التدريس: طلاب هذه المجموعة لديهم محاضرة أخرى في الوقت نفسه.",
   room_college_mismatch: "القاعة غير صالحة أو لا تنتمي إلى الكلية النشطة.",
   room_capacity: "سعة القاعة غير كافية للعدد المعتمد.",
   room_capacity_exceeded: "سعة القاعة غير كافية للعدد المعتمد.",
@@ -57,7 +58,8 @@ const EN: Record<string, string> = {
   room_conflict: "Room conflict: same room is booked at the same time.",
   section_conflict: "Section conflict: same section has another overlapping session.",
   subgroup_conflict: "Subgroup conflict: same subgroup has another overlapping session.",
-  delivery_group_conflict: "Delivery group conflict: the group's students have another overlapping session.",
+  delivery_group_conflict:
+    "Delivery group conflict: the group's students have another overlapping session.",
   room_college_mismatch: "Room is invalid or not in the active college.",
   room_capacity: "Room capacity insufficient for confirmed enrollment.",
   room_capacity_exceeded: "Room capacity insufficient for confirmed enrollment.",

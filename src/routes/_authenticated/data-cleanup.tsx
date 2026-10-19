@@ -77,8 +77,7 @@ function DataCleanupPage() {
 
       {loadError && (
         <Card role="alert" className="border-destructive p-4 text-sm text-destructive">
-          فشل تحميل بيانات التنظيف؛ لا تُعرض نتائج قد تكون مضللة.{" "}
-          {userErrorMessage(loadError)}
+          فشل تحميل بيانات التنظيف؛ لا تُعرض نتائج قد تكون مضللة. {userErrorMessage(loadError)}
         </Card>
       )}
 

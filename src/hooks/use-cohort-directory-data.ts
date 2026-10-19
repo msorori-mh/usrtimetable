@@ -31,18 +31,21 @@ export type VersionCohortFact = {
   expected_students: number;
 };
 
-export function useCohortDirectoryData(collegeId: string | undefined, chosenVersionId: string | null) {
+export function useCohortDirectoryData(
+  collegeId: string | undefined,
+  chosenVersionId: string | null,
+) {
   const { data: programs, error: programsError } = useQuery({
     queryKey: ["programs", collegeId, "options"],
     enabled: !!collegeId,
     queryFn: async () => {
       const { data, error } = await supabase
-          .from("academic_programs")
-          .select("id, name")
-          .eq("college_id", collegeId!)
-          // ACADEMIC-ARCHIVE-UI-01: pickers exclude archived records.
-          .eq("is_archived", false)
-          .order("name");
+        .from("academic_programs")
+        .select("id, name")
+        .eq("college_id", collegeId!)
+        // ACADEMIC-ARCHIVE-UI-01: pickers exclude archived records.
+        .eq("is_archived", false)
+        .order("name");
       if (error) throw error;
       return data ?? [];
     },
@@ -53,10 +56,10 @@ export function useCohortDirectoryData(collegeId: string | undefined, chosenVers
     queryFn: async () => {
       // read-all-ok: levels of one college (programs × years)
       const { data, error } = await supabase
-          .from("academic_levels")
-          .select("id, name, level_number, program_id")
-          .eq("college_id", collegeId!)
-          .order("level_number");
+        .from("academic_levels")
+        .select("id, name, level_number, program_id")
+        .eq("college_id", collegeId!)
+        .order("level_number");
       if (error) throw error;
       return data ?? [];
     },
@@ -66,10 +69,10 @@ export function useCohortDirectoryData(collegeId: string | undefined, chosenVers
     enabled: !!collegeId,
     queryFn: async () => {
       const { data, error } = await supabase
-          .from("academic_terms")
-          .select("id, name")
-          .eq("college_id", collegeId!)
-          .order("start_date", { ascending: false });
+        .from("academic_terms")
+        .select("id, name")
+        .eq("college_id", collegeId!)
+        .order("start_date", { ascending: false });
       if (error) throw error;
       return data ?? [];
     },
@@ -156,6 +159,21 @@ export function useCohortDirectoryData(collegeId: string | undefined, chosenVers
     },
   });
   return {
-    programs, programsError, levels, levelsError, terms, termsError, cohorts, isLoading, cohortsError, versions, versionsLoading, versionsError, selectedVersion, versionFacts, versionFactsLoading, versionFactsError,
+    programs,
+    programsError,
+    levels,
+    levelsError,
+    terms,
+    termsError,
+    cohorts,
+    isLoading,
+    cohortsError,
+    versions,
+    versionsLoading,
+    versionsError,
+    selectedVersion,
+    versionFacts,
+    versionFactsLoading,
+    versionFactsError,
   };
 }

@@ -43,7 +43,8 @@ export function validateRoleChange(change: RoleChange): string | null {
     if (change.superAdminCount <= 1) return MEMBERSHIP_ERROR_AR.lastSuperAdmin;
   }
   if (change.enabled && change.role === "college_dean" && !has) {
-    if (new Set(change.currentCollegeIds).size !== 1) return MEMBERSHIP_ERROR_AR.deanNeedsOneCollege;
+    if (new Set(change.currentCollegeIds).size !== 1)
+      return MEMBERSHIP_ERROR_AR.deanNeedsOneCollege;
   }
   return null;
 }
@@ -84,12 +85,14 @@ export function planCollegeChange(change: CollegeChange): CollegePlan {
         final: [change.collegeId],
       };
     }
-    if (current.includes(change.collegeId)) return { ok: true, add: [], remove: [], final: current };
+    if (current.includes(change.collegeId))
+      return { ok: true, add: [], remove: [], final: current };
     return { ok: true, add: [change.collegeId], remove: [], final: [...current, change.collegeId] };
   }
   if (!current.includes(change.collegeId)) return { ok: true, add: [], remove: [], final: current };
   const final = current.filter((id) => id !== change.collegeId);
-  if (isDean && final.length !== 1) return { ok: false, error: MEMBERSHIP_ERROR_AR.deanCannotLoseCollege };
+  if (isDean && final.length !== 1)
+    return { ok: false, error: MEMBERSHIP_ERROR_AR.deanCannotLoseCollege };
   return { ok: true, add: [], remove: [change.collegeId], final };
 }
 

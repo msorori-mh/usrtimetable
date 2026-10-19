@@ -15,7 +15,10 @@ import {
   useUpdateTeachingAssignmentV2,
   useWorkloadPreview,
 } from "@/hooks/use-teaching-assignments-v2";
-import type { TeachingAssignmentWorkspaceRow, WorkspaceFilters } from "@/lib/academic-delivery/teaching-assignments-v2";
+import type {
+  TeachingAssignmentWorkspaceRow,
+  WorkspaceFilters,
+} from "@/lib/academic-delivery/teaching-assignments-v2";
 import { CollegeSwitcher } from "@/components/college-switcher";
 import { AdminExportMenu } from "@/components/admin-export-menu";
 import { activeFilters, teachingAssignmentsExportDataset } from "@/lib/admin-export/datasets";
@@ -24,8 +27,20 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -52,20 +67,25 @@ import { summarizeInstructorAttendanceDays } from "@/lib/teaching-assignments/as
 import { assignmentRowsForVersion } from "@/lib/teaching-assignments/assignment-placement-context";
 import { loadAssignmentSchedule } from "@/lib/teaching-assignments/assignment-schedule";
 import { filterTeachingAssignmentRowsByCourse } from "@/lib/teaching-assignments/course-search";
-import { fetchPublishedVersions, fetchWorkingVersions } from "@/lib/reports/queries/version-queries";
+import {
+  fetchPublishedVersions,
+  fetchWorkingVersions,
+} from "@/lib/reports/queries/version-queries";
 import { formatDecimal } from "@/lib/format";
 import { QueryErrorNotice } from "@/components/app-states/query-error-notice";
 import { useRowWindow } from "@/hooks/use-row-window";
 import { useTeachingAssignmentFilterOptions } from "@/hooks/use-teaching-assignment-filter-options";
-import { ALLOCATION_LABELS, COMPONENT_LABELS, TeachingAssignmentGroupsTable } from "@/components/teaching-assignments/teaching-assignment-groups-table";
+import {
+  ALLOCATION_LABELS,
+  COMPONENT_LABELS,
+  TeachingAssignmentGroupsTable,
+} from "@/components/teaching-assignments/teaching-assignment-groups-table";
 import { InstructorSearchSummaryCard } from "@/components/teaching-assignments/instructor-search-summary-card";
 
 export const Route = createFileRoute("/_authenticated/teaching-assignments")({
   head: () => ({ meta: [{ title: "الإسناد التدريسي" }] }),
   component: TeachingAssignmentsV2Page,
 });
-
-
 
 function TeachingAssignmentsV2Page() {
   const { active } = useActiveCollege();
@@ -136,13 +156,14 @@ function TeachingAssignmentsV2Page() {
   const updateMut = useUpdateTeachingAssignmentV2(filters);
   const deactivateMut = useDeactivateTeachingAssignmentV2(filters);
 
-  const { programs, levels, terms, cohorts, academicContext, filterOptionsError } = useTeachingAssignmentFilterOptions({
-    collegeId: active?.id,
-    programId,
-    levelId,
-    termId,
-    studySystem,
-  });
+  const { programs, levels, terms, cohorts, academicContext, filterOptionsError } =
+    useTeachingAssignmentFilterOptions({
+      collegeId: active?.id,
+      programId,
+      levelId,
+      termId,
+      studySystem,
+    });
 
   /** Scope attendance to one complete version, within the selected college and term. */
   const scheduleQuery = useQuery({
@@ -552,7 +573,8 @@ function TeachingAssignmentsV2Page() {
             </div>
             <div>
               <Label htmlFor="ta-v2-f1">البحث بالمقرر</Label>
-              <Input id="ta-v2-f1"
+              <Input
+                id="ta-v2-f1"
                 data-testid="ta-v2-course-search"
                 value={courseSearch}
                 onChange={(e) => setCourseSearch(e.target.value)}
@@ -561,7 +583,8 @@ function TeachingAssignmentsV2Page() {
             </div>
             <div>
               <Label htmlFor="ta-v2-f2">البحث باسم المحاضر</Label>
-              <Input id="ta-v2-f2"
+              <Input
+                id="ta-v2-f2"
                 data-testid="ta-v2-instructor-search"
                 value={instructorSearch}
                 onChange={(e) => setInstructorSearch(e.target.value)}
@@ -754,8 +777,11 @@ function TeachingAssignmentsV2Page() {
               )}
 
               <div>
-                <Label htmlFor="ta-v2-f3">ساعات المحاضرة المسندة (اختياري لمدرس واحد؛ إلزامي عند المشاركة)</Label>
-                <Input id="ta-v2-f3"
+                <Label htmlFor="ta-v2-f3">
+                  ساعات المحاضرة المسندة (اختياري لمدرس واحد؛ إلزامي عند المشاركة)
+                </Label>
+                <Input
+                  id="ta-v2-f3"
                   type="number"
                   step="0.5"
                   min="0.5"

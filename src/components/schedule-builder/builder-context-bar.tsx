@@ -1,7 +1,13 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   SCHEDULE_BUILDER_WORKSPACE_NO_TERM_AR,
   SCHEDULE_BUILDER_WORKSPACE_NO_VERSIONS_AR,
@@ -36,9 +42,7 @@ export function BuilderContextBar({ ws }: { ws: ReturnType<typeof useScheduleBui
           ) : termsQuery.isError ? (
             <ErrorInline message="تعذّر تحميل الفصول الدراسية." />
           ) : !termsQuery.data?.length ? (
-            <p className="text-sm text-muted-foreground">
-              {SCHEDULE_BUILDER_WORKSPACE_NO_TERM_AR}
-            </p>
+            <p className="text-sm text-muted-foreground">{SCHEDULE_BUILDER_WORKSPACE_NO_TERM_AR}</p>
           ) : (
             <Select
               value={termId ?? undefined}

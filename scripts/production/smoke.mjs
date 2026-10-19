@@ -31,11 +31,15 @@ export function checkSmokeResponse(status, headers) {
 async function fetchFollowingSameOrigin(url, maxRedirects = 3) {
   let current = new URL(url);
   for (let i = 0; i <= maxRedirects; i += 1) {
-    const response = await fetch(current, { redirect: "manual", headers: { "user-agent": "usrtimetable-prod-smoke" } });
+    const response = await fetch(current, {
+      redirect: "manual",
+      headers: { "user-agent": "usrtimetable-prod-smoke" },
+    });
     const location = response.headers.get("location");
     if (response.status >= 300 && response.status < 400 && location) {
       const next = new URL(location, current);
-      if (next.origin !== current.origin) throw new Error(`cross-origin redirect to ${next.origin}`);
+      if (next.origin !== current.origin)
+        throw new Error(`cross-origin redirect to ${next.origin}`);
       current = next;
       continue;
     }
@@ -54,7 +58,9 @@ export async function smoke(baseUrl, { attempts = 10, delayMs = 15000, log = con
       try {
         const { response, finalUrl } = await fetchFollowingSameOrigin(new URL(path, base));
         const problems = checkSmokeResponse(response.status, response.headers);
-        log(`${path} → ${finalUrl} ${response.status} ${problems.length ? problems.join("; ") : "OK"}`);
+        log(
+          `${path} → ${finalUrl} ${response.status} ${problems.length ? problems.join("; ") : "OK"}`,
+        );
         lastProblems.push(...problems.map((p) => `${path}: ${p}`));
       } catch (error) {
         lastProblems.push(`${path}: ${error instanceof Error ? error.message : error}`);

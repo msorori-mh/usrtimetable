@@ -21,10 +21,18 @@ test("logs with the route and forwards to the optional hook", () => {
   const err = new Error("boom");
   reportAppError(err, { boundary: "root" });
   expect(logged.length).toBe(1);
-  expect(logged[0][1]).toEqual({ source: "react_error_boundary", route: "/timetable/abc", boundary: "root" });
+  expect(logged[0][1]).toEqual({
+    source: "react_error_boundary",
+    route: "/timetable/abc",
+    boundary: "root",
+  });
   expect(calls.length).toBe(1);
   expect(calls[0][0]).toBe(err);
-  expect(calls[0][2]).toEqual({ mechanism: "react_error_boundary", handled: false, severity: "error" });
+  expect(calls[0][2]).toEqual({
+    mechanism: "react_error_boundary",
+    handled: false,
+    severity: "error",
+  });
 });
 
 test("works without a hook and survives a throwing hook", () => {

@@ -3,13 +3,26 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAccessibleColleges, useActiveCollege } from "@/hooks/use-colleges";
-import { useCanEditInstructorsActiveCollege, useCanManageActiveCollege } from "@/hooks/use-can-manage";
+import {
+  useCanEditInstructorsActiveCollege,
+  useCanManageActiveCollege,
+} from "@/hooks/use-can-manage";
 import { toast } from "sonner";
 import { logAudit } from "@/lib/audit";
-import { ACADEMIC_RANKS, UNKNOWN_EMPLOYMENT_TYPE, DEFAULT_AVAILABILITY_STATUS } from "@/lib/instructor-metadata";
-import { effectiveInstructorWeeklyHours, isHourlyContractTypeCode } from "@/lib/instructors/effective-hours";
+import {
+  ACADEMIC_RANKS,
+  UNKNOWN_EMPLOYMENT_TYPE,
+  DEFAULT_AVAILABILITY_STATUS,
+} from "@/lib/instructor-metadata";
+import {
+  effectiveInstructorWeeklyHours,
+  isHourlyContractTypeCode,
+} from "@/lib/instructors/effective-hours";
 import { requiresAdministrativeDepartment } from "@/lib/instructors/administrative-positions";
-import { instructorNeedsReview, type InstructorReview } from "@/lib/data-onboarding/instructor-review";
+import {
+  instructorNeedsReview,
+  type InstructorReview,
+} from "@/lib/data-onboarding/instructor-review";
 import {
   DEFAULT_DIRECTORY_FILTERS,
   filterAndSortInstructors,
@@ -101,10 +114,10 @@ export function useInstructorDirectory({
     queryFn: async () => {
       // read-all-ok: departments of one college (tens)
       const { data, error } = await supabase
-          .from("departments")
-          .select("id, name")
-          .eq("college_id", active!.id)
-          .order("name");
+        .from("departments")
+        .select("id, name")
+        .eq("college_id", active!.id)
+        .order("name");
       if (error) throw error;
       return data ?? [];
     },
@@ -212,7 +225,9 @@ export function useInstructorDirectory({
       toast.success("تمت إضافة القسم المساند");
     },
     onError: (e: Error) =>
-      toast.error(e.message.includes("duplicate") ? "القسم المساند موجود بالفعل" : userErrorMessage(e)),
+      toast.error(
+        e.message.includes("duplicate") ? "القسم المساند موجود بالفعل" : userErrorMessage(e),
+      ),
   });
 
   const {
@@ -387,7 +402,9 @@ export function useInstructorDirectory({
     },
     onError: (e: Error) =>
       toast.error(
-        e.message.includes("duplicate") ? "رقم الموظف مستخدم بالفعل في هذه الكلّية" : userErrorMessage(e),
+        e.message.includes("duplicate")
+          ? "رقم الموظف مستخدم بالفعل في هذه الكلّية"
+          : userErrorMessage(e),
       ),
   });
 
@@ -508,6 +525,61 @@ export function useInstructorDirectory({
   ).sort((a, b) => String(a).localeCompare(String(b), "ar"));
 
   return {
-    active, accessibleColleges, canManage, canEdit, qc, scope, setScope, open, setOpen, editing, setEditing, form, setForm, repairField, setRepairField, directory, setDirectory, setDirectoryField, specializationRef, departmentRef, depts, deptsError, types, typesLoading, typesError, supportName, setSupportName, affiliationCollegeId, registrationMatches, affiliationDepts, affiliationDeptsError, supportQuery, addSupport, rows, isLoading, isError, rosterError, refetch, save, del, startEdit, startCreate, deptMap, typeRows, typeMap, selectedType, scopeLabel, rowCategoryLabel, hourlyContract, effectiveQuota, reviewRows, departmentLabel, visibleRows, rowWindow, lookupError, availableRanks,
+    active,
+    accessibleColleges,
+    canManage,
+    canEdit,
+    qc,
+    scope,
+    setScope,
+    open,
+    setOpen,
+    editing,
+    setEditing,
+    form,
+    setForm,
+    repairField,
+    setRepairField,
+    directory,
+    setDirectory,
+    setDirectoryField,
+    specializationRef,
+    departmentRef,
+    depts,
+    deptsError,
+    types,
+    typesLoading,
+    typesError,
+    supportName,
+    setSupportName,
+    affiliationCollegeId,
+    registrationMatches,
+    affiliationDepts,
+    affiliationDeptsError,
+    supportQuery,
+    addSupport,
+    rows,
+    isLoading,
+    isError,
+    rosterError,
+    refetch,
+    save,
+    del,
+    startEdit,
+    startCreate,
+    deptMap,
+    typeRows,
+    typeMap,
+    selectedType,
+    scopeLabel,
+    rowCategoryLabel,
+    hourlyContract,
+    effectiveQuota,
+    reviewRows,
+    departmentLabel,
+    visibleRows,
+    rowWindow,
+    lookupError,
+    availableRanks,
   };
 }

@@ -336,9 +336,7 @@ function LeadershipDashboard({ viewerKey }: { viewerKey: string }) {
   const periodLabel = data?.year
     ? `${data.year} · ${termTypeLabel(data.term_type ?? "")}`
     : "لم تُحدد فترة أكاديمية";
-  const generatedAt = data?.generated_at
-    ? formatDateTime(data.generated_at)
-    : "غير متاح";
+  const generatedAt = data?.generated_at ? formatDateTime(data.generated_at) : "غير متاح";
   const selectedValue = data?.year ? JSON.stringify({ year: data.year, type: data.term_type }) : "";
   const rows = colleges.map((college) => ({
     ...college,

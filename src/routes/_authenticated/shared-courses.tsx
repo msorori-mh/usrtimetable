@@ -67,7 +67,13 @@ function SharedPage() {
   const programs = linksQuery.data?.programs ?? [];
   const links = linksQuery.data?.links ?? [];
 
-  const { data: courses, isLoading, isError, error: coursesError, refetch } = useQuery({
+  const {
+    data: courses,
+    isLoading,
+    isError,
+    error: coursesError,
+    refetch,
+  } = useQuery({
     queryKey: ["courses", active?.id, "sharing"],
     enabled: !!active,
     queryFn: async () => {
@@ -77,8 +83,8 @@ function SharedPage() {
           .select("id, code, name, department_id, course_nature, is_shared, updated_at")
           .eq("college_id", active!.id)
           .order("code")
-            .order("id")
-            .range(from, to),
+          .order("id")
+          .range(from, to),
       );
       return (data ?? []) as Course[];
     },
@@ -151,60 +157,62 @@ function SharedPage() {
         {isLoading ? (
           <p className="p-6 text-center text-muted-foreground">جارٍ التحميل...</p>
         ) : isError ? (
-          <div className="p-4"><QueryErrorNotice error={coursesError} onRetry={() => void refetch()} /></div>
+          <div className="p-4">
+            <QueryErrorNotice error={coursesError} onRetry={() => void refetch()} />
+          </div>
         ) : !courses || courses.length === 0 ? (
           <p className="p-6 text-center text-muted-foreground">لا توجد مقررات.</p>
         ) : (
           <>
-          <ul className="divide-y divide-border">
-            {rowWindow.visible.map((c) => {
-              const ds = links.filter((l) => l.course_id === c.id);
-              return (
-                <li key={c.id} className="flex items-center justify-between gap-3 p-4">
-                  <div className="min-w-0">
-                    <p className="font-semibold">
-                      {c.name}
-                      {c.is_shared && (
-                        <span className="ms-2 rounded bg-accent/20 px-2 py-0.5 text-[11px]">
-                          مشترك
+            <ul className="divide-y divide-border">
+              {rowWindow.visible.map((c) => {
+                const ds = links.filter((l) => l.course_id === c.id);
+                return (
+                  <li key={c.id} className="flex items-center justify-between gap-3 p-4">
+                    <div className="min-w-0">
+                      <p className="font-semibold">
+                        {c.name}
+                        {c.is_shared && (
+                          <span className="ms-2 rounded bg-accent/20 px-2 py-0.5 text-[11px]">
+                            مشترك
+                          </span>
+                        )}
+                        <span className="ms-2 rounded bg-secondary px-2 py-0.5 text-[11px]">
+                          {NATURES.find((n) => n.v === c.course_nature)?.l ?? "—"}
                         </span>
-                      )}
-                      <span className="ms-2 rounded bg-secondary px-2 py-0.5 text-[11px]">
-                        {NATURES.find((n) => n.v === c.course_nature)?.l ?? "—"}
-                      </span>
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      {ds.length > 0
-                        ? `البرامج: ${[...new Set(ds.map((d) => programs.find((p) => p.id === d.program_id)?.name ?? "برنامج غير متاح"))].join("، ")}`
-                        : linksQuery.isPending
-                          ? "جارٍ تحميل البرامج..."
-                          : linksQuery.isError
-                            ? "تعذر تحميل البرامج"
-                            : "لم تُحدد البرامج بعد"}
-                    </p>
-                  </div>
-                  {canManage && (
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      aria-label={`تعديل ${c.name}`}
-                      onClick={() => start(c)}
-                      disabled={linksQuery.isPending || linksQuery.isError}
-                    >
-                      تعديل
-                    </Button>
-                  )}
-                </li>
-              );
-            })}
-          </ul>
-          <ShowMoreRows
-            shown={rowWindow.shown}
-            total={rowWindow.total}
-            hasMore={rowWindow.hasMore}
-            onShowMore={rowWindow.showMore}
-            onShowAll={rowWindow.showAll}
-          />
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        {ds.length > 0
+                          ? `البرامج: ${[...new Set(ds.map((d) => programs.find((p) => p.id === d.program_id)?.name ?? "برنامج غير متاح"))].join("، ")}`
+                          : linksQuery.isPending
+                            ? "جارٍ تحميل البرامج..."
+                            : linksQuery.isError
+                              ? "تعذر تحميل البرامج"
+                              : "لم تُحدد البرامج بعد"}
+                      </p>
+                    </div>
+                    {canManage && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        aria-label={`تعديل ${c.name}`}
+                        onClick={() => start(c)}
+                        disabled={linksQuery.isPending || linksQuery.isError}
+                      >
+                        تعديل
+                      </Button>
+                    )}
+                  </li>
+                );
+              })}
+            </ul>
+            <ShowMoreRows
+              shown={rowWindow.shown}
+              total={rowWindow.total}
+              hasMore={rowWindow.hasMore}
+              onShowMore={rowWindow.showMore}
+              onShowAll={rowWindow.showAll}
+            />
           </>
         )}
       </Card>
@@ -242,8 +250,14 @@ function SharedPage() {
               مقرر مشترك (يُدرَّس لبرامج متعددة)
             </label>
             <div>
-              <p className="text-sm font-medium" id="shared-course-programs-label">البرامج المرتبطة</p>
-              <div role="group" aria-labelledby="shared-course-programs-label" className="mt-2 max-h-60 space-y-1 overflow-y-auto rounded border p-2">
+              <p className="text-sm font-medium" id="shared-course-programs-label">
+                البرامج المرتبطة
+              </p>
+              <div
+                role="group"
+                aria-labelledby="shared-course-programs-label"
+                className="mt-2 max-h-60 space-y-1 overflow-y-auto rounded border p-2"
+              >
                 {programs.map((p) => (
                   <label
                     key={p.id}

@@ -43,8 +43,6 @@ export interface PrintSheetMeta {
   pageCount: number;
 }
 
-
-
 /** Paper clock: omit zero minutes and use the 12-hour clock without AM/PM suffixes. */
 function compactClock(value: string): string {
   const match = /^(\d{1,2}):(\d{2})/.exec(value);
@@ -135,9 +133,7 @@ export function PrintSheet(props: {
     <footer className="print-center-footer mt-4 border-t border-border pt-2 text-xs text-muted-foreground print:text-foreground">
       <div className="flex flex-wrap justify-between gap-2">
         <span>{printGroupCounterLabelAr(meta.pageIndex, meta.pageCount)}</span>
-        {meta.lastUpdate && (
-          <span>آخر تحديث: {formatDateTime(meta.lastUpdate)}</span>
-        )}
+        {meta.lastUpdate && <span>آخر تحديث: {formatDateTime(meta.lastUpdate)}</span>}
       </div>
       <p className="mt-1">
         {meta.versionStatus === "published"

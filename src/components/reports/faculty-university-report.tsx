@@ -151,8 +151,8 @@ export function FacultyUniversityReport() {
       {choices.isLoading && <p>جارٍ تحميل دليل المحاضرين…</p>}
       {(choices.error || report.error) && (
         <p role="alert" className="text-destructive">
-          تعذر عرض التقرير: {userErrorMessage(choices.error ?? report.error, "تعذر تحميل البيانات")}. يتطلب التجميع صلاحية الاطلاع
-          على جميع الكليات المرتبطة وبيانات العام والفصل.
+          تعذر عرض التقرير: {userErrorMessage(choices.error ?? report.error, "تعذر تحميل البيانات")}
+          . يتطلب التجميع صلاحية الاطلاع على جميع الكليات المرتبطة وبيانات العام والفصل.
         </p>
       )}
       {report.isFetching && <p>جارٍ تحديث التقرير…</p>}

@@ -368,8 +368,8 @@ function ImportForm({ entities, onCommitted, onEntityChange }: ImportWorkspacePr
             {result.failed > 0 ? "اكتمل الاستيراد مع ملاحظات" : "تم حفظ البيانات"}
           </p>
           <p className="mt-1 text-sm">
-            أُضيف {formatNumber(result.inserted)} · حُدّث {formatNumber(result.updated)} · تُرك دون تغيير{" "}
-            {formatNumber(result.skipped)} · تعذر {formatNumber(result.failed)}
+            أُضيف {formatNumber(result.inserted)} · حُدّث {formatNumber(result.updated)} · تُرك دون
+            تغيير {formatNumber(result.skipped)} · تعذر {formatNumber(result.failed)}
           </p>
           <p className="mt-2 text-sm text-muted-foreground">
             تُحدّث جاهزية هذه الخطوة الآن. راجع حالتها قبل الانتقال للخطوة التالية.

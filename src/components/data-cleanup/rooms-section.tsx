@@ -3,7 +3,13 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { toast } from "sonner";
 import { logAudit } from "@/lib/audit";
 import { userErrorMessage } from "@/lib/user-error";
@@ -86,7 +92,8 @@ export function RoomsSection({
       >
         <div className="space-y-2">
           <Label htmlFor="cleanup-f3">السعة الجديدة</Label>
-          <Input id="cleanup-f3"
+          <Input
+            id="cleanup-f3"
             type="number"
             min={1}
             value={cap}

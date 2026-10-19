@@ -79,7 +79,7 @@ function chainEnd(src, start) {
 function wrapperSpans(src) {
   const spans = [];
   const re = new RegExp(`\\b(?:${WRAPPERS.join("|")})\\s*(?:<[^>]*>)?\\s*\\(`, "g");
-  for (let m; (m = re.exec(src)); ) {
+  for (let m; (m = re.exec(src));) {
     const open = m.index + m[0].length - 1;
     spans.push([open, chainEnd(src, open + 1)]);
   }
@@ -91,7 +91,7 @@ export function scanSource(src, tables = BIG_TABLES) {
   const spans = wrapperSpans(src);
   const lines = src.split("\n");
   const re = new RegExp(`\\.from\\(\\s*["'](${tables.join("|")})["']\\s*\\)`, "g");
-  for (let m; (m = re.exec(src)); ) {
+  for (let m; (m = re.exec(src));) {
     const end = chainEnd(src, m.index + m[0].length);
     const chain = src.slice(m.index, end);
     if (!/\.select\(/.test(chain)) continue;
@@ -129,7 +129,8 @@ if (isMain) {
   }
   if (json) console.log(JSON.stringify(results, null, 2));
   else {
-    for (const r of results) console.log(`${r.file}:${r.line}  .from("${r.table}") without pagination`);
+    for (const r of results)
+      console.log(`${r.file}:${r.line}  .from("${r.table}") without pagination`);
     console.log(`\n${results.length} unbounded select(s) on large tables.`);
   }
   process.exit(results.length ? 1 : 0);

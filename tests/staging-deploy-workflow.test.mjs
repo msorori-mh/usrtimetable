@@ -50,7 +50,10 @@ test("GitHub expressions are not escaped (M-23): no value starts with a literal 
   // would begin with "\" and the deployment could never target the right SHA or project.
   assert.doesNotMatch(workflow, /\\\$\{\{/);
   const expressions = workflow.match(/\$\{\{[^}]*\}\}/g) ?? [];
-  assert.ok(expressions.length >= 20, `expected the workflow to use expressions, got ${expressions.length}`);
+  assert.ok(
+    expressions.length >= 20,
+    `expected the workflow to use expressions, got ${expressions.length}`,
+  );
   for (const line of workflow.split("\n")) {
     const value = line.match(/^\s*[A-Za-z_][\w-]*:\s+(.*)$/)?.[1];
     if (value) assert.ok(!value.startsWith("\\"), `value starts with a backslash: ${line.trim()}`);

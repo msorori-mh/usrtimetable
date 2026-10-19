@@ -231,8 +231,7 @@ export function LeadershipMetricDrilldown({
         </div>
 
         <div className="text-xs text-muted-foreground" data-testid="drilldown-counts">
-          {formatNumber(visible.length)} سجلًا · إجمالي الساعات{" "}
-          {formatNumber(visibleHours)}
+          {formatNumber(visible.length)} سجلًا · إجمالي الساعات {formatNumber(visibleHours)}
         </div>
 
         <div className="min-h-0 flex-1 overflow-auto rounded border">
@@ -267,7 +266,9 @@ export function LeadershipMetricDrilldown({
                       {columns.map((column) => (
                         <td
                           key={column.key}
-                          className={column.numeric ? "p-2 tabular-nums" : "p-2 whitespace-pre-wrap"}
+                          className={
+                            column.numeric ? "p-2 tabular-nums" : "p-2 whitespace-pre-wrap"
+                          }
                         >
                           {cellText(row[column.key], column.key)}
                         </td>

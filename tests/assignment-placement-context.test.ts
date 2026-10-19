@@ -57,7 +57,14 @@ describe("assignment placement display", () => {
       expect(() => parseAssignmentPlacementContext(value, "v")).toThrow();
   });
   it("wires explicit-version filtering and distinguishes assignment completion", () => {
-    const source = ["src/routes/_authenticated/teaching-assignments.tsx", "src/components/teaching-assignments/teaching-assignment-groups-table.tsx", "src/components/teaching-assignments/instructor-search-summary-card.tsx", "src/hooks/use-teaching-assignment-filter-options.ts"].map((file) => readFileSync(file, "utf8")).join("\n");
+    const source = [
+      "src/routes/_authenticated/teaching-assignments.tsx",
+      "src/components/teaching-assignments/teaching-assignment-groups-table.tsx",
+      "src/components/teaching-assignments/instructor-search-summary-card.tsx",
+      "src/hooks/use-teaching-assignment-filter-options.ts",
+    ]
+      .map((file) => readFileSync(file, "utf8"))
+      .join("\n");
     expect(source).toContain("assignmentRowsForVersion(");
     expect(source).toContain('fully_allocated: "الإسناد مكتمل"');
     expect(source).toContain("scheduleQuery.isError");

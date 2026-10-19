@@ -172,7 +172,8 @@ export function V2AddSessionDialog({
               </div>
               <div className="space-y-1.5">
                 <Label htmlFor="v2-add-session-dialog-f1">من</Label>
-                <Input id="v2-add-session-dialog-f1"
+                <Input
+                  id="v2-add-session-dialog-f1"
                   type="time"
                   value={startTime}
                   onChange={(e) => setStartTime(e.target.value)}
@@ -180,7 +181,12 @@ export function V2AddSessionDialog({
               </div>
               <div className="space-y-1.5">
                 <Label htmlFor="v2-add-session-dialog-f2">إلى</Label>
-                <Input id="v2-add-session-dialog-f2" type="time" value={endTime} onChange={(e) => setEndTime(e.target.value)} />
+                <Input
+                  id="v2-add-session-dialog-f2"
+                  type="time"
+                  value={endTime}
+                  onChange={(e) => setEndTime(e.target.value)}
+                />
               </div>
             </div>
 

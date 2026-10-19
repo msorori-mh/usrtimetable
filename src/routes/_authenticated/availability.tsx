@@ -98,7 +98,10 @@ function AvailabilityPage() {
             <TabsList>
               <TabsTrigger value="instructor">إتاحة المحاضرين</TabsTrigger>
               <TabsTrigger value="requests">
-                الطلبات{readiness?.pending_requests ? ` (${formatNumber(readiness.pending_requests)})` : ""}
+                الطلبات
+                {readiness?.pending_requests
+                  ? ` (${formatNumber(readiness.pending_requests)})`
+                  : ""}
               </TabsTrigger>
               <TabsTrigger value="room">عدم توفّر القاعات</TabsTrigger>
             </TabsList>

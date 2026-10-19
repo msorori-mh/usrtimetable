@@ -22,8 +22,7 @@ import {
 import { userErrorMessage } from "@/lib/user-error";
 
 export type AdminExportDatasetProvider = () =>
-  | AdminExportDataset<never>
-  | Promise<AdminExportDataset<never>>;
+  AdminExportDataset<never> | Promise<AdminExportDataset<never>>;
 
 export function AdminExportMenu({
   dataset,

@@ -298,8 +298,9 @@ function ConstraintSettingsPage() {
                   القيود الإلزامية
                 </h2>
                 <p className="mt-1 text-xs text-muted-foreground">
-                  لا تغيّر الأوزان هذه القيود؛ كل مخالفة تمنع الحفظ أو الاعتماد، ولا تُقبل استثناءات جديدة (يبقى فقط ما اعتُمد في الفصل الحالي).
-                  المفتاح التشغيلي الوحيد المعروض هنا هو تطبيق إتاحة المحاضرين من مصدره الفعلي.
+                  لا تغيّر الأوزان هذه القيود؛ كل مخالفة تمنع الحفظ أو الاعتماد، ولا تُقبل استثناءات
+                  جديدة (يبقى فقط ما اعتُمد في الفصل الحالي). المفتاح التشغيلي الوحيد المعروض هنا هو
+                  تطبيق إتاحة المحاضرين من مصدره الفعلي.
                 </p>
               </div>
               <Badge variant="destructive">Hard · إنفاذ إلزامي</Badge>
@@ -343,7 +344,9 @@ function ConstraintSettingsPage() {
                         aria-label={`تطبيق ${display.name_ar}`}
                         onCheckedChange={async (value) => {
                           const ok = await confirmAction({
-                            title: value ? "تفعيل تطبيق إتاحة المحاضرين؟" : "إيقاف تطبيق إتاحة المحاضرين؟",
+                            title: value
+                              ? "تفعيل تطبيق إتاحة المحاضرين؟"
+                              : "إيقاف تطبيق إتاحة المحاضرين؟",
                             description: value
                               ? "ستُرفض أي جلسة خارج نوافذ توفر المحاضرين في كل جداول الكلية."
                               : "لن تُفحص نوافذ توفر المحاضرين عند الحفظ أو الاعتماد في كل جداول الكلية.",
@@ -372,8 +375,8 @@ function ConstraintSettingsPage() {
                     !availabilityReadiness.data.can_activate ? (
                       <p className="text-xs font-medium text-amber-800 md:col-span-12 dark:text-amber-200">
                         لا يمكن التفعيل بعد:{" "}
-                        {formatNumber(availabilityReadiness.data.missing_required_instructors)} محاضرًا خارجيًا
-                        بلا نافذة توفر صريحة.
+                        {formatNumber(availabilityReadiness.data.missing_required_instructors)}{" "}
+                        محاضرًا خارجيًا بلا نافذة توفر صريحة.
                       </p>
                     ) : null}
                   </div>
@@ -434,7 +437,12 @@ function ConstraintSettingsPage() {
                       <span className="text-sm">{row.enabled ? "مفعّل" : "معطّل"}</span>
                     </div>
                     <div className="flex items-center gap-2 md:col-span-3">
-                      <label htmlFor={`quality-weight-${metric.id}`} className="text-sm text-muted-foreground">الوزن</label>
+                      <label
+                        htmlFor={`quality-weight-${metric.id}`}
+                        className="text-sm text-muted-foreground"
+                      >
+                        الوزن
+                      </label>
                       <Input
                         id={`quality-weight-${metric.id}`}
                         type="number"

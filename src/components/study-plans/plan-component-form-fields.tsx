@@ -1,7 +1,13 @@
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   COMPENSATION_MODES,
   COMPENSATION_MODE_LABEL_AR,
@@ -12,7 +18,10 @@ import {
   type PlanContext,
   type RoomTypeOption,
 } from "@/lib/academic-delivery/plan-course-editor";
-import { findTutorialRoomType, tutorialRoomTypeIsLocked } from "@/lib/academic-delivery/tutorial-room-type";
+import {
+  findTutorialRoomType,
+  tutorialRoomTypeIsLocked,
+} from "@/lib/academic-delivery/tutorial-room-type";
 
 /** Fields of the plan-course component (lecture/lab) editor — split from plan-courses-manager.tsx (L-14). */
 const NONE = "__none__";
@@ -33,7 +42,9 @@ export function PlanComponentFormFields({
   return (
     <>
       <div>
-        <Label htmlFor="plan-courses-f10" className="text-xs">نوع المحاضرة</Label>
+        <Label htmlFor="plan-courses-f10" className="text-xs">
+          نوع المحاضرة
+        </Label>
         <Select
           value={componentForm.component_type}
           onValueChange={(v) =>
@@ -59,8 +70,11 @@ export function PlanComponentFormFields({
         </Select>
       </div>
       <div>
-        <Label htmlFor="plan-courses-f3" className="text-xs">الساعات الأسبوعية</Label>
-        <Input id="plan-courses-f3"
+        <Label htmlFor="plan-courses-f3" className="text-xs">
+          الساعات الأسبوعية
+        </Label>
+        <Input
+          id="plan-courses-f3"
           type="number"
           min={0}
           value={componentForm.weekly_contact_hours}
@@ -73,7 +87,9 @@ export function PlanComponentFormFields({
         />
       </div>
       <div>
-        <Label htmlFor="plan-courses-f11" className="text-xs">نوع القاعة المطلوب</Label>
+        <Label htmlFor="plan-courses-f11" className="text-xs">
+          نوع القاعة المطلوب
+        </Label>
         <Select
           value={componentForm.required_room_type_id ?? NONE}
           disabled={tutorialRoomTypeIsLocked(componentForm.component_type)}
@@ -109,12 +125,12 @@ export function PlanComponentFormFields({
         ) : null}
       </div>
       <div>
-        <Label htmlFor="plan-courses-f12" className="text-xs">طريقة الاحتساب</Label>
+        <Label htmlFor="plan-courses-f12" className="text-xs">
+          طريقة الاحتساب
+        </Label>
         <Select
           value={componentForm.compensation_mode}
-          onValueChange={(v) =>
-            setComponentForm({ ...componentForm, compensation_mode: v })
-          }
+          onValueChange={(v) => setComponentForm({ ...componentForm, compensation_mode: v })}
         >
           <SelectTrigger id="plan-courses-f12">
             <SelectValue />
@@ -129,8 +145,11 @@ export function PlanComponentFormFields({
         </Select>
       </div>
       <div>
-        <Label htmlFor="plan-courses-f4" className="text-xs">حجم المجموعة (اختياري)</Label>
-        <Input id="plan-courses-f4"
+        <Label htmlFor="plan-courses-f4" className="text-xs">
+          حجم المجموعة (اختياري)
+        </Label>
+        <Input
+          id="plan-courses-f4"
           type="number"
           min={1}
           value={componentForm.explicit_group_size ?? ""}
@@ -146,9 +165,7 @@ export function PlanComponentFormFields({
         <label className="flex items-center gap-2">
           <Checkbox
             checked={componentForm.is_timetabled}
-            onCheckedChange={(v) =>
-              setComponentForm({ ...componentForm, is_timetabled: !!v })
-            }
+            onCheckedChange={(v) => setComponentForm({ ...componentForm, is_timetabled: !!v })}
           />
           مجدول في الجدول
         </label>

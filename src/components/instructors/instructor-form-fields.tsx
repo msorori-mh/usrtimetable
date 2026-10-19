@@ -1,21 +1,32 @@
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { categorizeInstructor, INSTRUCTOR_FORM_HINT_AR } from "@/lib/instructor-category";
-import { INSTRUCTOR_AVAILABILITY_OPTIONS, DEFAULT_AVAILABILITY_STATUS } from "@/lib/instructor-metadata";
-import { EFFECTIVE_QUOTA_FORMULA_AR, isHourlyContractTypeCode } from "@/lib/instructors/effective-hours";
-import { ADMINISTRATIVE_POSITION_OPTIONS, requiresAdministrativeDepartment } from "@/lib/instructors/administrative-positions";
+import {
+  INSTRUCTOR_AVAILABILITY_OPTIONS,
+  DEFAULT_AVAILABILITY_STATUS,
+} from "@/lib/instructor-metadata";
+import {
+  EFFECTIVE_QUOTA_FORMULA_AR,
+  isHourlyContractTypeCode,
+} from "@/lib/instructors/effective-hours";
+import {
+  ADMINISTRATIVE_POSITION_OPTIONS,
+  requiresAdministrativeDepartment,
+} from "@/lib/instructors/administrative-positions";
 import { userErrorMessage } from "@/lib/user-error";
 import { useInstructorDirectory, RANKS } from "@/hooks/use-instructor-directory";
 
 /** Ordered add/edit form of the instructors page (split from instructors.tsx, L-14). */
-export function InstructorFormFields({
-  dir,
-}: {
-  dir: ReturnType<typeof useInstructorDirectory>;
-}) {
+export function InstructorFormFields({ dir }: { dir: ReturnType<typeof useInstructorDirectory> }) {
   const {
     active,
     accessibleColleges,
@@ -80,16 +91,12 @@ export function InstructorFormFields({
             setForm({
               ...form,
               instructor_type_id: id,
-              administrative_release_hours: hourly
-                ? 0
-                : form.administrative_release_hours,
+              administrative_release_hours: hourly ? 0 : form.administrative_release_hours,
               administrative_support_department_id: hourly
                 ? ""
                 : form.administrative_support_department_id,
               administrative_position: hourly ? "" : form.administrative_position,
-              administrative_department_id: hourly
-                ? ""
-                : form.administrative_department_id,
+              administrative_department_id: hourly ? "" : form.administrative_department_id,
               employment_type:
                 type?.code === "con" || type?.code === "annual_contract"
                   ? "contract"
@@ -100,9 +107,7 @@ export function InstructorFormFields({
           }}
         >
           <SelectTrigger id="instructor-form-f9" data-testid="instructor-category-select">
-            <SelectValue
-              placeholder={typesLoading ? "جارٍ تحميل الفئات…" : "اختر الفئة"}
-            />
+            <SelectValue placeholder={typesLoading ? "جارٍ تحميل الفئات…" : "اختر الفئة"} />
           </SelectTrigger>
           <SelectContent>
             {editing && !form.instructor_type_id && (
@@ -119,9 +124,7 @@ export function InstructorFormFields({
               .filter(
                 (t) =>
                   t.id === editing?.instructor_type_id ||
-                  ["permanent", "annual_contract", "con"].includes(
-                    t.code?.toLowerCase() ?? "",
-                  ),
+                  ["permanent", "annual_contract", "con"].includes(t.code?.toLowerCase() ?? ""),
               )
               .map((t) => (
                 <SelectItem key={t.id} value={t.id}>
@@ -139,18 +142,12 @@ export function InstructorFormFields({
           </p>
         )}
         {typesError && (
-          <p
-            className="mt-1 text-xs text-destructive"
-            data-testid="instructor-category-error"
-          >
+          <p className="mt-1 text-xs text-destructive" data-testid="instructor-category-error">
             تعذر تحميل فئات المحاضرين. حدّث الصفحة وحاول مرة أخرى.
           </p>
         )}
         {!typesLoading && !typesError && typeRows.length === 0 && (
-          <p
-            className="mt-1 text-xs text-amber-700"
-            data-testid="instructor-category-empty"
-          >
+          <p className="mt-1 text-xs text-amber-700" data-testid="instructor-category-empty">
             لا توجد فئات محاضرين مفعّلة لهذه الكلية بعد.
           </p>
         )}
@@ -161,10 +158,7 @@ export function InstructorFormFields({
         )}
       </div>
 
-      <div
-        className="rounded-md border bg-muted/30 p-3"
-        data-testid="automatic-faculty-number"
-      >
+      <div className="rounded-md border bg-muted/30 p-3" data-testid="automatic-faculty-number">
         <Label>الرقم الجامعي — تلقائي</Label>
         <p className="mt-1 text-sm" dir="ltr">
           {editing?.university_number ??
@@ -177,16 +171,17 @@ export function InstructorFormFields({
                   : "—")}
         </p>
         <p className="mt-1 text-xs text-muted-foreground">
-          يُصدر الرقم عند الحفظ بعد اختيار الكلية والحالة الوظيفية. عند تغيير الفئة يُحفظ
-          الرقم السابق مع بقاء هوية المحاضر وإسناداته. إذا كان المحاضر مسجلاً في كلية
-          أخرى، تُربط سجلاته بعد التحقق من هويته.
+          يُصدر الرقم عند الحفظ بعد اختيار الكلية والحالة الوظيفية. عند تغيير الفئة يُحفظ الرقم
+          السابق مع بقاء هوية المحاضر وإسناداته. إذا كان المحاضر مسجلاً في كلية أخرى، تُربط سجلاته
+          بعد التحقق من هويته.
         </p>
       </div>
 
       {!hourlyContract && (
         <div data-field-order="2-employee-number">
           <Label htmlFor="instructor-form-f1">رقم الموارد البشرية (اختياري)</Label>
-          <Input id="instructor-form-f1"
+          <Input
+            id="instructor-form-f1"
             value={form.employee_number}
             onChange={(e) => setForm({ ...form, employee_number: e.target.value })}
           />
@@ -195,7 +190,8 @@ export function InstructorFormFields({
 
       <div data-field-order="3-default-name">
         <Label htmlFor="instructor-form-f2">الاسم الافتراضي</Label>
-        <Input id="instructor-form-f2"
+        <Input
+          id="instructor-form-f2"
           value={form.full_name}
           onChange={(e) => setForm({ ...form, full_name: e.target.value })}
         />
@@ -207,13 +203,12 @@ export function InstructorFormFields({
             <b>سجلات موجودة تحتاج المراجعة قبل الإضافة</b>
             {registrationMatches.data?.map((m) => (
               <p key={m.university_number}>
-                {m.name} — {m.university_number} —{" "}
-                {m.home_college ?? "تبعية تحتاج مراجعة"}
+                {m.name} — {m.university_number} — {m.home_college ?? "تبعية تحتاج مراجعة"}
               </p>
             ))}
             <p>
-              إن كان المحاضر مسجلًا، استخدمه من صفحة الإسناد. تشابه الأسماء لا يدمج
-              الهويات تلقائيًا.
+              إن كان المحاضر مسجلًا، استخدمه من صفحة الإسناد. تشابه الأسماء لا يدمج الهويات
+              تلقائيًا.
             </p>
           </div>
         )}
@@ -223,7 +218,8 @@ export function InstructorFormFields({
           </p>
         )}
         <Label htmlFor="instructor-form-f3">الاسم الرباعي</Label>
-        <Input id="instructor-form-f3"
+        <Input
+          id="instructor-form-f3"
           value={form.full_name_ar}
           onChange={(e) => setForm({ ...form, full_name_ar: e.target.value })}
         />
@@ -296,7 +292,8 @@ export function InstructorFormFields({
 
       <div data-field-order="9-base-quota">
         <Label htmlFor="instructor-form-f4">النصاب الأساسي الأسبوعي</Label>
-        <Input id="instructor-form-f4"
+        <Input
+          id="instructor-form-f4"
           type="number"
           min={0}
           value={form.max_weekly_hours}
@@ -312,7 +309,8 @@ export function InstructorFormFields({
       {!hourlyContract && (
         <div data-field-order="10-admin-release">
           <Label htmlFor="instructor-form-f5">ساعات الإعفاء الإداري</Label>
-          <Input id="instructor-form-f5"
+          <Input
+            id="instructor-form-f5"
             type="number"
             min={0}
             value={form.administrative_release_hours}
@@ -325,10 +323,7 @@ export function InstructorFormFields({
           />
         </div>
       )}
-      <p
-        className="rounded border bg-muted/30 p-2 text-xs"
-        data-testid="effective-weekly-quota"
-      >
+      <p className="rounded border bg-muted/30 p-2 text-xs" data-testid="effective-weekly-quota">
         {EFFECTIVE_QUOTA_FORMULA_AR}: <b>{effectiveQuota} ساعة</b>
       </p>
 
@@ -342,9 +337,7 @@ export function InstructorFormFields({
                 ...form,
                 administrative_position: v === "_none" ? "" : v,
                 administrative_support_department_id:
-                  v === "department_head"
-                    ? form.administrative_support_department_id
-                    : "",
+                  v === "department_head" ? form.administrative_support_department_id : "",
                 administrative_department_id:
                   v === "department_head" ? form.administrative_department_id : "",
               })
@@ -477,7 +470,8 @@ export function InstructorFormFields({
 
       <div data-field-order="13-email">
         <Label htmlFor="instructor-form-f6">البريد الإلكتروني</Label>
-        <Input id="instructor-form-f6"
+        <Input
+          id="instructor-form-f6"
           dir="ltr"
           type="email"
           value={form.email}
@@ -487,7 +481,8 @@ export function InstructorFormFields({
 
       <div data-field-order="14-phone">
         <Label htmlFor="instructor-form-f7">رقم التلفون/الواتساب</Label>
-        <Input id="instructor-form-f7"
+        <Input
+          id="instructor-form-f7"
           dir="ltr"
           value={form.phone}
           onChange={(e) => setForm({ ...form, phone: e.target.value })}
@@ -499,7 +494,8 @@ export function InstructorFormFields({
         className="flex items-center justify-between rounded border border-border p-3"
       >
         <Label htmlFor="instructor-form-f8">نشط</Label>
-        <Switch id="instructor-form-f8"
+        <Switch
+          id="instructor-form-f8"
           checked={form.is_active}
           onCheckedChange={(v) => setForm({ ...form, is_active: v })}
         />

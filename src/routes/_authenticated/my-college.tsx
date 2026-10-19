@@ -14,7 +14,13 @@ export const Route = createFileRoute("/_authenticated/my-college")({
 function MyCollegePage() {
   const { data: user } = useCurrentUser();
 
-  const { data: colleges, isLoading, isError, error, refetch } = useQuery({
+  const {
+    data: colleges,
+    isLoading,
+    isError,
+    error,
+    refetch,
+  } = useQuery({
     queryKey: ["my-colleges", user?.collegeIds],
     enabled: !!user,
     queryFn: async () => {
@@ -43,7 +49,9 @@ function MyCollegePage() {
 
       {isLoading && <p className="text-muted-foreground">جارٍ التحميل...</p>}
 
-      {isError && <QueryErrorNotice className="mb-4" error={error} onRetry={() => void refetch()} />}
+      {isError && (
+        <QueryErrorNotice className="mb-4" error={error} onRetry={() => void refetch()} />
+      )}
 
       {!isLoading && !isError && (!colleges || colleges.length === 0) && (
         <Card className="border-warning/40 bg-warning/10 p-6 text-center">

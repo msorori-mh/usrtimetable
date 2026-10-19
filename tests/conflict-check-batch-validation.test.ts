@@ -40,9 +40,9 @@ const sessions = Array.from({ length: SESSION_COUNT }, (_, i) => ({
 /** Count of table reads per table, to prove data is loaded once per run. */
 let reads: Record<string, number> = {};
 let insertedResults: unknown[] = [];
-let enforceInstructorAvailability = false;
-let instructorAvailabilityRows: unknown[] = [];
-let schedulingPolicyError: { message: string } | null = null;
+const enforceInstructorAvailability = false;
+const instructorAvailabilityRows: unknown[] = [];
+const schedulingPolicyError: { message: string } | null = null;
 let serverConflicts: unknown[] = [];
 let serverError: { message: string } | null = null;
 
@@ -197,7 +197,12 @@ describe("validateScheduleVersion server pass", () => {
     assert.equal(result.unapprovedHardConflicts, 0);
     assert.equal(result.conflicts.length, 0);
     assert.equal(reads["rpc:validate_schedule_version"], 1, "one server validation");
-    for (const table of ["schedule_sessions", "rooms", "instructor_availability", "course_offerings"]) {
+    for (const table of [
+      "schedule_sessions",
+      "rooms",
+      "instructor_availability",
+      "course_offerings",
+    ]) {
       assert.equal(reads[table] ?? 0, 0, `${table} must not be re-validated in the browser`);
     }
     assert.ok(elapsed < 10_000, `must finish quickly, took ${elapsed}ms`);

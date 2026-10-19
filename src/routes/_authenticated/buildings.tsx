@@ -13,29 +13,100 @@ export const Route = createFileRoute("/_authenticated/buildings")({
       title="المباني الأكاديمية"
       subtitle="مباني الكلية وعناوينها."
       icon={<Building className="h-5 w-5" />}
-      emptyForm={() => ({ code: "", name: "", address: "", floors_count: null, notes: "", is_active: true })}
-      toForm={(r) => ({ code: r.code, name: r.name, address: r.address ?? "", floors_count: r.floors_count, notes: r.notes ?? "", is_active: r.is_active })}
-      validate={(f) => (!String(f.code).trim() || !String(f.name).trim()) ? "الرمز والاسم مطلوبان" : null}
+      emptyForm={() => ({
+        code: "",
+        name: "",
+        address: "",
+        floors_count: null,
+        notes: "",
+        is_active: true,
+      })}
+      toForm={(r) => ({
+        code: r.code,
+        name: r.name,
+        address: r.address ?? "",
+        floors_count: r.floors_count,
+        notes: r.notes ?? "",
+        is_active: r.is_active,
+      })}
+      validate={(f) =>
+        !String(f.code).trim() || !String(f.name).trim() ? "الرمز والاسم مطلوبان" : null
+      }
       renderForm={(f, set) => (
         <>
           <div className="grid grid-cols-2 gap-3">
-            <div><Label htmlFor="buildings-f1">الرمز</Label><Input id="buildings-f1" value={String(f.code ?? "")} onChange={(e) => set({ ...f, code: e.target.value })} /></div>
-            <div><Label htmlFor="buildings-f2">عدد الطوابق</Label><Input id="buildings-f2" type="number" value={f.floors_count == null ? "" : Number(f.floors_count)} onChange={(e) => set({ ...f, floors_count: e.target.value === "" ? null : Number(e.target.value) })} /></div>
+            <div>
+              <Label htmlFor="buildings-f1">الرمز</Label>
+              <Input
+                id="buildings-f1"
+                value={String(f.code ?? "")}
+                onChange={(e) => set({ ...f, code: e.target.value })}
+              />
+            </div>
+            <div>
+              <Label htmlFor="buildings-f2">عدد الطوابق</Label>
+              <Input
+                id="buildings-f2"
+                type="number"
+                value={f.floors_count == null ? "" : Number(f.floors_count)}
+                onChange={(e) =>
+                  set({ ...f, floors_count: e.target.value === "" ? null : Number(e.target.value) })
+                }
+              />
+            </div>
           </div>
-          <div><Label htmlFor="buildings-f3">الاسم</Label><Input id="buildings-f3" value={String(f.name ?? "")} onChange={(e) => set({ ...f, name: e.target.value })} /></div>
-          <div><Label htmlFor="buildings-f4">العنوان</Label><Input id="buildings-f4" value={String(f.address ?? "")} onChange={(e) => set({ ...f, address: e.target.value })} /></div>
-          <div><Label htmlFor="buildings-f5">ملاحظات</Label><Input id="buildings-f5" value={String(f.notes ?? "")} onChange={(e) => set({ ...f, notes: e.target.value })} /></div>
-          <label className="flex items-center gap-2 text-sm"><Checkbox checked={Boolean(f.is_active)} onCheckedChange={(v) => set({ ...f, is_active: !!v })} /> نشط</label>
+          <div>
+            <Label htmlFor="buildings-f3">الاسم</Label>
+            <Input
+              id="buildings-f3"
+              value={String(f.name ?? "")}
+              onChange={(e) => set({ ...f, name: e.target.value })}
+            />
+          </div>
+          <div>
+            <Label htmlFor="buildings-f4">العنوان</Label>
+            <Input
+              id="buildings-f4"
+              value={String(f.address ?? "")}
+              onChange={(e) => set({ ...f, address: e.target.value })}
+            />
+          </div>
+          <div>
+            <Label htmlFor="buildings-f5">ملاحظات</Label>
+            <Input
+              id="buildings-f5"
+              value={String(f.notes ?? "")}
+              onChange={(e) => set({ ...f, notes: e.target.value })}
+            />
+          </div>
+          <label className="flex items-center gap-2 text-sm">
+            <Checkbox
+              checked={Boolean(f.is_active)}
+              onCheckedChange={(v) => set({ ...f, is_active: !!v })}
+            />{" "}
+            نشط
+          </label>
         </>
       )}
       renderRow={(r) => (
         <>
           <p className="font-semibold">{r.name}</p>
-          <p className="text-xs text-muted-foreground"><span dir="ltr">{r.code}</span>{r.address && ` · ${r.address}`}{r.floors_count != null && ` · ${r.floors_count} طوابق`}</p>
+          <p className="text-xs text-muted-foreground">
+            <span dir="ltr">{r.code}</span>
+            {r.address && ` · ${r.address}`}
+            {r.floors_count != null && ` · ${r.floors_count} طوابق`}
+          </p>
         </>
       )}
     />
   ),
 });
 
-interface Row extends LookupRow { code: string; name: string; address: string | null; floors_count: number | null; notes: string | null; is_active: boolean }
+interface Row extends LookupRow {
+  code: string;
+  name: string;
+  address: string | null;
+  floors_count: number | null;
+  notes: string | null;
+  is_active: boolean;
+}

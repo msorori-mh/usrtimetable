@@ -302,11 +302,13 @@ function AutoSchedulePage() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {Object.entries(AUTO_SCOPE_LABELS).filter(([value]) => supportsParallel || value === "all").map(([value, label]) => (
-                      <SelectItem key={value} value={value}>
-                        {supportsParallel ? label : "النظام العام فقط"}
-                      </SelectItem>
-                    ))}
+                    {Object.entries(AUTO_SCOPE_LABELS)
+                      .filter(([value]) => supportsParallel || value === "all")
+                      .map(([value, label]) => (
+                        <SelectItem key={value} value={value}>
+                          {supportsParallel ? label : "النظام العام فقط"}
+                        </SelectItem>
+                      ))}
                   </SelectContent>
                 </Select>
               </div>
@@ -386,7 +388,11 @@ function AutoSchedulePage() {
               />
             ) : null}
             {runError ? (
-              <div role="alert" data-testid="auto-run-error" className="rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive">
+              <div
+                role="alert"
+                data-testid="auto-run-error"
+                className="rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive"
+              >
                 تعذر إكمال الجدولة: {runError}
               </div>
             ) : null}

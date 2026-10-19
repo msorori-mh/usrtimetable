@@ -14,7 +14,10 @@ import {
   type Session,
   type Snapshot,
 } from "./compact.ts";
-import { extendedDayLimit, studentDailyPolicy } from "../../../src/lib/scheduling/student-daily-policy.ts";
+import {
+  extendedDayLimit,
+  studentDailyPolicy,
+} from "../../../src/lib/scheduling/student-daily-policy.ts";
 import { roomTypeRank } from "../../../src/lib/scheduling/room-type-policy.ts";
 import {
   instructorAttendanceDayCap,

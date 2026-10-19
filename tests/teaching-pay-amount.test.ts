@@ -31,7 +31,11 @@ test("H-9: exhaustive grid (hours 0..40 step 0.25 x rates 0.01..50.00) has zero 
 
 test("H-9: arbitrary 2-decimal hours and large rates", () => {
   const cases: Array<[string, string]> = [
-    ["1.33", "37.45"], ["999.99", "100000000.00"], ["0.01", "0.01"], ["12.35", "19.99"], ["7.77", "33.33"],
+    ["1.33", "37.45"],
+    ["999.99", "100000000.00"],
+    ["0.01", "0.01"],
+    ["12.35", "19.99"],
+    ["7.77", "33.33"],
   ];
   for (const [h, r] of cases) expect(payAmountCents(Number(h), Number(r))).toBe(refCents(h, r));
 });

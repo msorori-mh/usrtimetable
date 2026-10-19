@@ -10,7 +10,11 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
 import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
 } from "@/components/ui/select";
 import { toast } from "sonner";
 import { logAudit } from "@/lib/audit";
@@ -26,15 +30,28 @@ export const Route = createFileRoute("/_authenticated/conflict-checks")({
   component: ConflictChecksPage,
 });
 
-interface SV { id: string; name: string; status: string; academic_term_id: string }
+interface SV {
+  id: string;
+  name: string;
+  status: string;
+  academic_term_id: string;
+}
 interface ChkRow {
-  id: string; status: string; total_conflicts: number;
-  created_at: string; completed_at: string | null; check_type: string;
+  id: string;
+  status: string;
+  total_conflicts: number;
+  created_at: string;
+  completed_at: string | null;
+  check_type: string;
 }
 interface CR {
-  id: string; conflict_code: string; severity: string;
-  message_ar: string; message_en: string;
-  schedule_session_id: string | null; related_session_id: string | null;
+  id: string;
+  conflict_code: string;
+  severity: string;
+  message_ar: string;
+  message_en: string;
+  schedule_session_id: string | null;
+  related_session_id: string | null;
 }
 
 function ConflictChecksPage() {
@@ -59,7 +76,12 @@ function ConflictChecksPage() {
     },
   });
 
-  const { data: checks, isLoading: checksLoading, error: checksError, refetch: refetchChecks } = useQuery({
+  const {
+    data: checks,
+    isLoading: checksLoading,
+    error: checksError,
+    refetch: refetchChecks,
+  } = useQuery({
     queryKey: ["conflict-checks", active?.id, versionId],
     enabled: !!active && !!versionId,
     queryFn: async () => {
@@ -75,14 +97,21 @@ function ConflictChecksPage() {
     },
   });
 
-  const { data: results, isLoading: resultsLoading, error: resultsError, refetch: refetchResults } = useQuery({
+  const {
+    data: results,
+    isLoading: resultsLoading,
+    error: resultsError,
+    refetch: refetchResults,
+  } = useQuery({
     queryKey: ["conflict-results", selectedCheck],
     enabled: !!selectedCheck && !!active,
     queryFn: async () => {
       const data = await readAllRows((from, to) =>
         supabase
           .from("conflict_results")
-          .select("id, conflict_code, severity, message_ar, message_en, schedule_session_id, related_session_id")
+          .select(
+            "id, conflict_code, severity, message_ar, message_en, schedule_session_id, related_session_id",
+          )
           .eq("college_id", active!.id)
           .eq("conflict_check_id", selectedCheck!)
           .order("created_at")
@@ -137,14 +166,26 @@ function ConflictChecksPage() {
       ) : (
         <>
           {versionsError && (
-            <QueryErrorNotice className="mb-4" title="تعذّر تحميل إصدارات الجدول." error={versionsError} />
+            <QueryErrorNotice
+              className="mb-4"
+              title="تعذّر تحميل إصدارات الجدول."
+              error={versionsError}
+            />
           )}
           <Card className="mb-4 p-4">
             <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
               <div className="md:col-span-2">
                 <Label htmlFor="conflict-check-version">إصدار الجدول</Label>
-                <Select value={versionId} onValueChange={(v) => { setVersionId(v); setSelectedCheck(null); }}>
-                  <SelectTrigger id="conflict-check-version"><SelectValue placeholder="اختر إصداراً" /></SelectTrigger>
+                <Select
+                  value={versionId}
+                  onValueChange={(v) => {
+                    setVersionId(v);
+                    setSelectedCheck(null);
+                  }}
+                >
+                  <SelectTrigger id="conflict-check-version">
+                    <SelectValue placeholder="اختر إصداراً" />
+                  </SelectTrigger>
                   <SelectContent>
                     {(versions ?? []).map((v) => (
                       <SelectItem key={v.id} value={v.id}>
@@ -152,7 +193,9 @@ function ConflictChecksPage() {
                       </SelectItem>
                     ))}
                     {(versions ?? []).length === 0 && (
-                      <div className="px-2 py-1.5 text-xs text-muted-foreground">لا توجد إصدارات بعد</div>
+                      <div className="px-2 py-1.5 text-xs text-muted-foreground">
+                        لا توجد إصدارات بعد
+                      </div>
                     )}
                   </SelectContent>
                 </Select>
@@ -178,7 +221,9 @@ function ConflictChecksPage() {
               ) : checksError ? (
                 <QueryErrorNotice error={checksError} onRetry={() => void refetchChecks()} />
               ) : !checks || checks.length === 0 ? (
-                <p className="text-sm text-muted-foreground">لا توجد عمليات فحص بعد لهذا الإصدار.</p>
+                <p className="text-sm text-muted-foreground">
+                  لا توجد عمليات فحص بعد لهذا الإصدار.
+                </p>
               ) : (
                 <ul className="divide-y divide-border">
                   {checks.map((c) => (
@@ -190,14 +235,14 @@ function ConflictChecksPage() {
                         className={`w-full p-2 text-start hover:bg-muted ${selectedCheck === c.id ? "bg-muted" : ""}`}
                       >
                         <div className="flex items-center justify-between">
-                          <span className="text-sm">
-                            {formatDateTime(c.created_at)}
-                          </span>
+                          <span className="text-sm">{formatDateTime(c.created_at)}</span>
                           <Badge variant={c.total_conflicts === 0 ? "secondary" : "destructive"}>
                             {formatNumber(c.total_conflicts)} تعارض
                           </Badge>
                         </div>
-                        <div className="text-xs text-muted-foreground">{c.check_type} · {c.status}</div>
+                        <div className="text-xs text-muted-foreground">
+                          {c.check_type} · {c.status}
+                        </div>
                       </button>
                     </li>
                   ))}
@@ -222,13 +267,20 @@ function ConflictChecksPage() {
               ) : (
                 <ul className="space-y-2">
                   {results.map((r) => (
-                    <li key={r.id} className="rounded border border-destructive/30 bg-destructive/5 p-2">
+                    <li
+                      key={r.id}
+                      className="rounded border border-destructive/30 bg-destructive/5 p-2"
+                    >
                       <div className="flex items-center justify-between">
-                        <span className="text-xs font-mono text-muted-foreground">{r.conflict_code}</span>
+                        <span className="text-xs font-mono text-muted-foreground">
+                          {r.conflict_code}
+                        </span>
                         <Badge variant="destructive">{r.severity}</Badge>
                       </div>
                       <p className="mt-1 text-sm">{r.message_ar}</p>
-                      <p className="text-xs text-muted-foreground" dir="ltr">{r.message_en}</p>
+                      <p className="text-xs text-muted-foreground" dir="ltr">
+                        {r.message_en}
+                      </p>
                     </li>
                   ))}
                 </ul>

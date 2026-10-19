@@ -62,8 +62,8 @@ describe("filterCohortDirectory with null fields", () => {
     const rows: CohortListRow[] = [
       { ...base, id: "null-row", entry_year: null, expected_students: null },
     ];
-    expect(
-      filterCohortDirectory(rows, { ...EMPTY_COHORT_FILTERS, search: "برنامج" }),
-    ).toHaveLength(1);
+    expect(filterCohortDirectory(rows, { ...EMPTY_COHORT_FILTERS, search: "برنامج" })).toHaveLength(
+      1,
+    );
   });
 });

@@ -464,9 +464,7 @@ function VersionCard({
         </div>
       )}
       {v.notes && <div className="break-words text-xs">{v.notes}</div>}
-      <div className="text-[10px] text-muted-foreground">
-        {formatDateTime(v.created_at)}
-      </div>
+      <div className="text-[10px] text-muted-foreground">{formatDateTime(v.created_at)}</div>
 
       <div className="flex gap-2 flex-wrap">
         <Button variant="outline" size="sm" asChild className="flex-1">
@@ -575,9 +573,7 @@ function VersionCard({
                       {eventLabel(e.event_type)}{" "}
                       {e.from_status && `(${e.from_status}→${e.to_status})`}
                     </span>
-                    <span className="text-muted-foreground">
-                      {formatDateTime(e.created_at)}
-                    </span>
+                    <span className="text-muted-foreground">{formatDateTime(e.created_at)}</span>
                   </li>
                 ))}
               </ul>
@@ -726,7 +722,9 @@ function CloneDialog({
     <Dialog open onOpenChange={(b) => !b && onClose()}>
       <DialogContent dir="rtl">
         <DialogHeader>
-          <DialogTitle>{asNewDraft ? "إنشاء مسودة جديدة من النسخة" : "استنساخ نسخة الجدول"}</DialogTitle>
+          <DialogTitle>
+            {asNewDraft ? "إنشاء مسودة جديدة من النسخة" : "استنساخ نسخة الجدول"}
+          </DialogTitle>
         </DialogHeader>
         <div className="space-y-3">
           <div>

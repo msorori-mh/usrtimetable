@@ -12,8 +12,7 @@ const LEGACY_PROJECT_REF = ["emzytxqkxjj", "hsivqxdiu"].join(""); // split so th
 
 // Known cosmetic leftovers: the timetable drag-and-drop payload MIME type. It is an
 // internal string (no Lovable dependency) and is renamed in both files together later.
-const ALLOWED = new Map([
-]);
+const ALLOWED = new Map([]);
 
 function walk(dir, out = []) {
   for (const name of readdirSync(dir)) {
@@ -23,12 +22,22 @@ function walk(dir, out = []) {
   }
   return out;
 }
-const srcFiles = walk(path.join(root, "src")).map((f) => path.relative(root, f).split(path.sep).join("/"));
+const srcFiles = walk(path.join(root, "src")).map((f) =>
+  path.relative(root, f).split(path.sep).join("/"),
+);
 
 test("package.json has no @lovable.dev dependency", () => {
   const pkg = JSON.parse(read("package.json"));
-  const all = { ...pkg.dependencies, ...pkg.devDependencies, ...pkg.optionalDependencies, ...pkg.peerDependencies };
-  assert.deepEqual(Object.keys(all).filter((n) => n.startsWith("@lovable.dev/")), []);
+  const all = {
+    ...pkg.dependencies,
+    ...pkg.devDependencies,
+    ...pkg.optionalDependencies,
+    ...pkg.peerDependencies,
+  };
+  assert.deepEqual(
+    Object.keys(all).filter((n) => n.startsWith("@lovable.dev/")),
+    [],
+  );
   assert.doesNotMatch(read("package.json"), /@lovable\.dev/);
 });
 

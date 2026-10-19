@@ -23,11 +23,13 @@ export function loadEducationSourcePublications(): Promise<readonly EducationSou
       inflight = null;
       throw error;
     }
-    const rows = ((data ?? []) as Array<{
-      schedule_version_id: string | null;
-      college_id: string;
-      metadata: { term_id?: string | null; role?: string | null } | null;
-    }>).flatMap((row) =>
+    const rows = (
+      (data ?? []) as Array<{
+        schedule_version_id: string | null;
+        college_id: string;
+        metadata: { term_id?: string | null; role?: string | null } | null;
+      }>
+    ).flatMap((row) =>
       row.schedule_version_id
         ? [
             {

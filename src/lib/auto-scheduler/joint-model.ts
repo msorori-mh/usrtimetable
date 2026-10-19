@@ -57,7 +57,9 @@ function roomPools(snapshot: Snapshot) {
   }
   const groups = new Map<string, Snapshot["rooms"]>();
   for (const r of snapshot.rooms.filter((r) => r.is_active)) {
-    const windows = (groupRowsBy(snapshot.roomAvailability, "room", (x) => x.room_id).get(r.id) ?? [])
+    const windows = (
+      groupRowsBy(snapshot.roomAvailability, "room", (x) => x.room_id).get(r.id) ?? []
+    )
       .map((x) => JSON.stringify([x.day_of_week, x.start_time, x.end_time]))
       .sort();
     const closures = (
@@ -434,11 +436,7 @@ export function buildJointModel(
       -INF,
       0,
     );
-    row(
-      [[end, 1], [start, -1], ...terms.map(([i]): Term => [i, -durationOf[i]])],
-      0,
-      INF,
-    );
+    row([[end, 1], [start, -1], ...terms.map(([i]): Term => [i, -durationOf[i]])], 0, INF);
     const points = boundaries.get(day)!;
     for (let k = 0; k < points.length - 1; k++) {
       const occupied = terms.filter(
@@ -453,7 +451,10 @@ export function buildJointModel(
   }
   const instructorHours = new Map<string, number>();
   for (const x of snapshot.sessions)
-    instructorHours.set(x.instructor_id, (instructorHours.get(x.instructor_id) ?? 0) + duration(x) / 60);
+    instructorHours.set(
+      x.instructor_id,
+      (instructorHours.get(x.instructor_id) ?? 0) + duration(x) / 60,
+    );
   for (const [id, enabled] of instructorDays) {
     const instructor = instructorById.get(id)!;
     const cap = instructorAttendanceDayCap(
@@ -551,9 +552,7 @@ export function buildJointModel(
       values: Float64Array.from(
         candidates.map((c) => {
           const old = sessionById.get(c.session.id)!;
-          return sameTime(old, c.session) && poolRoomIds[c.pool].has(old.room_id)
-            ? 1
-            : 0;
+          return sameTime(old, c.session) && poolRoomIds[c.pool].has(old.room_id) ? 1 : 0;
         }),
       ),
     },

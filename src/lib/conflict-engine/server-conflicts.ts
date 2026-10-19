@@ -2,7 +2,10 @@
  * Pure mapping of server-computed conflict payloads (validate_schedule_version, the session
  * write RPCs) into the client Conflict shape. No database access.
  */
-import { conflictMessageAr, conflictMessageEn } from "@/lib/schedule-builder/conflict-code-messages";
+import {
+  conflictMessageAr,
+  conflictMessageEn,
+} from "@/lib/schedule-builder/conflict-code-messages";
 import type { Conflict } from "./validator";
 
 export interface ServerVersionValidation {
@@ -75,7 +78,8 @@ export function mapServerConflict(raw: RawConflict): Conflict {
 /** Map the validate_schedule_version payload (pure; unit-tested). */
 export function mapServerValidation(raw: unknown): ServerVersionValidation {
   const r = (raw ?? {}) as Record<string, unknown>;
-  const list = (v: unknown) => (Array.isArray(v) ? (v as RawConflict[]).map(mapServerConflict) : []);
+  const list = (v: unknown) =>
+    Array.isArray(v) ? (v as RawConflict[]).map(mapServerConflict) : [];
   const conflicts = list(r.conflicts);
   return {
     versionId: str(r.version_id) ?? "",

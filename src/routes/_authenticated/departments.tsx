@@ -62,7 +62,13 @@ function DepartmentsPage() {
     study_system: "regular" | "parallel" | "both";
   }>({ name: "", code: "", study_system: "regular" });
 
-  const { data: rows, isLoading, isError, error: rowsError, refetch } = useQuery({
+  const {
+    data: rows,
+    isLoading,
+    isError,
+    error: rowsError,
+    refetch,
+  } = useQuery({
     queryKey: ["departments", active?.id],
     enabled: !!active,
     queryFn: async () => {
@@ -177,14 +183,16 @@ function DepartmentsPage() {
               <div className="space-y-3">
                 <div>
                   <Label htmlFor="dept-f1">الاسم</Label>
-                  <Input id="dept-f1"
+                  <Input
+                    id="dept-f1"
                     value={form.name}
                     onChange={(e) => setForm({ ...form, name: e.target.value })}
                   />
                 </div>
                 <div>
                   <Label htmlFor="dept-f2">الرمز</Label>
-                  <Input id="dept-f2"
+                  <Input
+                    id="dept-f2"
                     value={form.code}
                     onChange={(e) => setForm({ ...form, code: e.target.value })}
                   />
@@ -225,7 +233,9 @@ function DepartmentsPage() {
         {isLoading ? (
           <p className="p-6 text-center text-muted-foreground">جارٍ التحميل...</p>
         ) : isError ? (
-          <div className="p-4"><QueryErrorNotice error={rowsError} onRetry={() => void refetch()} /></div>
+          <div className="p-4">
+            <QueryErrorNotice error={rowsError} onRetry={() => void refetch()} />
+          </div>
         ) : !rows || rows.length === 0 ? (
           <p className="p-6 text-center text-muted-foreground">لا توجد أقسام بعد.</p>
         ) : (
@@ -240,7 +250,12 @@ function DepartmentsPage() {
                 </div>
                 {canManage && (
                   <div className="flex gap-1">
-                    <Button size="sm" variant="ghost" aria-label={`تعديل ${d.name}`} onClick={() => startEdit(d)}>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      aria-label={`تعديل ${d.name}`}
+                      onClick={() => startEdit(d)}
+                    >
                       <Pencil className="h-3.5 w-3.5" />
                     </Button>
                     <Button
@@ -248,7 +263,12 @@ function DepartmentsPage() {
                       variant="ghost"
                       aria-label={`حذف ${d.name}`}
                       onClick={async () => {
-                        const ok = await confirmAction({ title: `حذف القسم «${d.name}»؟`, description: "لا يمكن التراجع عن هذا الإجراء.", confirmLabel: "حذف", destructive: true });
+                        const ok = await confirmAction({
+                          title: `حذف القسم «${d.name}»؟`,
+                          description: "لا يمكن التراجع عن هذا الإجراء.",
+                          confirmLabel: "حذف",
+                          destructive: true,
+                        });
                         if (ok) del.mutate(d.id);
                       }}
                     >

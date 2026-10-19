@@ -53,26 +53,21 @@ export async function attachIntakePresentation(
     sources.push(...data);
   }
   if (!sources.length) return rows;
-  const ids = (values: (string | null)[]) => [
-    ...new Set(values.filter((x): x is string => !!x)),
-  ];
+  const ids = (values: (string | null)[]) => [...new Set(values.filter((x): x is string => !!x))];
   const [cohorts, instructorRows] = await Promise.all([
     readByIdChunks<{ id: string; program_id: string; level_id: string }>(
       ids(sources.map((s) => s.cohort_id)),
-      (chunk) =>
-      supabase.from("academic_cohorts").select("id,program_id,level_id").in("id", chunk),
+      (chunk) => supabase.from("academic_cohorts").select("id,program_id,level_id").in("id", chunk),
     ),
     readByIdChunks<{ id: string; full_name: string }>(
       ids(sources.flatMap((s) => s.instructor_ids)),
-      (chunk) =>
-      supabase.from("instructors").select("id,full_name").in("id", chunk),
+      (chunk) => supabase.from("instructors").select("id,full_name").in("id", chunk),
     ),
   ]);
   const [programs, levels] = await Promise.all([
     readByIdChunks<{ id: string; name: string; department_id: string }>(
       ids(cohorts.map((c) => c.program_id)),
-      (chunk) =>
-      supabase.from("academic_programs").select("id,name,department_id").in("id", chunk),
+      (chunk) => supabase.from("academic_programs").select("id,name,department_id").in("id", chunk),
     ),
     readByIdChunks<{ id: string; name: string }>(ids(cohorts.map((c) => c.level_id)), (chunk) =>
       supabase.from("academic_levels").select("id,name").in("id", chunk),
@@ -80,8 +75,7 @@ export async function attachIntakePresentation(
   ]);
   const departments = await readByIdChunks<{ id: string; name: string }>(
     ids(programs.map((p) => p.department_id)),
-    (chunk) =>
-    supabase.from("departments").select("id,name").in("id", chunk),
+    (chunk) => supabase.from("departments").select("id,name").in("id", chunk),
   );
   const cohortMap = new Map(cohorts.map((c) => [c.id, c]));
   const programMap = new Map(programs.map((p) => [p.id, p]));

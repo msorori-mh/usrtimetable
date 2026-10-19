@@ -143,9 +143,18 @@ export function syntheticSnapshot(opts: {
       end_time: "15:00:00",
     })),
     roomUnavailability: [
-      { room_id: "r3", day_of_week: 2, start_time: "10:00:00", end_time: "12:00:00", start_date: null, end_date: null },
+      {
+        room_id: "r3",
+        day_of_week: 2,
+        start_time: "10:00:00",
+        end_time: "12:00:00",
+        start_date: null,
+        end_date: null,
+      },
     ],
-    externalBusy: [{ instructor_id: "i1", day_of_week: 1, start_time: "08:00:00", end_time: "10:00:00" }],
+    externalBusy: [
+      { instructor_id: "i1", day_of_week: 1, start_time: "08:00:00", end_time: "10:00:00" },
+    ],
     templates: [0, 1, 2, 3, 4].map((day) => ({
       study_system: "regular",
       day_of_week: day,
@@ -167,7 +176,12 @@ export function syntheticSnapshot(opts: {
       max_extended_days_per_partition: opts.stress ? 1 : 2,
     },
     ...(opts.scope
-      ? { generationScope: { existingIds: sessions.slice(0, Math.floor(sessions.length / 2)).map((s) => s.id), maxRelocations: 3 } }
+      ? {
+          generationScope: {
+            existingIds: sessions.slice(0, Math.floor(sessions.length / 2)).map((s) => s.id),
+            maxRelocations: 3,
+          },
+        }
       : {}),
   };
 }

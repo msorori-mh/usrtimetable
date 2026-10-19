@@ -40,9 +40,7 @@ export function InstructorSearchSummaryCard({
         <p className="text-xs text-muted-foreground">عدد أيام الحضور</p>
         <p className="text-2xl font-bold tabular-nums text-primary">
           <span dir="ltr" data-testid="ta-v2-instructor-attendance-days-value">
-            {scheduleUnavailable
-              ? "—"
-              : formatNumber(attendanceDaysSummary.totalDays)}
+            {scheduleUnavailable ? "—" : formatNumber(attendanceDaysSummary.totalDays)}
           </span>{" "}
           <span>{attendanceDaysSummary.totalDays === 1 ? "يوم" : "أيام"}</span>
           {attendanceDaysSummary.perInstructor.length > 1 && (

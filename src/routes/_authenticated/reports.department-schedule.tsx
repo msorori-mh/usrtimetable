@@ -66,18 +66,18 @@ function Page() {
     queryKey: ["reports-department-schedule-sessions", active?.id, versionId, deptId],
     enabled: !!active && !!versionId,
     // H-10/M-21: read every page; any page error rejects the query.
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
     queryFn: () =>
-      readAllRows<any>((from, to) =>
+      readAllRows<unknown>((from, to) =>
         supabase
           .from("schedule_sessions")
-        .select(
-          `id, day_of_week, start_time, end_time, session_type,
+          .select(
+            `id, day_of_week, start_time, end_time, session_type,
           course_offerings!inner(courses!inner(name, code, department_id, departments(name)), academic_programs(name), academic_levels(name, level_number)),
           sections(section_number),
           instructors(full_name),
           rooms(code, name)`,
-        )
+          )
           .eq("college_id", active!.id)
           .eq("schedule_version_id", versionId)
           .order("day_of_week")

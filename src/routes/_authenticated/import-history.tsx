@@ -61,7 +61,13 @@ function HistoryPage() {
   const { active } = useActiveCollege();
   const [openJob, setOpenJob] = useState<string | null>(null);
 
-  const { data: jobs, isLoading, isError, error: jobsError, refetch } = useQuery({
+  const {
+    data: jobs,
+    isLoading,
+    isError,
+    error: jobsError,
+    refetch,
+  } = useQuery({
     queryKey: ["import-jobs", active?.id],
     enabled: !!active,
     queryFn: async () => {
@@ -76,7 +82,13 @@ function HistoryPage() {
     },
   });
 
-  const { data: errors, isLoading: errorsLoading, isError: errorsFailed, error: errorsError, refetch: refetchErrors } = useQuery({
+  const {
+    data: errors,
+    isLoading: errorsLoading,
+    isError: errorsFailed,
+    error: errorsError,
+    refetch: refetchErrors,
+  } = useQuery({
     queryKey: ["import-errors", openJob],
     enabled: !!openJob,
     queryFn: async () => {
@@ -114,7 +126,9 @@ function HistoryPage() {
         {isLoading ? (
           <p className="p-6 text-center text-muted-foreground">جارٍ التحميل...</p>
         ) : isError ? (
-          <div className="p-4"><QueryErrorNotice error={jobsError} onRetry={() => void refetch()} /></div>
+          <div className="p-4">
+            <QueryErrorNotice error={jobsError} onRetry={() => void refetch()} />
+          </div>
         ) : !jobs || jobs.length === 0 ? (
           <p className="p-6 text-center text-muted-foreground">لا توجد عمليات بعد.</p>
         ) : (
@@ -137,12 +151,13 @@ function HistoryPage() {
                       </span>
                     </p>
                     <p className="mt-1 text-xs text-muted-foreground">
-                      {j.file_name ?? "—"} · {MODE_LBL[j.mode]} ·{" "}
-                      {formatDateTime(j.created_at)}
+                      {j.file_name ?? "—"} · {MODE_LBL[j.mode]} · {formatDateTime(j.created_at)}
                     </p>
                     <p className="mt-1 text-xs">
-                      إجمالي: {formatNumber(j.total_rows)} · صالحة: {formatNumber(j.valid_rows)} · خاطئة: {formatNumber(j.invalid_rows)} ·
-                      أُدرج: {formatNumber(j.inserted_rows)} · حُدث: {formatNumber(j.updated_rows)} · تُجوهل: {formatNumber(j.skipped_rows)}
+                      إجمالي: {formatNumber(j.total_rows)} · صالحة: {formatNumber(j.valid_rows)} ·
+                      خاطئة: {formatNumber(j.invalid_rows)} · أُدرج: {formatNumber(j.inserted_rows)}{" "}
+                      · حُدث: {formatNumber(j.updated_rows)} · تُجوهل:{" "}
+                      {formatNumber(j.skipped_rows)}
                     </p>
                   </div>
                   <ChevronRight
@@ -159,7 +174,11 @@ function HistoryPage() {
                     {errorsLoading ? (
                       <p className="text-xs text-muted-foreground">جارٍ التحميل...</p>
                     ) : errorsFailed ? (
-                      <QueryErrorNotice title="تعذّر تحميل أخطاء العملية." error={errorsError} onRetry={() => void refetchErrors()} />
+                      <QueryErrorNotice
+                        title="تعذّر تحميل أخطاء العملية."
+                        error={errorsError}
+                        onRetry={() => void refetchErrors()}
+                      />
                     ) : !errors || errors.length === 0 ? (
                       <p className="text-xs text-muted-foreground">لا توجد أخطاء مسجّلة.</p>
                     ) : (

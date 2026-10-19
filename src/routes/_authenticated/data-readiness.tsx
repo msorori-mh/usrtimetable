@@ -227,20 +227,14 @@ async function fetchReadiness(collegeId: string) {
         ),
     ),
     readCollegeRows(() =>
-      supabase
-        .from("instructors")
-        .select("id, specialization, department_id, instructor_type_id"),
+      supabase.from("instructors").select("id, specialization, department_id, instructor_type_id"),
     ),
     readCollegeRows(() =>
-      supabase
-        .from("rooms")
-        .select("id, capacity, room_type_id, room_type, is_active"),
+      supabase.from("rooms").select("id, capacity, room_type_id, room_type, is_active"),
     ),
     readCollegeRows(() => supabase.from("course_offerings").select("id, expected_students")),
     readCollegeRows(() =>
-      supabase
-        .from("teaching_assignments")
-        .select("id, instructor_id, course_offering_id"),
+      supabase.from("teaching_assignments").select("id, instructor_id, course_offering_id"),
     ),
     readCollegeRows(() =>
       supabase
@@ -502,7 +496,8 @@ function MetricRow({ m }: { m: Metric }) {
         <span className="text-sm">{m.label}</span>
       </div>
       <div className={`text-sm font-medium ${tone}`}>
-        {formatNumber(m.missing)} / {formatNumber(m.total)} <span className="text-xs">({formatNumber(pct)}%)</span>
+        {formatNumber(m.missing)} / {formatNumber(m.total)}{" "}
+        <span className="text-xs">({formatNumber(pct)}%)</span>
       </div>
     </li>
   );
@@ -715,7 +710,9 @@ function DataReadinessPage() {
                     <div key={c} className={`rounded border p-4 ${tone}`}>
                       <p className="text-sm font-medium">{CATEGORY_LABEL_AR[c]}</p>
                       <p className="mt-1 text-2xl font-bold">
-                        {isUnspecified ? formatNumber(v.total) : `${formatNumber(v.configured)} / ${formatNumber(v.total)}`}
+                        {isUnspecified
+                          ? formatNumber(v.total)
+                          : `${formatNumber(v.configured)} / ${formatNumber(v.total)}`}
                       </p>
                       <p className="mt-1 text-xs">
                         {isUnspecified

@@ -5,7 +5,10 @@ import {
   parseDecimalCell,
   timeToMinutes,
 } from "../src/lib/excel-import/cell-parse.ts";
-import { normalizeArabicText, normalizedMatchKey } from "../src/lib/excel-import/arabic-normalize.ts";
+import {
+  normalizeArabicText,
+  normalizedMatchKey,
+} from "../src/lib/excel-import/arabic-normalize.ts";
 import { canonicalImportHeader, headerMatchKey } from "../src/lib/excel-import/header-aliases.ts";
 import { matrixToImportRows, pickTemplateSheet } from "../src/lib/excel-import/sheet-detect.ts";
 import type { ColumnDef } from "../src/lib/excel-import/types.ts";
@@ -91,8 +94,20 @@ test("M-13: header row detection and duplicate headers preserved from raw matrix
 });
 
 test("M-13: template sheet name wins; unmatched workbook falls back to first sheet row 1", () => {
-  const a = { name: "A", matrix: [["الرمز", "الاسم"], ["1", "x"]] };
-  const b = { name: "مقررات", matrix: [["الرمز", "الاسم"], ["2", "y"]] };
+  const a = {
+    name: "A",
+    matrix: [
+      ["الرمز", "الاسم"],
+      ["1", "x"],
+    ],
+  };
+  const b = {
+    name: "مقررات",
+    matrix: [
+      ["الرمز", "الاسم"],
+      ["2", "y"],
+    ],
+  };
   expect(pickTemplateSheet([a, b], columns, "مقررات").name).toBe("مقررات");
   expect(pickTemplateSheet([a, b], columns).name).toBe("A");
   const none = pickTemplateSheet([{ name: "S", matrix: [["foo"]] }], columns);

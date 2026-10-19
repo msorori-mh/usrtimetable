@@ -3,7 +3,13 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { toast } from "sonner";
 import { logAudit } from "@/lib/audit";
 import { userErrorMessage } from "@/lib/user-error";
@@ -122,7 +128,11 @@ export function InstructorsSection({
             toast.error("أدخل التخصص");
             return false;
           }
-          const { error } = await updateByIdChunks("instructors", { specialization: spec.trim() }, ids);
+          const { error } = await updateByIdChunks(
+            "instructors",
+            { specialization: spec.trim() },
+            ids,
+          );
           if (error) {
             toast.error(userErrorMessage(error));
             return false;
@@ -140,7 +150,8 @@ export function InstructorsSection({
       >
         <div className="space-y-2">
           <Label htmlFor="cleanup-f2">التخصص</Label>
-          <Input id="cleanup-f2"
+          <Input
+            id="cleanup-f2"
             value={spec}
             onChange={(e) => setSpec(e.target.value)}
             placeholder="مثال: علوم الحاسب"
@@ -158,7 +169,11 @@ export function InstructorsSection({
             toast.error("اختر النوع");
             return false;
           }
-          const { error } = await updateByIdChunks("instructors", { instructor_type_id: typeId }, ids);
+          const { error } = await updateByIdChunks(
+            "instructors",
+            { instructor_type_id: typeId },
+            ids,
+          );
           if (error) {
             toast.error(userErrorMessage(error));
             return false;

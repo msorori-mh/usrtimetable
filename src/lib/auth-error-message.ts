@@ -16,7 +16,10 @@ const KNOWN: Array<[RegExp, string]> = [
     "محاولات كثيرة خلال وقت قصير. انتظر قليلًا ثم أعد المحاولة.",
   ],
   [/invalid (totp|code)|code.*(expired|invalid)|mfa/i, "رمز التحقق غير صحيح أو منتهي الصلاحية."],
-  [/network|failed to fetch|fetch failed/i, "تعذّر الاتصال بالخادم. تحقق من الاتصال وأعد المحاولة."],
+  [
+    /network|failed to fetch|fetch failed/i,
+    "تعذّر الاتصال بالخادم. تحقق من الاتصال وأعد المحاولة.",
+  ],
 ];
 
 const ARABIC = /[؀-ۿ]/;

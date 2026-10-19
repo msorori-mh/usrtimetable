@@ -31,9 +31,9 @@ export async function fetchCollegePlanComponentRoomTypeMissing(
   };
   const data = await readAllRows<ComponentScanRow>((from, to) =>
     supabase
-    .from("plan_course_components")
-    .select(
-      `
+      .from("plan_course_components")
+      .select(
+        `
       id,
       component_type,
       weekly_contact_hours,
@@ -49,10 +49,10 @@ export async function fetchCollegePlanComponentRoomTypeMissing(
       ),
       room_types!pcc_room_type_college_fkey(id, college_id, is_active, default_capacity)
     `,
-    )
-    .eq("college_id", collegeId)
-    .order("id")
-    .range(from, to),
+      )
+      .eq("college_id", collegeId)
+      .order("id")
+      .range(from, to),
   );
 
   const rows: CohortPlanComponentRow[] = (data ?? []).map((pcc) => {

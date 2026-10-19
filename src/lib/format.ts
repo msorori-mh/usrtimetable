@@ -44,9 +44,14 @@ function toDate(value: DateInput): Date | null {
   return Number.isNaN(d.getTime()) ? null : d;
 }
 
-export function formatNumber(value: number | null | undefined, options?: Intl.NumberFormatOptions): string {
+export function formatNumber(
+  value: number | null | undefined,
+  options?: Intl.NumberFormatOptions,
+): string {
   if (value === null || value === undefined || !Number.isFinite(value)) return "—";
-  return options ? new Intl.NumberFormat(APP_LOCALE, options).format(value) : numberFmt.format(value);
+  return options
+    ? new Intl.NumberFormat(APP_LOCALE, options).format(value)
+    : numberFmt.format(value);
 }
 
 export function formatDecimal(value: number | null | undefined, digits = 2): string {

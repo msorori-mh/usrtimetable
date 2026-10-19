@@ -3,7 +3,13 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { toast } from "sonner";
 import { logAudit } from "@/lib/audit";
 import { userErrorMessage } from "@/lib/user-error";
@@ -68,7 +74,11 @@ export function OfferingsSection({
             toast.error("قيمة غير صحيحة");
             return false;
           }
-          const { error } = await updateByIdChunks("course_offerings", { expected_students: students }, ids);
+          const { error } = await updateByIdChunks(
+            "course_offerings",
+            { expected_students: students },
+            ids,
+          );
           if (error) {
             toast.error(userErrorMessage(error));
             return false;
@@ -86,7 +96,8 @@ export function OfferingsSection({
       >
         <div className="space-y-2">
           <Label htmlFor="cleanup-f4">عدد الطلاب المتوقع</Label>
-          <Input id="cleanup-f4"
+          <Input
+            id="cleanup-f4"
             type="number"
             min={1}
             value={students}
@@ -101,7 +112,11 @@ export function OfferingsSection({
         title="تعيين نظام الدراسة"
         items={offItems(issues?.off_no_system.ids, "بدون نظام دراسة")}
         onConfirm={async (ids) => {
-          const { error } = await updateByIdChunks("course_offerings", { study_system: system }, ids);
+          const { error } = await updateByIdChunks(
+            "course_offerings",
+            { study_system: system },
+            ids,
+          );
           if (error) {
             toast.error(userErrorMessage(error));
             return false;

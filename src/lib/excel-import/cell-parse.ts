@@ -4,7 +4,7 @@
  */
 import { normalizeDecimalDigits } from "./arabic-normalize";
 
-const INVISIBLE = /[​-‏؜﻿‪-‮⁦-⁩]/g;
+const INVISIBLE = /[\u200B-\u200F\u061C\uFEFF\u202A-\u202E\u2066-\u2069]/g;
 /** Plain decimal: optional sign, digits, optional fraction. No exponent / hex / Infinity. */
 const DECIMAL_RE = /^[+-]?\d+(?:\.\d+)?$/;
 /** Grouped thousands as Excel formats them with raw:false ("1,250" / "1,250.5"). */

@@ -48,7 +48,10 @@ export function TeachingAssignmentGroupsTable({
   courseSearchActive: boolean;
   instructorSearchActive: boolean;
   academicContext:
-    | { cohorts: { id: string; program_id: string; study_system: string }[]; sharedLectures: Awaited<ReturnType<typeof fetchSharedLectures>> }
+    | {
+        cohorts: { id: string; program_id: string; study_system: string }[];
+        sharedLectures: Awaited<ReturnType<typeof fetchSharedLectures>>;
+      }
     | undefined;
   programs: { id: string; name: string; code: string | null }[] | undefined;
   scheduleQuery: {
@@ -108,10 +111,7 @@ export function TeachingAssignmentGroupsTable({
                   sharedLectures: academicContext?.sharedLectures ?? [],
                 });
                 return (
-                  <tr
-                    key={row.delivery_group_id}
-                    className={row.is_obsolete ? "opacity-70" : ""}
-                  >
+                  <tr key={row.delivery_group_id} className={row.is_obsolete ? "opacity-70" : ""}>
                     <td className="px-3 py-2">
                       <div className="font-medium">
                         {entityDisplayName({
@@ -175,7 +175,9 @@ export function TeachingAssignmentGroupsTable({
                     <td className="px-3 py-2">
                       {formatDecimal(row.assigned_hours_total)}/
                       {row.component_hours == null ? "?" : formatDecimal(row.component_hours)}
-                      {row.remaining_hours > 0 ? ` (متبقي ${formatDecimal(row.remaining_hours)})` : ""}
+                      {row.remaining_hours > 0
+                        ? ` (متبقي ${formatDecimal(row.remaining_hours)})`
+                        : ""}
                     </td>
                     <td className="px-3 py-2">
                       {ALLOCATION_LABELS[row.allocation_status] ?? row.allocation_status}
@@ -197,9 +199,7 @@ export function TeachingAssignmentGroupsTable({
                               size="sm"
                               variant="ghost"
                               aria-label={`تعديل ساعات ${row.instructors[0].instructor_name ?? "المدرس"}`}
-                              onClick={() =>
-                                openEditHours(row, row.instructors[0]!.assignment_id)
-                              }
+                              onClick={() => openEditHours(row, row.instructors[0]!.assignment_id)}
                             >
                               ساعات
                             </Button>

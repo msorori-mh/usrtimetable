@@ -48,7 +48,14 @@ test("rollback removes only the added function", async () => {
 test("the page offers the version view as read-only and keeps writes operational", async () => {
   const [page, service, model] = await Promise.all([
     // L-14: the page was split into the route + its table/summary components and options hook.
-    Promise.all(["src/routes/_authenticated/teaching-assignments.tsx", "src/components/teaching-assignments/teaching-assignment-groups-table.tsx", "src/components/teaching-assignments/instructor-search-summary-card.tsx", "src/hooks/use-teaching-assignment-filter-options.ts"].map(read)).then((parts) => parts.join("\n")),
+    Promise.all(
+      [
+        "src/routes/_authenticated/teaching-assignments.tsx",
+        "src/components/teaching-assignments/teaching-assignment-groups-table.tsx",
+        "src/components/teaching-assignments/instructor-search-summary-card.tsx",
+        "src/hooks/use-teaching-assignment-filter-options.ts",
+      ].map(read),
+    ).then((parts) => parts.join("\n")),
     read("src/lib/academic-delivery/teaching-assignments-v2-service.ts"),
     read("src/lib/academic-delivery/teaching-assignments-v2.ts"),
   ]);

@@ -33,8 +33,7 @@ export function PublicReportVerification({ receiptId }: { receiptId: string | nu
       cancelled = true;
     };
   }, [receiptId, attempt]);
-  const date = (value?: string) =>
-    value ? formatDateTime(value) : "—";
+  const date = (value?: string) => (value ? formatDateTime(value) : "—");
   const fields = result?.available
     ? [
         ["الجامعة", USR_UNIVERSITY_NAME_AR],

@@ -10,8 +10,21 @@ import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { logAudit } from "@/lib/audit";
 import { FileSpreadsheet, Pencil, Trash2, Plus } from "lucide-react";
@@ -43,8 +56,30 @@ const DTYPES = [
   { v: "uuid", l: "معرّف" },
 ];
 
-interface Tpl { id: string; college_id: string; template_key: string; name_ar: string; description: string | null; version: number; target_entity: string; sheet_name: string | null; sample_file_url: string | null; is_active: boolean }
-interface Col { id: string; template_id: string; column_order: number; header_ar: string; field_key: string; data_type: string; is_required: boolean; enum_values: unknown; example: string | null; notes: string | null }
+interface Tpl {
+  id: string;
+  college_id: string;
+  template_key: string;
+  name_ar: string;
+  description: string | null;
+  version: number;
+  target_entity: string;
+  sheet_name: string | null;
+  sample_file_url: string | null;
+  is_active: boolean;
+}
+interface Col {
+  id: string;
+  template_id: string;
+  column_order: number;
+  header_ar: string;
+  field_key: string;
+  data_type: string;
+  is_required: boolean;
+  enum_values: unknown;
+  example: string | null;
+  notes: string | null;
+}
 
 function TemplatesPage() {
   const { active } = useActiveCollege();
@@ -58,20 +93,40 @@ function TemplatesPage() {
   const [colEdit, setColEdit] = useState<Col | null>(null);
   const [colForm, setColForm] = useState<Partial<Col> & { template_id?: string }>({});
 
-  const { data: tpls, isLoading: tplsLoading, isError: tplsFailed, error: tplsError, refetch: refetchTpls } = useQuery({
-    queryKey: ["import-templates", active?.id], enabled: !!active,
+  const {
+    data: tpls,
+    isLoading: tplsLoading,
+    isError: tplsFailed,
+    error: tplsError,
+    refetch: refetchTpls,
+  } = useQuery({
+    queryKey: ["import-templates", active?.id],
+    enabled: !!active,
     queryFn: async () => {
       // read-all-ok: a handful of templates per college
-      const { data, error } = await supabase.from("import_templates").select("*").eq("college_id", active!.id).order("created_at", { ascending: false });
+      const { data, error } = await supabase
+        .from("import_templates")
+        .select("*")
+        .eq("college_id", active!.id)
+        .order("created_at", { ascending: false });
       if (error) throw error;
       return (data ?? []) as Tpl[];
     },
   });
-  const { data: cols, error: colsError, refetch: refetchCols } = useQuery({
-    queryKey: ["import-template-columns", active?.id], enabled: !!active,
+  const {
+    data: cols,
+    error: colsError,
+    refetch: refetchCols,
+  } = useQuery({
+    queryKey: ["import-template-columns", active?.id],
+    enabled: !!active,
     queryFn: async () => {
       // read-all-ok: tens of columns per template, few templates
-      const { data, error } = await supabase.from("import_template_columns").select("*").eq("college_id", active!.id).order("column_order");
+      const { data, error } = await supabase
+        .from("import_template_columns")
+        .select("*")
+        .eq("college_id", active!.id)
+        .order("column_order");
       if (error) throw error;
       return (data ?? []) as Col[];
     },
@@ -80,7 +135,8 @@ function TemplatesPage() {
   const saveTpl = useMutation({
     mutationFn: async () => {
       if (!active) throw new Error("اختر كلّية");
-      if (!form.template_key || !form.name_ar || !form.target_entity) throw new Error("الرمز والاسم والكيان المستهدف مطلوبة");
+      if (!form.template_key || !form.name_ar || !form.target_entity)
+        throw new Error("الرمز والاسم والكيان المستهدف مطلوبة");
       const payload = {
         college_id: active.id,
         template_key: form.template_key,
@@ -93,75 +149,155 @@ function TemplatesPage() {
         sample_file_url: form.sample_file_url ?? null,
       };
       if (editing) {
-        const { error } = await supabase.from("import_templates").update(payload).eq("id", editing.id);
+        const { error } = await supabase
+          .from("import_templates")
+          .update(payload)
+          .eq("id", editing.id);
         if (error) throw error;
-        await logAudit({ action: "update", entity: "import_templates", entityId: editing.id, collegeId: active.id });
+        await logAudit({
+          action: "update",
+          entity: "import_templates",
+          entityId: editing.id,
+          collegeId: active.id,
+        });
       } else {
-        const { data, error } = await supabase.from("import_templates").insert(payload).select("id").single();
+        const { data, error } = await supabase
+          .from("import_templates")
+          .insert(payload)
+          .select("id")
+          .single();
         if (error) throw error;
-        await logAudit({ action: "create", entity: "import_templates", entityId: data?.id, collegeId: active.id });
+        await logAudit({
+          action: "create",
+          entity: "import_templates",
+          entityId: data?.id,
+          collegeId: active.id,
+        });
       }
     },
-    onSuccess: () => { toast.success("تم الحفظ"); qc.invalidateQueries({ queryKey: ["import-templates", active?.id] }); setOpen(false); setEditing(null); },
+    onSuccess: () => {
+      toast.success("تم الحفظ");
+      qc.invalidateQueries({ queryKey: ["import-templates", active?.id] });
+      setOpen(false);
+      setEditing(null);
+    },
     onError: (e: Error) => toast.error(userErrorMessage(e)),
   });
 
   const delTpl = useMutation({
-    mutationFn: async (id: string) => { const { error } = await supabase.from("import_templates").delete().eq("id", id); if (error) throw error; await logAudit({ action: "delete", entity: "import_templates", entityId: id, collegeId: active?.id }); },
-    onSuccess: () => { toast.success("تم الحذف"); qc.invalidateQueries({ queryKey: ["import-templates", active?.id] }); qc.invalidateQueries({ queryKey: ["import-template-columns", active?.id] }); },
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from("import_templates").delete().eq("id", id);
+      if (error) throw error;
+      await logAudit({
+        action: "delete",
+        entity: "import_templates",
+        entityId: id,
+        collegeId: active?.id,
+      });
+    },
+    onSuccess: () => {
+      toast.success("تم الحذف");
+      qc.invalidateQueries({ queryKey: ["import-templates", active?.id] });
+      qc.invalidateQueries({ queryKey: ["import-template-columns", active?.id] });
+    },
     onError: (e: Error) => toast.error(userErrorMessage(e)),
   });
 
   const saveCol = useMutation({
     mutationFn: async () => {
       if (!active || !colForm.template_id) throw new Error("القالب مطلوب");
-      if (!colForm.header_ar || !colForm.field_key) throw new Error("الترويسة العربية ومفتاح الحقل مطلوبان");
+      if (!colForm.header_ar || !colForm.field_key)
+        throw new Error("الترويسة العربية ومفتاح الحقل مطلوبان");
       const payload = {
-        college_id: active.id, template_id: colForm.template_id,
+        college_id: active.id,
+        template_id: colForm.template_id,
         column_order: colForm.column_order ?? 0,
-        header_ar: colForm.header_ar, field_key: colForm.field_key,
+        header_ar: colForm.header_ar,
+        field_key: colForm.field_key,
         data_type: colForm.data_type ?? "text",
         is_required: colForm.is_required ?? false,
         enum_values: (colForm.enum_values ?? null) as never,
-        example: colForm.example ?? null, notes: colForm.notes ?? null,
+        example: colForm.example ?? null,
+        notes: colForm.notes ?? null,
       };
       if (colEdit) {
-        const { error } = await supabase.from("import_template_columns").update(payload).eq("id", colEdit.id);
+        const { error } = await supabase
+          .from("import_template_columns")
+          .update(payload)
+          .eq("id", colEdit.id);
         if (error) throw error;
       } else {
         const { error } = await supabase.from("import_template_columns").insert(payload);
         if (error) throw error;
       }
-      await logAudit({ action: colEdit ? "update" : "create", entity: "import_template_columns", entityId: colEdit?.id, collegeId: active.id });
+      await logAudit({
+        action: colEdit ? "update" : "create",
+        entity: "import_template_columns",
+        entityId: colEdit?.id,
+        collegeId: active.id,
+      });
     },
-    onSuccess: () => { toast.success("تم الحفظ"); qc.invalidateQueries({ queryKey: ["import-template-columns", active?.id] }); setColOpen(false); setColEdit(null); },
+    onSuccess: () => {
+      toast.success("تم الحفظ");
+      qc.invalidateQueries({ queryKey: ["import-template-columns", active?.id] });
+      setColOpen(false);
+      setColEdit(null);
+    },
     onError: (e: Error) => toast.error(userErrorMessage(e)),
   });
 
   const delCol = useMutation({
-    mutationFn: async (id: string) => { const { error } = await supabase.from("import_template_columns").delete().eq("id", id); if (error) throw error; await logAudit({ action: "delete", entity: "import_template_columns", entityId: id, collegeId: active?.id }); },
-    onSuccess: () => { toast.success("تم الحذف"); qc.invalidateQueries({ queryKey: ["import-template-columns", active?.id] }); },
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from("import_template_columns").delete().eq("id", id);
+      if (error) throw error;
+      await logAudit({
+        action: "delete",
+        entity: "import_template_columns",
+        entityId: id,
+        collegeId: active?.id,
+      });
+    },
+    onSuccess: () => {
+      toast.success("تم الحذف");
+      qc.invalidateQueries({ queryKey: ["import-template-columns", active?.id] });
+    },
     onError: (e: Error) => toast.error(userErrorMessage(e)),
   });
 
   const startTpl = (t?: Tpl) => {
     setEditing(t ?? null);
-    setForm(t ?? { template_key: "", name_ar: "", target_entity: "study_plan_full", version: 1, is_active: true });
+    setForm(
+      t ?? {
+        template_key: "",
+        name_ar: "",
+        target_entity: "study_plan_full",
+        version: 1,
+        is_active: true,
+      },
+    );
     setOpen(true);
   };
   const startCol = (templateId: string, c?: Col) => {
     setColEdit(c ?? null);
-    setColForm(c ? { ...c, template_id: c.template_id } : { template_id: templateId, column_order: 0, data_type: "text", is_required: false });
+    setColForm(
+      c
+        ? { ...c, template_id: c.template_id }
+        : { template_id: templateId, column_order: 0, data_type: "text", is_required: false },
+    );
     setColOpen(true);
   };
 
   return (
     <div className="mx-auto max-w-5xl">
       <header className="mb-6 flex items-center gap-3">
-        <span className="grid h-11 w-11 place-items-center rounded-lg bg-secondary text-primary"><FileSpreadsheet className="h-5 w-5" /></span>
+        <span className="grid h-11 w-11 place-items-center rounded-lg bg-secondary text-primary">
+          <FileSpreadsheet className="h-5 w-5" />
+        </span>
         <div className="flex-1">
           <h1 className="text-2xl font-bold">قوالب الاستيراد</h1>
-          <p className="text-sm text-muted-foreground">تعريف الأعمدة المتوقعة في ملفات Excel للاستيراد المستقبلي.</p>
+          <p className="text-sm text-muted-foreground">
+            تعريف الأعمدة المتوقعة في ملفات Excel للاستيراد المستقبلي.
+          </p>
         </div>
       </header>
 
@@ -169,29 +305,98 @@ function TemplatesPage() {
         <CollegeSwitcher />
         {canManage && (
           <Dialog open={open} onOpenChange={setOpen}>
-            <DialogTrigger asChild><Button onClick={() => startTpl()}>قالب جديد</Button></DialogTrigger>
+            <DialogTrigger asChild>
+              <Button onClick={() => startTpl()}>قالب جديد</Button>
+            </DialogTrigger>
             <DialogContent>
-              <DialogHeader><DialogTitle>{editing ? "تعديل قالب" : "قالب جديد"}</DialogTitle></DialogHeader>
+              <DialogHeader>
+                <DialogTitle>{editing ? "تعديل قالب" : "قالب جديد"}</DialogTitle>
+              </DialogHeader>
               <div className="space-y-3">
                 <div className="grid grid-cols-2 gap-3">
-                  <div><Label htmlFor="import-tpl-f1">الرمز</Label><Input id="import-tpl-f1" value={form.template_key ?? ""} onChange={(e) => setForm({ ...form, template_key: e.target.value })} /></div>
-                  <div><Label htmlFor="import-tpl-f2">الإصدار</Label><Input id="import-tpl-f2" type="number" value={form.version ?? 1} onChange={(e) => setForm({ ...form, version: Number(e.target.value) })} /></div>
+                  <div>
+                    <Label htmlFor="import-tpl-f1">الرمز</Label>
+                    <Input
+                      id="import-tpl-f1"
+                      value={form.template_key ?? ""}
+                      onChange={(e) => setForm({ ...form, template_key: e.target.value })}
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="import-tpl-f2">الإصدار</Label>
+                    <Input
+                      id="import-tpl-f2"
+                      type="number"
+                      value={form.version ?? 1}
+                      onChange={(e) => setForm({ ...form, version: Number(e.target.value) })}
+                    />
+                  </div>
                 </div>
-                <div><Label htmlFor="import-tpl-f3">الاسم بالعربية</Label><Input id="import-tpl-f3" value={form.name_ar ?? ""} onChange={(e) => setForm({ ...form, name_ar: e.target.value })} /></div>
-                <div><Label htmlFor="import-tpl-f12">الكيان المستهدف</Label>
-                  <Select value={form.target_entity ?? "study_plan_full"} onValueChange={(v) => setForm({ ...form, target_entity: v })}>
-                    <SelectTrigger id="import-tpl-f12"><SelectValue /></SelectTrigger>
-                    <SelectContent>{ENTITIES.map((e) => <SelectItem key={e.v} value={e.v}>{e.l}</SelectItem>)}</SelectContent>
+                <div>
+                  <Label htmlFor="import-tpl-f3">الاسم بالعربية</Label>
+                  <Input
+                    id="import-tpl-f3"
+                    value={form.name_ar ?? ""}
+                    onChange={(e) => setForm({ ...form, name_ar: e.target.value })}
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="import-tpl-f12">الكيان المستهدف</Label>
+                  <Select
+                    value={form.target_entity ?? "study_plan_full"}
+                    onValueChange={(v) => setForm({ ...form, target_entity: v })}
+                  >
+                    <SelectTrigger id="import-tpl-f12">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {ENTITIES.map((e) => (
+                        <SelectItem key={e.v} value={e.v}>
+                          {e.l}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
                   </Select>
                 </div>
-                <div><Label htmlFor="import-tpl-f4">اسم ورقة Excel</Label><Input id="import-tpl-f4" value={form.sheet_name ?? ""} onChange={(e) => setForm({ ...form, sheet_name: e.target.value })} /></div>
-                <div><Label htmlFor="import-tpl-f5">رابط ملف نموذج</Label><Input id="import-tpl-f5" value={form.sample_file_url ?? ""} onChange={(e) => setForm({ ...form, sample_file_url: e.target.value })} /></div>
-                <div><Label htmlFor="import-tpl-f6">وصف</Label><Input id="import-tpl-f6" value={form.description ?? ""} onChange={(e) => setForm({ ...form, description: e.target.value })} /></div>
-                <label className="flex items-center gap-2 text-sm"><Checkbox checked={form.is_active ?? true} onCheckedChange={(v) => setForm({ ...form, is_active: !!v })} /> نشط</label>
+                <div>
+                  <Label htmlFor="import-tpl-f4">اسم ورقة Excel</Label>
+                  <Input
+                    id="import-tpl-f4"
+                    value={form.sheet_name ?? ""}
+                    onChange={(e) => setForm({ ...form, sheet_name: e.target.value })}
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="import-tpl-f5">رابط ملف نموذج</Label>
+                  <Input
+                    id="import-tpl-f5"
+                    value={form.sample_file_url ?? ""}
+                    onChange={(e) => setForm({ ...form, sample_file_url: e.target.value })}
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="import-tpl-f6">وصف</Label>
+                  <Input
+                    id="import-tpl-f6"
+                    value={form.description ?? ""}
+                    onChange={(e) => setForm({ ...form, description: e.target.value })}
+                  />
+                </div>
+                <label className="flex items-center gap-2 text-sm">
+                  <Checkbox
+                    checked={form.is_active ?? true}
+                    onCheckedChange={(v) => setForm({ ...form, is_active: !!v })}
+                  />{" "}
+                  نشط
+                </label>
               </div>
               <DialogFooter>
-                <Button variant="outline" onClick={() => setOpen(false)}>إلغاء</Button>
-                <Button onClick={() => saveTpl.mutate()} disabled={saveTpl.isPending}>حفظ</Button>
+                <Button variant="outline" onClick={() => setOpen(false)}>
+                  إلغاء
+                </Button>
+                <Button onClick={() => saveTpl.mutate()} disabled={saveTpl.isPending}>
+                  حفظ
+                </Button>
               </DialogFooter>
             </DialogContent>
           </Dialog>
@@ -199,99 +404,235 @@ function TemplatesPage() {
       </div>
 
       <Card className="overflow-hidden">
-        {tplsLoading ? <p className="p-6 text-center text-muted-foreground">جارٍ التحميل...</p>
-          : tplsFailed ? <div className="p-4"><QueryErrorNotice error={tplsError} onRetry={() => void refetchTpls()} /></div>
-          : !tpls || tpls.length === 0 ? <p className="p-6 text-center text-muted-foreground">لا توجد قوالب بعد.</p>
-          : <ul className="divide-y divide-border">
-              {tpls.map((t) => {
-                const tcols = (cols ?? []).filter((c) => c.template_id === t.id);
-                const open = expanded === t.id;
-                return (
-                  <li key={t.id} className="p-4">
-                    <div className="flex items-center justify-between gap-3">
-                      <button type="button" aria-expanded={open} onClick={() => setExpanded(open ? null : t.id)} className="min-w-0 flex-1 text-start">
-                        <p className="font-semibold">{t.name_ar} <span className="rounded bg-secondary px-2 py-0.5 text-[11px]">v{t.version}</span> {!t.is_active && <span className="rounded bg-destructive/20 px-2 py-0.5 text-[11px]">معطّل</span>}</p>
-                        <p className="text-xs text-muted-foreground"><span dir="ltr">{t.template_key}</span> · {ENTITIES.find((e) => e.v === t.target_entity)?.l ?? t.target_entity} · {tcols.length} عمود</p>
-                      </button>
-                      {canManage && (
-                        <div className="flex gap-1">
-                          <Button size="sm" variant="ghost" aria-label={`تعديل القالب ${t.name_ar}`} onClick={() => startTpl(t)}><Pencil className="h-3.5 w-3.5" /></Button>
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            aria-label={`حذف القالب ${t.name_ar}`}
-                            onClick={async () => {
-                              const ok = await confirmAction({ title: `حذف القالب «${t.name_ar}» وأعمدته؟`, description: "لا يمكن التراجع عن هذا الإجراء.", confirmLabel: "حذف", destructive: true });
-                              if (ok) delTpl.mutate(t.id);
-                            }}
-                          ><Trash2 className="h-3.5 w-3.5" /></Button>
-                        </div>
-                      )}
-                    </div>
-                    {open && colsError && (
-                      <QueryErrorNotice className="mt-3" title="تعذّر تحميل أعمدة القوالب." error={colsError} onRetry={() => void refetchCols()} />
-                    )}
-                    {open && !colsError && (
-                      <div className="mt-3 rounded border bg-secondary/30 p-3">
-                        <div className="mb-2 flex items-center justify-between">
-                          <p className="text-sm font-medium">أعمدة القالب</p>
-                          {canManage && <Button size="sm" variant="outline" onClick={() => startCol(t.id)}><Plus className="me-1 h-3.5 w-3.5" />عمود</Button>}
-                        </div>
-                        {tcols.length === 0 ? <p className="text-xs text-muted-foreground">لا توجد أعمدة بعد.</p>
-                          : <ul className="divide-y divide-border">
-                              {tcols.map((c) => (
-                                <li key={c.id} className="flex items-center justify-between py-2 text-sm">
-                                  <div>
-                                    <p>{c.column_order}. {c.header_ar} {c.is_required && <span className="text-destructive">*</span>}</p>
-                                    <p className="text-xs text-muted-foreground"><span dir="ltr">{c.field_key}</span> · {DTYPES.find((d) => d.v === c.data_type)?.l}</p>
-                                  </div>
-                                  {canManage && (
-                                    <div className="flex gap-1">
-                                      <Button size="sm" variant="ghost" aria-label={`تعديل العمود ${c.header_ar}`} onClick={() => startCol(t.id, c)}><Pencil className="h-3.5 w-3.5" /></Button>
-                                      <Button
-                                        size="sm"
-                                        variant="ghost"
-                                        aria-label={`حذف العمود ${c.header_ar}`}
-                                        onClick={async () => {
-                                          const ok = await confirmAction({ title: `حذف العمود «${c.header_ar}»؟`, confirmLabel: "حذف", destructive: true });
-                                          if (ok) delCol.mutate(c.id);
-                                        }}
-                                      ><Trash2 className="h-3.5 w-3.5" /></Button>
-                                    </div>
-                                  )}
-                                </li>
-                              ))}
-                            </ul>}
+        {tplsLoading ? (
+          <p className="p-6 text-center text-muted-foreground">جارٍ التحميل...</p>
+        ) : tplsFailed ? (
+          <div className="p-4">
+            <QueryErrorNotice error={tplsError} onRetry={() => void refetchTpls()} />
+          </div>
+        ) : !tpls || tpls.length === 0 ? (
+          <p className="p-6 text-center text-muted-foreground">لا توجد قوالب بعد.</p>
+        ) : (
+          <ul className="divide-y divide-border">
+            {tpls.map((t) => {
+              const tcols = (cols ?? []).filter((c) => c.template_id === t.id);
+              const open = expanded === t.id;
+              return (
+                <li key={t.id} className="p-4">
+                  <div className="flex items-center justify-between gap-3">
+                    <button
+                      type="button"
+                      aria-expanded={open}
+                      onClick={() => setExpanded(open ? null : t.id)}
+                      className="min-w-0 flex-1 text-start"
+                    >
+                      <p className="font-semibold">
+                        {t.name_ar}{" "}
+                        <span className="rounded bg-secondary px-2 py-0.5 text-[11px]">
+                          v{t.version}
+                        </span>{" "}
+                        {!t.is_active && (
+                          <span className="rounded bg-destructive/20 px-2 py-0.5 text-[11px]">
+                            معطّل
+                          </span>
+                        )}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        <span dir="ltr">{t.template_key}</span> ·{" "}
+                        {ENTITIES.find((e) => e.v === t.target_entity)?.l ?? t.target_entity} ·{" "}
+                        {tcols.length} عمود
+                      </p>
+                    </button>
+                    {canManage && (
+                      <div className="flex gap-1">
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          aria-label={`تعديل القالب ${t.name_ar}`}
+                          onClick={() => startTpl(t)}
+                        >
+                          <Pencil className="h-3.5 w-3.5" />
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          aria-label={`حذف القالب ${t.name_ar}`}
+                          onClick={async () => {
+                            const ok = await confirmAction({
+                              title: `حذف القالب «${t.name_ar}» وأعمدته؟`,
+                              description: "لا يمكن التراجع عن هذا الإجراء.",
+                              confirmLabel: "حذف",
+                              destructive: true,
+                            });
+                            if (ok) delTpl.mutate(t.id);
+                          }}
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
                       </div>
                     )}
-                  </li>
-                );
-              })}
-            </ul>}
+                  </div>
+                  {open && colsError && (
+                    <QueryErrorNotice
+                      className="mt-3"
+                      title="تعذّر تحميل أعمدة القوالب."
+                      error={colsError}
+                      onRetry={() => void refetchCols()}
+                    />
+                  )}
+                  {open && !colsError && (
+                    <div className="mt-3 rounded border bg-secondary/30 p-3">
+                      <div className="mb-2 flex items-center justify-between">
+                        <p className="text-sm font-medium">أعمدة القالب</p>
+                        {canManage && (
+                          <Button size="sm" variant="outline" onClick={() => startCol(t.id)}>
+                            <Plus className="me-1 h-3.5 w-3.5" />
+                            عمود
+                          </Button>
+                        )}
+                      </div>
+                      {tcols.length === 0 ? (
+                        <p className="text-xs text-muted-foreground">لا توجد أعمدة بعد.</p>
+                      ) : (
+                        <ul className="divide-y divide-border">
+                          {tcols.map((c) => (
+                            <li
+                              key={c.id}
+                              className="flex items-center justify-between py-2 text-sm"
+                            >
+                              <div>
+                                <p>
+                                  {c.column_order}. {c.header_ar}{" "}
+                                  {c.is_required && <span className="text-destructive">*</span>}
+                                </p>
+                                <p className="text-xs text-muted-foreground">
+                                  <span dir="ltr">{c.field_key}</span> ·{" "}
+                                  {DTYPES.find((d) => d.v === c.data_type)?.l}
+                                </p>
+                              </div>
+                              {canManage && (
+                                <div className="flex gap-1">
+                                  <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    aria-label={`تعديل العمود ${c.header_ar}`}
+                                    onClick={() => startCol(t.id, c)}
+                                  >
+                                    <Pencil className="h-3.5 w-3.5" />
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    aria-label={`حذف العمود ${c.header_ar}`}
+                                    onClick={async () => {
+                                      const ok = await confirmAction({
+                                        title: `حذف العمود «${c.header_ar}»؟`,
+                                        confirmLabel: "حذف",
+                                        destructive: true,
+                                      });
+                                      if (ok) delCol.mutate(c.id);
+                                    }}
+                                  >
+                                    <Trash2 className="h-3.5 w-3.5" />
+                                  </Button>
+                                </div>
+                              )}
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                    </div>
+                  )}
+                </li>
+              );
+            })}
+          </ul>
+        )}
       </Card>
 
       <Dialog open={colOpen} onOpenChange={setColOpen}>
         <DialogContent>
-          <DialogHeader><DialogTitle>{colEdit ? "تعديل عمود" : "عمود جديد"}</DialogTitle></DialogHeader>
+          <DialogHeader>
+            <DialogTitle>{colEdit ? "تعديل عمود" : "عمود جديد"}</DialogTitle>
+          </DialogHeader>
           <div className="space-y-3">
             <div className="grid grid-cols-3 gap-3">
-              <div><Label htmlFor="import-tpl-f7">الترتيب</Label><Input id="import-tpl-f7" type="number" value={colForm.column_order ?? 0} onChange={(e) => setColForm({ ...colForm, column_order: Number(e.target.value) })} /></div>
-              <div className="col-span-2"><Label htmlFor="import-tpl-f8">الترويسة (عربي)</Label><Input id="import-tpl-f8" value={colForm.header_ar ?? ""} onChange={(e) => setColForm({ ...colForm, header_ar: e.target.value })} /></div>
+              <div>
+                <Label htmlFor="import-tpl-f7">الترتيب</Label>
+                <Input
+                  id="import-tpl-f7"
+                  type="number"
+                  value={colForm.column_order ?? 0}
+                  onChange={(e) => setColForm({ ...colForm, column_order: Number(e.target.value) })}
+                />
+              </div>
+              <div className="col-span-2">
+                <Label htmlFor="import-tpl-f8">الترويسة (عربي)</Label>
+                <Input
+                  id="import-tpl-f8"
+                  value={colForm.header_ar ?? ""}
+                  onChange={(e) => setColForm({ ...colForm, header_ar: e.target.value })}
+                />
+              </div>
             </div>
-            <div><Label htmlFor="import-tpl-f9">مفتاح الحقل</Label><Input id="import-tpl-f9" value={colForm.field_key ?? ""} onChange={(e) => setColForm({ ...colForm, field_key: e.target.value })} placeholder="course_name" /></div>
-            <div><Label htmlFor="import-tpl-f13">نوع البيانات</Label>
-              <Select value={colForm.data_type ?? "text"} onValueChange={(v) => setColForm({ ...colForm, data_type: v })}>
-                <SelectTrigger id="import-tpl-f13"><SelectValue /></SelectTrigger>
-                <SelectContent>{DTYPES.map((d) => <SelectItem key={d.v} value={d.v}>{d.l}</SelectItem>)}</SelectContent>
+            <div>
+              <Label htmlFor="import-tpl-f9">مفتاح الحقل</Label>
+              <Input
+                id="import-tpl-f9"
+                value={colForm.field_key ?? ""}
+                onChange={(e) => setColForm({ ...colForm, field_key: e.target.value })}
+                placeholder="course_name"
+              />
+            </div>
+            <div>
+              <Label htmlFor="import-tpl-f13">نوع البيانات</Label>
+              <Select
+                value={colForm.data_type ?? "text"}
+                onValueChange={(v) => setColForm({ ...colForm, data_type: v })}
+              >
+                <SelectTrigger id="import-tpl-f13">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {DTYPES.map((d) => (
+                    <SelectItem key={d.v} value={d.v}>
+                      {d.l}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
               </Select>
             </div>
-            <div><Label htmlFor="import-tpl-f10">مثال</Label><Input id="import-tpl-f10" value={colForm.example ?? ""} onChange={(e) => setColForm({ ...colForm, example: e.target.value })} /></div>
-            <div><Label htmlFor="import-tpl-f11">ملاحظات</Label><Input id="import-tpl-f11" value={colForm.notes ?? ""} onChange={(e) => setColForm({ ...colForm, notes: e.target.value })} /></div>
-            <label className="flex items-center gap-2 text-sm"><Checkbox checked={colForm.is_required ?? false} onCheckedChange={(v) => setColForm({ ...colForm, is_required: !!v })} /> إلزامي</label>
+            <div>
+              <Label htmlFor="import-tpl-f10">مثال</Label>
+              <Input
+                id="import-tpl-f10"
+                value={colForm.example ?? ""}
+                onChange={(e) => setColForm({ ...colForm, example: e.target.value })}
+              />
+            </div>
+            <div>
+              <Label htmlFor="import-tpl-f11">ملاحظات</Label>
+              <Input
+                id="import-tpl-f11"
+                value={colForm.notes ?? ""}
+                onChange={(e) => setColForm({ ...colForm, notes: e.target.value })}
+              />
+            </div>
+            <label className="flex items-center gap-2 text-sm">
+              <Checkbox
+                checked={colForm.is_required ?? false}
+                onCheckedChange={(v) => setColForm({ ...colForm, is_required: !!v })}
+              />{" "}
+              إلزامي
+            </label>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setColOpen(false)}>إلغاء</Button>
-            <Button onClick={() => saveCol.mutate()} disabled={saveCol.isPending}>حفظ</Button>
+            <Button variant="outline" onClick={() => setColOpen(false)}>
+              إلغاء
+            </Button>
+            <Button onClick={() => saveCol.mutate()} disabled={saveCol.isPending}>
+              حفظ
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

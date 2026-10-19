@@ -144,7 +144,15 @@ describe("LAUNCH-CLOSURE-01 gap 1 — bulk plan is all-or-nothing", () => {
 describe("LAUNCH-CLOSURE-01 gap 1 — write path keeps tenant scope and honest results", () => {
   const api = read("src/lib/availability/bulk-api.ts");
   // L-14: the availability page was split into the route + src/components/availability/*.
-  const ui = ["src/routes/_authenticated/availability.tsx", "src/components/availability/availability-shared.tsx", "src/components/availability/instructor-unavailability.tsx", "src/components/availability/instructor-requests.tsx", "src/components/availability/room-unavailability.tsx"].map(read).join("\n");
+  const ui = [
+    "src/routes/_authenticated/availability.tsx",
+    "src/components/availability/availability-shared.tsx",
+    "src/components/availability/instructor-unavailability.tsx",
+    "src/components/availability/instructor-requests.tsx",
+    "src/components/availability/room-unavailability.tsx",
+  ]
+    .map(read)
+    .join("\n");
 
   test("RPC stays the primary path and the fallback runs only for a missing function", () => {
     expect(api).toContain("upsert_instructor_unavailability_for_active_days");
@@ -186,7 +194,9 @@ describe("LAUNCH-CLOSURE-01 gap 1 — write path keeps tenant scope and honest r
     expect(ui).toContain(
       'qc.invalidateQueries({ queryKey: ["instructor-availability-windows", active?.id, instructorId] })',
     );
-    expect(ui).toContain('qc.invalidateQueries({ queryKey: ["room-unavailability", active?.id, roomId] })');
+    expect(ui).toContain(
+      'qc.invalidateQueries({ queryKey: ["room-unavailability", active?.id, roomId] })',
+    );
   });
 });
 

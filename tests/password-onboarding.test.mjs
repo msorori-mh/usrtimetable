@@ -98,7 +98,9 @@ test("server enforces the new policy and keeps first-login identity and completi
       if (table === "profiles")
         return {
           select: () => ({
-            eq: () => ({ maybeSingle: async () => ({ data: { full_name: "Test Person" }, error: null }) }),
+            eq: () => ({
+              maybeSingle: async () => ({ data: { full_name: "Test Person" }, error: null }),
+            }),
           }),
         };
       return { insert: async () => ({ error: null }) };

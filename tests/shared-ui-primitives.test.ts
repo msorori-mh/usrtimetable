@@ -21,7 +21,12 @@ test("role predicates", () => {
 
 test("user errors: Arabic passes through, raw errors are mapped", () => {
   expect(userErrorMessage(new Error("لا يمكن حذف القاعة"))).toBe("لا يمكن حذف القاعة");
-  expect(userErrorMessage({ code: "23505", message: 'duplicate key value violates unique constraint "rooms_code_key"' })).not.toContain("rooms_code_key");
+  expect(
+    userErrorMessage({
+      code: "23505",
+      message: 'duplicate key value violates unique constraint "rooms_code_key"',
+    }),
+  ).not.toContain("rooms_code_key");
   expect(userErrorMessage(new TypeError("Failed to fetch"))).toContain("الاتصال");
   const generic = userErrorMessage(new Error('relation "secret_table" does not exist'));
   expect(generic).not.toContain("secret_table");

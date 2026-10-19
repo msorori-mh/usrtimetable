@@ -50,7 +50,13 @@ function DeliveryGroupsPage() {
   const { active } = useActiveCollege();
   const [showObsolete, setShowObsolete] = useState(false);
 
-  const { data: rows, isLoading, isError, error: rowsError, refetch } = useQuery({
+  const {
+    data: rows,
+    isLoading,
+    isError,
+    error: rowsError,
+    refetch,
+  } = useQuery({
     queryKey: ["delivery-groups", active?.id, "all"],
     enabled: !!active,
     queryFn: async () => {
@@ -122,7 +128,10 @@ function DeliveryGroupsPage() {
   const allRows = rows ?? [];
   const { operational: operationalRows, obsolete } = splitDeliveryGroupsByObsolescence(allRows);
   const obsoleteCount = obsolete.length;
-  const visibleRows = useMemo(() => visibleDeliveryGroups(allRows, showObsolete), [allRows, showObsolete]);
+  const visibleRows = useMemo(
+    () => visibleDeliveryGroups(allRows, showObsolete),
+    [allRows, showObsolete],
+  );
   const rowWindow = useRowWindow(visibleRows);
 
   return (
@@ -175,11 +184,13 @@ function DeliveryGroupsPage() {
 
       <div className="mb-4 flex flex-wrap items-center justify-between gap-2 text-sm">
         <p className="text-muted-foreground">
-          المجموعات النشطة: <span className="font-semibold">{formatNumber(operationalRows.length)}</span>
+          المجموعات النشطة:{" "}
+          <span className="font-semibold">{formatNumber(operationalRows.length)}</span>
           {obsoleteCount > 0 ? (
             <>
               {" "}
-              — التاريخية/الملغاة: <span className="font-semibold">{formatNumber(obsoleteCount)}</span>
+              — التاريخية/الملغاة:{" "}
+              <span className="font-semibold">{formatNumber(obsoleteCount)}</span>
             </>
           ) : null}
         </p>

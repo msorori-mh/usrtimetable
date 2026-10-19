@@ -113,7 +113,10 @@ describe("M-1 security headers", () => {
   });
 
   test("an invalid project URL never injects a source", () => {
-    const csp = buildContentSecurityPolicy({ hostname: "a.example.edu", supabaseUrl: "javascript:x" });
+    const csp = buildContentSecurityPolicy({
+      hostname: "a.example.edu",
+      supabaseUrl: "javascript:x",
+    });
     expect(csp).not.toContain("javascript");
   });
 });

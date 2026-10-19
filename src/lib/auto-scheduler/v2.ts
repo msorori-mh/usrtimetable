@@ -402,16 +402,18 @@ export async function runV2AutoSchedule(params: {
   );
   const { data: planCourses, error: planCoursesError } = await readByIdChunks<
     PlanCourseCadence & { id: string }
-  >(planCourseIds as string[], (chunk) =>
-    supabase
-      .from("plan_courses")
-      .select(
-        "id, lectures_per_week, lecture_session_duration, labs_per_week, lab_session_duration, required_room_type_for_lecture, required_room_type_for_lab",
-      )
-      .in("id", chunk) as unknown as PromiseLike<{
-      data: (PlanCourseCadence & { id: string })[] | null;
-      error: unknown;
-    }>,
+  >(
+    planCourseIds as string[],
+    (chunk) =>
+      supabase
+        .from("plan_courses")
+        .select(
+          "id, lectures_per_week, lecture_session_duration, labs_per_week, lab_session_duration, required_room_type_for_lecture, required_room_type_for_lab",
+        )
+        .in("id", chunk) as unknown as PromiseLike<{
+        data: (PlanCourseCadence & { id: string })[] | null;
+        error: unknown;
+      }>,
   );
   if (planCoursesError) {
     throw new Error(`V2_AUTO_QUERY_FAILED[plan_courses]: ${planCoursesError.message}`);

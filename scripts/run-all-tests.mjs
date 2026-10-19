@@ -44,7 +44,8 @@ export function classify(rel, source) {
   if (SUPPORT_FILES.has(rel)) return { group: "support" };
   const dbEnv = source.match(DB_ENV)?.[1];
   if (dbEnv) return { group: "db", env: dbEnv };
-  const uses = (id) => new RegExp(`(?:from\\s+|import\\(|require\\()\\s*["']${id}["']`).test(source);
+  const uses = (id) =>
+    new RegExp(`(?:from\\s+|import\\(|require\\()\\s*["']${id}["']`).test(source);
   if (uses("bun:test")) return { group: "bun" };
   if (uses("vitest")) return { group: "vitest" };
   const ts = /\.tsx?$/.test(rel);
@@ -65,7 +66,7 @@ export function inventory() {
     });
   // A file that imports a DB test's fixture (e.g. `from "./faculty-workflow-db.test.mjs"`)
   // needs the same database runtime: propagate until stable.
-  for (let changed = true; changed; ) {
+  for (let changed = true; changed;) {
     changed = false;
     const db = new Map(entries.filter((e) => e.group === "db").map((e) => [e.file, e]));
     for (const e of entries) {

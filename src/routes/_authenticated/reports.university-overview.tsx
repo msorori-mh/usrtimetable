@@ -87,9 +87,7 @@ function UniversityOverviewPage({ viewerKey }: { viewerKey: string }) {
     } catch (error) {
       return {
         rows: [],
-        error: new ReportScopeError(
-          userErrorMessage(error, "تعذر التحقق من بيانات التقرير"),
-        ),
+        error: new ReportScopeError(userErrorMessage(error, "تعذر التحقق من بيانات التقرير")),
       };
     }
   }, [query.data, mode]);
@@ -340,8 +338,7 @@ function UniversityOverviewPage({ viewerKey }: { viewerKey: string }) {
       >
         {data && (
           <p className="uo-snapshot">
-            {periodLabel} <span>·</span> تحديث{" "}
-            {formatDateTime(data.generated_at)}
+            {periodLabel} <span>·</span> تحديث {formatDateTime(data.generated_at)}
             {query.isError && (
               <span className="uo-row-note"> · تعذر التحديث؛ تُعرض آخر قراءة ناجحة</span>
             )}

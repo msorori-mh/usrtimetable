@@ -64,7 +64,13 @@ function Page() {
     error: sessionsError,
     refetch,
   } = useQuery({
-    queryKey: ["reports-section-timetable-sessions", ctx.collegeId, ctx.versionId, ctx.studySystem, sectionId],
+    queryKey: [
+      "reports-section-timetable-sessions",
+      ctx.collegeId,
+      ctx.versionId,
+      ctx.studySystem,
+      sectionId,
+    ],
     enabled: !!ctx.collegeId && !!ctx.versionId && !!sectionId,
     queryFn: () =>
       fetchSectionTimetableSessions({

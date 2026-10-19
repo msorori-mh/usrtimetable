@@ -8,10 +8,20 @@ import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { toast } from "sonner";
 import { DAYS } from "@/routes/_authenticated/time-slots";
-import { DEFAULT_WORKING_DAYS, isValidTimeRange, resolveWorkingDays } from "@/lib/availability/active-days";
+import {
+  DEFAULT_WORKING_DAYS,
+  isValidTimeRange,
+  resolveWorkingDays,
+} from "@/lib/availability/active-days";
 import {
   createInstructorSchedulingRequest,
   INSTRUCTOR_REQUEST_KIND_LABEL_AR,
@@ -212,7 +222,8 @@ export function InstructorRequests() {
                 </div>
                 <div>
                   <Label htmlFor="availability-f4">من</Label>
-                  <Input id="availability-f4"
+                  <Input
+                    id="availability-f4"
                     dir="ltr"
                     type="time"
                     value={form.start_time}
@@ -221,7 +232,8 @@ export function InstructorRequests() {
                 </div>
                 <div>
                   <Label htmlFor="availability-f5">إلى</Label>
-                  <Input id="availability-f5"
+                  <Input
+                    id="availability-f5"
                     dir="ltr"
                     type="time"
                     value={form.end_time}
@@ -232,7 +244,8 @@ export function InstructorRequests() {
             ) : form.requestKind === "daily_limit" ? (
               <div>
                 <Label htmlFor="availability-f6">أقصى ساعات يومية</Label>
-                <Input id="availability-f6"
+                <Input
+                  id="availability-f6"
                   type="number"
                   min={1}
                   max={12}
@@ -246,7 +259,8 @@ export function InstructorRequests() {
               <>
                 <div>
                   <Label htmlFor="availability-f7">أيام الحضور المستهدفة</Label>
-                  <Input id="availability-f7"
+                  <Input
+                    id="availability-f7"
                     type="number"
                     min={1}
                     max={6}
@@ -258,7 +272,8 @@ export function InstructorRequests() {
                 </div>
                 <div>
                   <Label htmlFor="availability-f8">الحد الأعلى لأيام الحضور</Label>
-                  <Input id="availability-f8"
+                  <Input
+                    id="availability-f8"
                     type="number"
                     min={1}
                     max={6}
@@ -361,7 +376,8 @@ export function InstructorRequests() {
                       onClick={async () => {
                         const ok = await confirmAction({
                           title: `اعتماد طلب ${request.instructor_name} وتطبيقه؟`,
-                          description: "يُطبَّق الطلب على سياسة الجدولة الفعلية للمحاضر فور اعتماده.",
+                          description:
+                            "يُطبَّق الطلب على سياسة الجدولة الفعلية للمحاضر فور اعتماده.",
                           confirmLabel: "اعتماد وتطبيق",
                         });
                         if (ok) reviewRequest.mutate({ id: request.id, decision: "approved" });

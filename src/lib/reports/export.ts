@@ -5,7 +5,11 @@ import { csvField } from "./spreadsheet-safe";
 
 export type Row = Record<string, unknown>;
 
-export function downloadCSV(rows: Row[], headers: { key: string; label: string }[], filename: string) {
+export function downloadCSV(
+  rows: Row[],
+  headers: { key: string; label: string }[],
+  filename: string,
+) {
   // M-2: formula-looking text cells are neutralized; numbers stay numbers.
   const esc = (v: unknown) => csvField(v);
   const head = headers.map((h) => esc(h.label)).join(",");
@@ -59,4 +63,9 @@ function triggerDownload(blob: Blob, filename: string) {
   URL.revokeObjectURL(url);
 }
 
-export { DAY_NAMES_AR, compactAcademicLevelLabel, fmtTime, hoursBetween } from "@/lib/reports/formatters";
+export {
+  DAY_NAMES_AR,
+  compactAcademicLevelLabel,
+  fmtTime,
+  hoursBetween,
+} from "@/lib/reports/formatters";

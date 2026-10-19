@@ -22,7 +22,9 @@ describe("H-11 evaluateAdminAccess (super-admin actions)", () => {
   });
 
   test("allows a ready aal2 super-admin session", () => {
-    expect(evaluateAdminAccess(ready, aal2, ["college_admin", "super_admin"])).toEqual({ ok: true });
+    expect(evaluateAdminAccess(ready, aal2, ["college_admin", "super_admin"])).toEqual({
+      ok: true,
+    });
   });
 
   test("revoked sessions, pending MFA and pending password change are rejected", () => {
@@ -99,8 +101,12 @@ describe("H-11 initial password change policy", () => {
       ).ok,
     ).toBe(false);
     expect(
-      evaluateAdminAccess({ ...ready, mfa_required: true }, aal1, null, INITIAL_PASSWORD_CHANGE_POLICY)
-        .ok,
+      evaluateAdminAccess(
+        { ...ready, mfa_required: true },
+        aal1,
+        null,
+        INITIAL_PASSWORD_CHANGE_POLICY,
+      ).ok,
     ).toBe(false);
   });
 

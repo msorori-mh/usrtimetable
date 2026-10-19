@@ -47,7 +47,10 @@ import { formatNumber } from "@/lib/format";
 import { QueryErrorNotice } from "@/components/app-states/query-error-notice";
 import { confirmAction } from "@/components/confirm-dialog";
 import { chunkIds, readAllRows } from "@/lib/supabase/read-all";
-import { CohortDeliveryGroupsCard, type DeliveryGroupRow } from "@/components/academic-cohorts/cohort-delivery-groups-card";
+import {
+  CohortDeliveryGroupsCard,
+  type DeliveryGroupRow,
+} from "@/components/academic-cohorts/cohort-delivery-groups-card";
 import { CohortGenerationSummaries } from "@/components/academic-cohorts/cohort-generation-summaries";
 import { useCohortDirectoryData } from "@/hooks/use-cohort-directory-data";
 import { DirectoryFilter } from "@/components/academic-cohorts/directory-filter";
@@ -56,8 +59,6 @@ export const Route = createFileRoute("/_authenticated/academic-cohorts")({
   head: () => ({ meta: [{ title: "الدفعات الدراسية" }] }),
   component: AcademicCohortsPage,
 });
-
-
 
 /**
  * Phase 9.3 foundation — read-only cohort + delivery-group diagnostics.
@@ -87,7 +88,22 @@ function AcademicCohortsWorkspace() {
   >(null);
 
   const {
-    programs, programsError, levels, levelsError, terms, termsError, cohorts, isLoading, cohortsError, versions, versionsLoading, versionsError, selectedVersion, versionFacts, versionFactsLoading, versionFactsError,
+    programs,
+    programsError,
+    levels,
+    levelsError,
+    terms,
+    termsError,
+    cohorts,
+    isLoading,
+    cohortsError,
+    versions,
+    versionsLoading,
+    versionsError,
+    selectedVersion,
+    versionFacts,
+    versionFactsLoading,
+    versionFactsError,
   } = useCohortDirectoryData(active?.id, chosenVersionId);
 
   const directoryRows = useMemo<CohortListRow[]>(() => {
@@ -234,14 +250,15 @@ function AcademicCohortsWorkspace() {
       const ids = (groups ?? []).map((g) => g.id);
       const data: { delivery_group_id: string | null }[] = [];
       for (const chunk of chunkIds(ids)) {
-        const rows = await readAllRows<{ id: string; delivery_group_id: string | null }>((from, to) =>
-          supabase
-            .from("teaching_assignments")
-            .select("id, delivery_group_id")
-            .eq("college_id", active!.id)
-            .in("delivery_group_id", chunk)
-            .order("id")
-            .range(from, to),
+        const rows = await readAllRows<{ id: string; delivery_group_id: string | null }>(
+          (from, to) =>
+            supabase
+              .from("teaching_assignments")
+              .select("id, delivery_group_id")
+              .eq("college_id", active!.id)
+              .in("delivery_group_id", chunk)
+              .order("id")
+              .range(from, to),
         );
         data.push(...rows);
       }
@@ -378,8 +395,12 @@ function AcademicCohortsWorkspace() {
           error={cohortsError ?? versionsError ?? versionFactsError}
           onRetry={() => {
             void queryClient.invalidateQueries({ queryKey: ["academic-cohorts", active?.id] });
-            void queryClient.invalidateQueries({ queryKey: ["cohort-directory-versions", active?.id] });
-            void queryClient.invalidateQueries({ queryKey: ["cohort-directory-version-facts", active?.id] });
+            void queryClient.invalidateQueries({
+              queryKey: ["cohort-directory-versions", active?.id],
+            });
+            void queryClient.invalidateQueries({
+              queryKey: ["cohort-directory-version-facts", active?.id],
+            });
           }}
         />
       ) : isLoading || versionsLoading || (selectedVersion && versionFactsLoading) ? (
@@ -432,7 +453,8 @@ function AcademicCohortsWorkspace() {
                   />
                 </div>
                 <span className="text-sm text-muted-foreground" role="status">
-                  {formatNumber(filteredCohorts.length)} من {formatNumber(directoryRows.length)} دفعة
+                  {formatNumber(filteredCohorts.length)} من {formatNumber(directoryRows.length)}{" "}
+                  دفعة
                 </span>
                 {hasFilters && (
                   <Button
@@ -592,7 +614,8 @@ function AcademicCohortsWorkspace() {
               )}
               <div className="flex flex-wrap items-center justify-between gap-3 border-t bg-muted/20 px-4 py-3">
                 <span className="text-xs text-muted-foreground">
-                  صفحة {formatNumber(directoryPage.page)} من {formatNumber(directoryPage.totalPages)}
+                  صفحة {formatNumber(directoryPage.page)} من{" "}
+                  {formatNumber(directoryPage.totalPages)}
                 </span>
                 <div className="flex gap-2">
                   <Button

@@ -66,8 +66,7 @@ function HeadcountImportForm({
     try {
       await task();
     } catch (error) {
-      if (alive.current)
-        toast.error(userErrorMessage(error, "تعذر تنفيذ العملية."));
+      if (alive.current) toast.error(userErrorMessage(error, "تعذر تنفيذ العملية."));
     } finally {
       running.current = false;
       if (alive.current) setBusy(false);
@@ -201,14 +200,17 @@ function HeadcountImportForm({
         <div className="space-y-3" aria-live="polite">
           <p className="text-sm text-muted-foreground">{sheetInfo}</p>
           <p className="text-sm">
-            الصفوف: {formatNumber(preview.total)} · الصالحة: {formatNumber(preview.rows.length)} · الأخطاء:{" "}
-            {formatNumber(preview.errors.length)} · مجموع أعداد الجدولة الصالحة:{" "}
+            الصفوف: {formatNumber(preview.total)} · الصالحة: {formatNumber(preview.rows.length)} ·
+            الأخطاء: {formatNumber(preview.errors.length)} · مجموع أعداد الجدولة الصالحة:{" "}
             {formatNumber(preview.rows.reduce((sum, r) => sum + r.scheduling_headcount, 0))}
           </p>
           {preview.errors.length > 0 && (
             <div className="max-h-64 overflow-auto rounded border border-destructive p-3 text-sm text-destructive">
               <p className="mb-2 font-semibold">صحح جميع الأخطاء ثم أعد الفحص. لم يُحفظ أي صف.</p>
-              {withStableKeys<HeadcountPreview["errors"][number]>(preview.errors, (e) => `${e.row}:${e.column}:${e.message}`).map(({ key, item: e }) => (
+              {withStableKeys<HeadcountPreview["errors"][number]>(
+                preview.errors,
+                (e) => `${e.row}:${e.column}:${e.message}`,
+              ).map(({ key, item: e }) => (
                 <p key={key}>
                   الصف {e.row} · {e.column}: {e.message}
                 </p>
@@ -248,7 +250,9 @@ function HeadcountImportForm({
                         </td>
                         {COUNT_COLUMNS.map(([key]) => (
                           <td key={key} className="p-2">
-                            {typeof row[key] === "number" ? formatNumber(row[key] as number) : row[key]}
+                            {typeof row[key] === "number"
+                              ? formatNumber(row[key] as number)
+                              : row[key]}
                           </td>
                         ))}
                         <td className="p-2">{row.source}</td>
@@ -270,7 +274,8 @@ function HeadcountImportForm({
                 onClick={async () => {
                   const ok = await confirmAction({
                     title: `حفظ ${formatNumber(preview.rows.length)} صفًا كمسودات؟`,
-                    description: "الأعداد المعتمدة التي تتغير قيمها تعود إلى مسودة وتحتاج اعتمادًا جديدًا.",
+                    description:
+                      "الأعداد المعتمدة التي تتغير قيمها تعود إلى مسودة وتحتاج اعتمادًا جديدًا.",
                     confirmLabel: "حفظ",
                   });
                   if (ok) void commit("save");

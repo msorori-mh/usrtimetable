@@ -167,8 +167,8 @@ export function SourceRowsImport({
       {preview && (
         <div className="space-y-2 text-sm" role="status">
           <p>
-            جديد: {formatNumber(preview.rows.length)} · موجود مطابق: {formatNumber(preview.skipped)} ·
-            أخطاء: {formatNumber(preview.errors.length)}
+            جديد: {formatNumber(preview.rows.length)} · موجود مطابق: {formatNumber(preview.skipped)}{" "}
+            · أخطاء: {formatNumber(preview.errors.length)}
           </p>
           {preview.errors.length > 0 && (
             <ul className="list-disc space-y-1 ps-5 text-destructive">

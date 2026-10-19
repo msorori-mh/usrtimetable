@@ -177,9 +177,7 @@ export function CompactSchedulePanel({
         );
       }
     } catch (error) {
-      setMessage(
-        userErrorMessage(error, "تعذر التحقق. أعد المعاينة قبل المتابعة."),
-      );
+      setMessage(userErrorMessage(error, "تعذر التحقق. أعد المعاينة قبل المتابعة."));
       setProposal(null);
     } finally {
       abort.current = null;

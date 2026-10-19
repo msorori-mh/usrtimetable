@@ -19,7 +19,10 @@ export const READ_ALL_PAGE_SIZE = 1000;
 export async function readAllRows<T>(
   // `readonly unknown[]` lets a caller name the row type it selects (T) even when the
   // generated builder type differs (embeds, casts); T is still inferred when omitted.
-  page: (from: number, to: number) => PromiseLike<{ data: T[] | readonly unknown[] | null; error: unknown }>,
+  page: (
+    from: number,
+    to: number,
+  ) => PromiseLike<{ data: T[] | readonly unknown[] | null; error: unknown }>,
   pageSize: number = READ_ALL_PAGE_SIZE,
 ): Promise<T[]> {
   const rows: T[] = [];
@@ -62,7 +65,10 @@ export function chunkIds<T>(ids: readonly T[], size = 150): T[][] {
 export async function readAllResult<T>(
   // `readonly unknown[]` lets a caller name the row type it selects (T) even when the
   // generated builder type differs (embeds, casts); T is still inferred when omitted.
-  page: (from: number, to: number) => PromiseLike<{ data: T[] | readonly unknown[] | null; error: unknown }>,
+  page: (
+    from: number,
+    to: number,
+  ) => PromiseLike<{ data: T[] | readonly unknown[] | null; error: unknown }>,
   pageSize: number = READ_ALL_PAGE_SIZE,
 ): Promise<{ data: T[] | null; error: unknown }> {
   try {

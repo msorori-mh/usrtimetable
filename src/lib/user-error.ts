@@ -28,9 +28,14 @@ function pick(source: unknown, key: string): string | null {
   return null;
 }
 
-export function userErrorMessage(error: unknown, fallback = "تعذّر تنفيذ العملية. أعد المحاولة."): string {
+export function userErrorMessage(
+  error: unknown,
+  fallback = "تعذّر تنفيذ العملية. أعد المحاولة.",
+): string {
   const message =
-    typeof error === "string" ? error.trim() : (pick(error, "message") ?? pick(error, "error_description"));
+    typeof error === "string"
+      ? error.trim()
+      : (pick(error, "message") ?? pick(error, "error_description"));
   if (message && ARABIC.test(message)) return message;
 
   const code = pick(error, "code");

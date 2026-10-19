@@ -93,7 +93,10 @@ function setup(options = {}) {
     auth: {
       resetPasswordForEmail: async (email, options) => {
         recoveryEmails.push({ email, options });
-        return { data: {}, error: options?.failEmail || globalThis.__failEmail ? { message: "x" } : null };
+        return {
+          data: {},
+          error: options?.failEmail || globalThis.__failEmail ? { message: "x" } : null,
+        };
       },
       admin: {
         getUserById: async (id) => {

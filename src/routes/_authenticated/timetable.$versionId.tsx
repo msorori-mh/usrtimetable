@@ -178,7 +178,12 @@ function TimetablePage() {
           .select("id, name, program_id, level_number")
           .eq("college_id", active!.id),
         readAllResult<{ id: string; full_name: string }>((from, to) =>
-          supabase.from("instructors").select("id, full_name").eq("college_id", active!.id).order("id").range(from, to),
+          supabase
+            .from("instructors")
+            .select("id, full_name")
+            .eq("college_id", active!.id)
+            .order("id")
+            .range(from, to),
         ),
         supabase.from("rooms").select("id, code, name, room_type_id").eq("college_id", active!.id),
         // Flat offerings only — no nested courses() embed (PGRST200).
@@ -198,13 +203,14 @@ function TimetablePage() {
             .order("id")
             .range(from, to),
         ),
-        readAllResult<{ id: string; course_offering_id: string; instructor_id: string }>((from, to) =>
-          supabase
-            .from("teaching_assignments")
-            .select("id, course_offering_id, instructor_id")
-            .eq("college_id", active!.id)
-            .order("id")
-            .range(from, to),
+        readAllResult<{ id: string; course_offering_id: string; instructor_id: string }>(
+          (from, to) =>
+            supabase
+              .from("teaching_assignments")
+              .select("id, course_offering_id, instructor_id")
+              .eq("college_id", active!.id)
+              .order("id")
+              .range(from, to),
         ),
         supabase
           .from("time_slot_templates")
@@ -558,7 +564,9 @@ function TimetablePage() {
   }
 
   const isLocked =
-    version.status === "approved" || version.status === "published" || version.status === "archived";
+    version.status === "approved" ||
+    version.status === "published" ||
+    version.status === "archived";
 
   return (
     <div className="space-y-4" dir="rtl">
@@ -631,7 +639,8 @@ function TimetablePage() {
                 : "مؤرشفة"}
           </strong>{" "}
           — العرض للقراءة فقط. لا يمكن إضافة أو تعديل أو حذف المحاضرات.
-          {version.status !== "archived" && " لإجراء تغييرات أنشئ مسودة جديدة منها من صفحة نسخ الجدول."}
+          {version.status !== "archived" &&
+            " لإجراء تغييرات أنشئ مسودة جديدة منها من صفحة نسخ الجدول."}
         </div>
       )}
 

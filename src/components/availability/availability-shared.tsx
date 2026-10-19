@@ -1,7 +1,11 @@
 import { useQuery } from "@tanstack/react-query";
 import { SelectItem } from "@/components/ui/select";
 import { DAYS } from "@/routes/_authenticated/time-slots";
-import { ALL_ACTIVE_DAYS_SENTINEL, DEFAULT_WORKING_DAYS, resolveWorkingDays } from "@/lib/availability/active-days";
+import {
+  ALL_ACTIVE_DAYS_SENTINEL,
+  DEFAULT_WORKING_DAYS,
+  resolveWorkingDays,
+} from "@/lib/availability/active-days";
 import { fetchCollegeWorkingDays } from "@/lib/availability/bulk-api";
 import { readableWriteError } from "@/lib/availability/errors";
 import { userErrorMessage } from "@/lib/user-error";

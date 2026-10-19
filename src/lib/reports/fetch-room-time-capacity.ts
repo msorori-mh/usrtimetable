@@ -22,7 +22,9 @@ async function pagedResult<T>(
     return { data: await read(), error: null };
   } catch (e) {
     const message =
-      e && typeof e === "object" && "message" in e ? String((e as { message: unknown }).message) : "";
+      e && typeof e === "object" && "message" in e
+        ? String((e as { message: unknown }).message)
+        : "";
     return { data: null, error: { message: message || "خطأ استعلام غير معروف" } };
   }
 }

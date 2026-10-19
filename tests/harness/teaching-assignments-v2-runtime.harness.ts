@@ -497,7 +497,14 @@ function run() {
 
   // ---------- UI / service static ----------
   // L-14: the page was split into the route + its table/summary components and options hook.
-  const page = ["src/routes/_authenticated/teaching-assignments.tsx", "src/components/teaching-assignments/teaching-assignment-groups-table.tsx", "src/components/teaching-assignments/instructor-search-summary-card.tsx", "src/hooks/use-teaching-assignment-filter-options.ts"].map(read).join("\n");
+  const page = [
+    "src/routes/_authenticated/teaching-assignments.tsx",
+    "src/components/teaching-assignments/teaching-assignment-groups-table.tsx",
+    "src/components/teaching-assignments/instructor-search-summary-card.tsx",
+    "src/hooks/use-teaching-assignment-filter-options.ts",
+  ]
+    .map(read)
+    .join("\n");
   const svc = read("src/lib/academic-delivery/teaching-assignments-v2-service.ts");
   const hook = read("src/hooks/use-teaching-assignments-v2.ts");
   const sessionDialog = read("src/components/timetable/session-dialog.tsx");

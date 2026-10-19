@@ -450,7 +450,8 @@ export function SessionDialog({
                     instructor_id:
                       v === "none"
                         ? form.instructor_id
-                        : (assignments.find((t) => t.id === v)?.instructor_id ?? form.instructor_id),
+                        : (assignments.find((t) => t.id === v)?.instructor_id ??
+                          form.instructor_id),
                   })
                 }
               >
@@ -704,10 +705,7 @@ export function SessionDialog({
             </div>
             {conflicts.map((c, i) => (
               <div key={`${c.code}-${c.related_session_id ?? ""}-${i}`} className="text-xs">
-                <Badge
-                  variant={c.severity === "hard" ? "destructive" : "outline"}
-                  className="me-1"
-                >
+                <Badge variant={c.severity === "hard" ? "destructive" : "outline"} className="me-1">
                   {c.severity === "hard" ? "إلزامي" : "تحذير"}
                 </Badge>
                 {c.message_ar}

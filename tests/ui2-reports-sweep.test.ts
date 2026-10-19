@@ -58,7 +58,11 @@ function offenders(pattern: RegExp): string[] {
 
 describe("reports sweep (UI-2)", () => {
   test("L-13: no direct locale formatting; format.ts helpers only", () => {
-    expect(offenders(/toLocale(String|DateString|TimeString|LowerCase|UpperCase)|Intl\.(NumberFormat|DateTimeFormat)/)).toEqual([]);
+    expect(
+      offenders(
+        /toLocale(String|DateString|TimeString|LowerCase|UpperCase)|Intl\.(NumberFormat|DateTimeFormat)/,
+      ),
+    ).toEqual([]);
   });
 
   test("M-16: no physical direction utility classes", () => {
@@ -83,12 +87,18 @@ describe("reports sweep (UI-2)", () => {
   });
 
   test("L-5: toasts never show raw error messages", () => {
-    expect(offenders(/toast\.error\([^)]*(\(e(rr|rror)? as Error\)\.message|String\(e(rr|rror)?\)|error\.message)/)).toEqual([]);
+    expect(
+      offenders(
+        /toast\.error\([^)]*(\(e(rr|rror)? as Error\)\.message|String\(e(rr|rror)?\)|error\.message)/,
+      ),
+    ).toEqual([]);
   });
 
   test("H-10: no unpaginated big-table reads in owned files", () => {
     const hits = OWNED.flatMap((file) =>
-      scanSource(read(file)).map((o: { table: string; line: number }) => `${file}:${o.line} ${o.table}`),
+      scanSource(read(file)).map(
+        (o: { table: string; line: number }) => `${file}:${o.line} ${o.table}`,
+      ),
     );
     expect(hits).toEqual([]);
   });
@@ -99,18 +109,38 @@ describe("reports sweep (UI-2)", () => {
   });
 
   test("L-14: role checks use the roles helpers", () => {
-    expect(offenders(
-      // Only app (user) role names; other `role` fields (e.g. a publication role "source") are not role checks.
-      /roles?\.includes\(\s*"(super_admin|college_admin|read_only|institutional_viewer|university_leadership|college_dean)"\s*\)|role\s*===\s*"(super_admin|college_admin|read_only|institutional_viewer|university_leadership|college_dean)"/,
-    )).toEqual([]);
+    expect(
+      offenders(
+        // Only app (user) role names; other `role` fields (e.g. a publication role "source") are not role checks.
+        /roles?\.includes\(\s*"(super_admin|college_admin|read_only|institutional_viewer|university_leadership|college_dean)"\s*\)|role\s*===\s*"(super_admin|college_admin|read_only|institutional_viewer|university_leadership|college_dean)"/,
+      ),
+    ).toEqual([]);
   });
 });
 
 describe("M-18: unused ui wrappers removed, recharts lazy", () => {
   const removed = [
-    "alert", "aspect-ratio", "avatar", "breadcrumb", "calendar", "carousel", "context-menu",
-    "drawer", "form", "hover-card", "input-otp", "menubar", "navigation-menu", "pagination",
-    "radio-group", "resizable", "scroll-area", "sidebar", "slider", "toggle-group", "toggle",
+    "alert",
+    "aspect-ratio",
+    "avatar",
+    "breadcrumb",
+    "calendar",
+    "carousel",
+    "context-menu",
+    "drawer",
+    "form",
+    "hover-card",
+    "input-otp",
+    "menubar",
+    "navigation-menu",
+    "pagination",
+    "radio-group",
+    "resizable",
+    "scroll-area",
+    "sidebar",
+    "slider",
+    "toggle-group",
+    "toggle",
   ];
 
   test("deleted wrappers are gone and nothing imports them", () => {
@@ -130,8 +160,12 @@ describe("M-18: unused ui wrappers removed, recharts lazy", () => {
     const route = read("src/routes/_authenticated/reports.rooms-report.tsx");
     expect(route).not.toMatch(/import \{ RoomsAnalyticsDashboard \}/);
     expect(route).not.toMatch(/import \{ RoomsDecisionsPanel \}/);
-    expect(route).toMatch(/lazy\(\(\) =>\s*import\("@\/components\/reports\/rooms-analytics-dashboard"\)/);
-    expect(route).toMatch(/lazy\(\(\) =>\s*import\("@\/components\/reports\/rooms-decisions-panel"\)/);
+    expect(route).toMatch(
+      /lazy\(\(\) =>\s*import\("@\/components\/reports\/rooms-analytics-dashboard"\)/,
+    );
+    expect(route).toMatch(
+      /lazy\(\(\) =>\s*import\("@\/components\/reports\/rooms-decisions-panel"\)/,
+    );
     expect(route).toContain("<Suspense");
     const recharts = walk("src").filter((f) => /from "recharts"/.test(read(f)));
     expect(recharts.sort()).toEqual([

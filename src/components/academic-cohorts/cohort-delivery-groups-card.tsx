@@ -54,8 +54,8 @@ export function CohortDeliveryGroupsCard({
       </div>
       {versionFacts?.has(selected.id) && (
         <p className="border-b bg-muted/30 px-4 py-2 text-xs text-muted-foreground">
-          هذه قائمة المجموعات في السجل العام. راجع جدول النسخة المختارة لأعداد مجموعاتها
-          وتوزيع محاضراتها المعتمد.
+          هذه قائمة المجموعات في السجل العام. راجع جدول النسخة المختارة لأعداد مجموعاتها وتوزيع
+          محاضراتها المعتمد.
         </p>
       )}
       {groupsError ? (
@@ -69,8 +69,8 @@ export function CohortDeliveryGroupsCard({
           <BookOpen className="mx-auto h-8 w-8 text-muted-foreground/60" />
           <p className="font-medium">لم تُجهّز مجموعات هذه الدفعة بعد</p>
           <p className="text-sm leading-relaxed text-muted-foreground">
-            اضغط «توليد مجموعات المحاضرات والمعامل» أعلاه. سيجهّز النظام مقررات الدفعة
-            تلقائيًا، ثم يوزّع الطلاب على المجموعات حسب السعات.
+            اضغط «توليد مجموعات المحاضرات والمعامل» أعلاه. سيجهّز النظام مقررات الدفعة تلقائيًا، ثم
+            يوزّع الطلاب على المجموعات حسب السعات.
           </p>
         </div>
       ) : (
@@ -110,9 +110,7 @@ export function CohortDeliveryGroupsCard({
                           ?.component_type as keyof typeof COMPONENT_TYPE_LABEL_AR
                       ] ?? "—"}
                       {isExcludedFromWorkload(g) ? (
-                        <span className="ms-2 text-xs text-muted-foreground">
-                          (خارج النصاب)
-                        </span>
+                        <span className="ms-2 text-xs text-muted-foreground">(خارج النصاب)</span>
                       ) : null}
                     </td>
                     <td className="px-3 py-2" dir="ltr">

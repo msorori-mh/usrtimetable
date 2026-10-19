@@ -83,8 +83,8 @@ function SectionsPage() {
           .select("id, code, name")
           .eq("college_id", active!.id)
           .order("code")
-            .order("id")
-            .range(from, to),
+          .order("id")
+          .range(from, to),
       );
       return data ?? [];
     },
@@ -94,16 +94,22 @@ function SectionsPage() {
     enabled: !!active,
     queryFn: async () => {
       const { data, error } = await supabase
-          .from("academic_terms")
-          .select("id, name, is_active")
-          .eq("college_id", active!.id)
-          .order("name");
+        .from("academic_terms")
+        .select("id, name, is_active")
+        .eq("college_id", active!.id)
+        .order("name");
       if (error) throw error;
       return data ?? [];
     },
   });
 
-  const { data: rows, isLoading, isError, error: rowsError, refetch } = useQuery({
+  const {
+    data: rows,
+    isLoading,
+    isError,
+    error: rowsError,
+    refetch,
+  } = useQuery({
     queryKey: ["sections", active?.id, termFilter],
     enabled: !!active,
     queryFn: async () => {
@@ -292,14 +298,16 @@ function SectionsPage() {
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <Label htmlFor="sections-f1">رقم المجموعة</Label>
-                    <Input id="sections-f1"
+                    <Input
+                      id="sections-f1"
                       value={form.section_number}
                       onChange={(e) => setForm({ ...form, section_number: e.target.value })}
                     />
                   </div>
                   <div>
                     <Label htmlFor="sections-f2">السعة</Label>
-                    <Input id="sections-f2"
+                    <Input
+                      id="sections-f2"
                       type="number"
                       min={1}
                       value={form.capacity}
@@ -331,7 +339,9 @@ function SectionsPage() {
         {isLoading ? (
           <p className="p-6 text-center text-muted-foreground">جارٍ التحميل...</p>
         ) : isError ? (
-          <div className="p-4"><QueryErrorNotice error={rowsError} onRetry={() => void refetch()} /></div>
+          <div className="p-4">
+            <QueryErrorNotice error={rowsError} onRetry={() => void refetch()} />
+          </div>
         ) : !rows || rows.length === 0 ? (
           <p className="p-6 text-center text-muted-foreground">لا توجد مجموعات بعد.</p>
         ) : (
@@ -348,7 +358,12 @@ function SectionsPage() {
                 </div>
                 {canManage && !LEGACY_SECTIONS_WRITE_BLOCKED && (
                   <div className="flex gap-1">
-                    <Button size="sm" variant="ghost" aria-label={`تعديل ${`مجموعة ${s.section_number}`}`} onClick={() => startEdit(s)}>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      aria-label={`تعديل ${`مجموعة ${s.section_number}`}`}
+                      onClick={() => startEdit(s)}
+                    >
                       <Pencil className="h-3.5 w-3.5" />
                     </Button>
                     <Button
@@ -356,7 +371,12 @@ function SectionsPage() {
                       variant="ghost"
                       aria-label={`حذف ${`مجموعة ${s.section_number}`}`}
                       onClick={async () => {
-                        const ok = await confirmAction({ title: `حذف مجموعة ${s.section_number} من «${courseMap.get(s.course_id) ?? "المقرر"}»؟`, description: "لا يمكن التراجع عن هذا الإجراء.", confirmLabel: "حذف", destructive: true });
+                        const ok = await confirmAction({
+                          title: `حذف مجموعة ${s.section_number} من «${courseMap.get(s.course_id) ?? "المقرر"}»؟`,
+                          description: "لا يمكن التراجع عن هذا الإجراء.",
+                          confirmLabel: "حذف",
+                          destructive: true,
+                        });
                         if (ok) del.mutate(s.id);
                       }}
                     >

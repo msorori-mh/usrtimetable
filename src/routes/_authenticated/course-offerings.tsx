@@ -40,10 +40,10 @@ function OfferingsPage() {
     enabled: !!active,
     queryFn: async () => {
       const { data, error } = await supabase
-          .from("academic_terms")
-          .select("id, name")
-          .eq("college_id", active!.id)
-          .order("start_date", { ascending: false });
+        .from("academic_terms")
+        .select("id, name")
+        .eq("college_id", active!.id)
+        .order("start_date", { ascending: false });
       if (error) throw error;
       return data ?? [];
     },
@@ -58,8 +58,8 @@ function OfferingsPage() {
           .select("id, code, name")
           .eq("college_id", active!.id)
           .order("code")
-            .order("id")
-            .range(from, to),
+          .order("id")
+          .range(from, to),
       );
       return data ?? [];
     },
@@ -69,12 +69,12 @@ function OfferingsPage() {
     enabled: !!active,
     queryFn: async () => {
       const { data, error } = await supabase
-          .from("academic_programs")
-          .select("id, name")
-          .eq("college_id", active!.id)
-          // ACADEMIC-ARCHIVE-UI-01: pickers exclude archived records.
-          .eq("is_archived", false)
-          .order("name");
+        .from("academic_programs")
+        .select("id, name")
+        .eq("college_id", active!.id)
+        // ACADEMIC-ARCHIVE-UI-01: pickers exclude archived records.
+        .eq("is_archived", false)
+        .order("name");
       if (error) throw error;
       return data ?? [];
     },
@@ -84,27 +84,33 @@ function OfferingsPage() {
     enabled: !!active,
     queryFn: async () => {
       const { data, error } = await supabase
-          .from("academic_levels")
-          .select("id, name, program_id")
-          .eq("college_id", active!.id)
-          .order("level_number");
+        .from("academic_levels")
+        .select("id, name, program_id")
+        .eq("college_id", active!.id)
+        .order("level_number");
       if (error) throw error;
       return data ?? [];
     },
   });
 
-  const { data: rows, isLoading, isError, error: rowsError, refetch } = useQuery({
+  const {
+    data: rows,
+    isLoading,
+    isError,
+    error: rowsError,
+    refetch,
+  } = useQuery({
     queryKey: ["course-offerings", active?.id, "diagnostic-list"],
     enabled: !!active,
     queryFn: async () => {
       const data = await readAllRows((from, to) =>
         supabase
-        .from("course_offerings")
-        .select("*")
-        .eq("college_id", active!.id)
-        .order("created_at", { ascending: false })
-            .order("id")
-            .range(from, to),
+          .from("course_offerings")
+          .select("*")
+          .eq("college_id", active!.id)
+          .order("created_at", { ascending: false })
+          .order("id")
+          .range(from, to),
       );
       return (data ?? []) as Offering[];
     },
@@ -153,34 +159,36 @@ function OfferingsPage() {
         {isLoading ? (
           <p className="p-6 text-center text-muted-foreground">جارٍ التحميل...</p>
         ) : isError ? (
-          <div className="p-4"><QueryErrorNotice error={rowsError} onRetry={() => void refetch()} /></div>
+          <div className="p-4">
+            <QueryErrorNotice error={rowsError} onRetry={() => void refetch()} />
+          </div>
         ) : !rows || rows.length === 0 ? (
           <p className="p-6 text-center text-muted-foreground">لا توجد طروحات بعد.</p>
         ) : (
           <>
-          <ul className="divide-y divide-border">
-            {rowWindow.visible.map((o) => (
-              <li key={o.id} className="flex items-center justify-between p-4">
-                <div>
-                  <p className="font-semibold">{courseMap.get(o.course_id) ?? "—"}</p>
-                  <p className="text-xs text-muted-foreground">
-                    {termMap.get(o.term_id) ?? "—"}
-                    {o.program_id && ` · ${progMap.get(o.program_id) ?? ""}`}
-                    {o.level_id && ` · ${levelMap.get(o.level_id) ?? ""}`}
-                    {` · ${formatNumber(o.sections_count)} مجموعة · ${formatNumber(o.expected_students)} طالب`}
-                    {o.status ? ` · ${o.status}` : ""}
-                  </p>
-                </div>
-              </li>
-            ))}
-          </ul>
-          <ShowMoreRows
-            shown={rowWindow.shown}
-            total={rowWindow.total}
-            hasMore={rowWindow.hasMore}
-            onShowMore={rowWindow.showMore}
-            onShowAll={rowWindow.showAll}
-          />
+            <ul className="divide-y divide-border">
+              {rowWindow.visible.map((o) => (
+                <li key={o.id} className="flex items-center justify-between p-4">
+                  <div>
+                    <p className="font-semibold">{courseMap.get(o.course_id) ?? "—"}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {termMap.get(o.term_id) ?? "—"}
+                      {o.program_id && ` · ${progMap.get(o.program_id) ?? ""}`}
+                      {o.level_id && ` · ${levelMap.get(o.level_id) ?? ""}`}
+                      {` · ${formatNumber(o.sections_count)} مجموعة · ${formatNumber(o.expected_students)} طالب`}
+                      {o.status ? ` · ${o.status}` : ""}
+                    </p>
+                  </div>
+                </li>
+              ))}
+            </ul>
+            <ShowMoreRows
+              shown={rowWindow.shown}
+              total={rowWindow.total}
+              hasMore={rowWindow.hasMore}
+              onShowMore={rowWindow.showMore}
+              onShowAll={rowWindow.showAll}
+            />
           </>
         )}
       </Card>

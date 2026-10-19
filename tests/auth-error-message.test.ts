@@ -1,15 +1,19 @@
 import { expect, test } from "bun:test";
 import { AUTH_GENERIC_ERROR_AR, translateAuthError } from "../src/lib/auth-error-message";
-import { knownBackendMessage, serverFailure, isMissingFunctionError } from "../src/lib/server-errors";
+import {
+  knownBackendMessage,
+  serverFailure,
+  isMissingFunctionError,
+} from "../src/lib/server-errors";
 
 test("L-5 /auth maps known Supabase messages and never shows raw backend text", () => {
   expect(translateAuthError("Invalid login credentials")).toBe(
     "بيانات الدخول غير صحيحة أو الحساب غير مخوّل",
   );
   expect(translateAuthError("Password should be at least 12 characters")).toMatch(/كلمة المرور/);
-  expect(translateAuthError("For security purposes, you can only request this after 42 seconds")).toMatch(
-    /محاولات كثيرة/,
-  );
+  expect(
+    translateAuthError("For security purposes, you can only request this after 42 seconds"),
+  ).toMatch(/محاولات كثيرة/);
   for (const raw of [
     'duplicate key value violates unique constraint "x"',
     "Database error querying schema",
@@ -45,11 +49,15 @@ test("L-3/L-5 known backend codes map to Arabic (LAST_SUPER_ADMIN, duplicates)",
   expect(knownBackendMessage({ message: "LAST_SUPER_ADMIN", code: "P0001" })).toMatch(
     /آخر مدير نظام/,
   );
-  expect(knownBackendMessage({ message: "A user with this email address has already been registered" })).toMatch(
-    /يوجد حساب/,
-  );
+  expect(
+    knownBackendMessage({ message: "A user with this email address has already been registered" }),
+  ).toMatch(/يوجد حساب/);
   expect(knownBackendMessage({ message: "whatever", code: "XX000" })).toBeNull();
-  expect(isMissingFunctionError({ code: "PGRST202", message: "Could not find the function" })).toBe(true);
-  expect(isMissingFunctionError({ code: "42883", message: "function x does not exist" })).toBe(true);
+  expect(isMissingFunctionError({ code: "PGRST202", message: "Could not find the function" })).toBe(
+    true,
+  );
+  expect(isMissingFunctionError({ code: "42883", message: "function x does not exist" })).toBe(
+    true,
+  );
   expect(isMissingFunctionError({ code: "42501", message: "permission denied" })).toBe(false);
 });

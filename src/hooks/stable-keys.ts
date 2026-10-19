@@ -3,7 +3,10 @@
  * import preview rows). Keys derive from the item's content, so a re-ordered or
  * filtered list keeps each row's identity; exact duplicates get a #n suffix.
  */
-export function withStableKeys<T>(items: readonly T[], keyOf: (item: T) => string): { key: string; item: T }[] {
+export function withStableKeys<T>(
+  items: readonly T[],
+  keyOf: (item: T) => string,
+): { key: string; item: T }[] {
   const seen = new Map<string, number>();
   return items.map((item) => {
     const base = keyOf(item);

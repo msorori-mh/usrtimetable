@@ -6,7 +6,7 @@
  * CR / LF) is prefixed with an apostrophe. Only *string* values are touched:
  * real numbers (including negatives) stay numeric.
  */
-const FORMULA_TRIGGER = /^[\s﻿]*[=+\-@]|^[\t\r\n]/u;
+const FORMULA_TRIGGER = /^[\s\uFEFF]*[=+\-@]|^[\t\r\n]/u;
 
 export function neutralizeFormulaText<T>(value: T): T | string {
   return typeof value === "string" && FORMULA_TRIGGER.test(value) ? `'${value}` : value;

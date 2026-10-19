@@ -16,7 +16,8 @@ export function setPhysicalRoomGroups(
   );
   const sizes = new Map<string, number>();
   for (const key of keyByRoom.values()) sizes.set(key, (sizes.get(key) ?? 0) + 1);
-  for (const g of groupSizes ?? []) sizes.set(g.group_key, Math.max(g.room_count, sizes.get(g.group_key) ?? 0));
+  for (const g of groupSizes ?? [])
+    sizes.set(g.group_key, Math.max(g.room_count, sizes.get(g.group_key) ?? 0));
   sizeByKey = sizes;
 }
 
@@ -55,6 +56,8 @@ export function physicalRoomSourcesComplete(id: string, readableRoomIds: string[
   const key = physicalRoomKey(id);
   if (key === id) return true;
   const readable = new Set(readableRoomIds);
-  const readAliases = [...keyByRoom.entries()].filter(([room, k]) => k === key && readable.has(room));
+  const readAliases = [...keyByRoom.entries()].filter(
+    ([room, k]) => k === key && readable.has(room),
+  );
   return readAliases.length >= (sizeByKey.get(key) ?? Number.POSITIVE_INFINITY);
 }

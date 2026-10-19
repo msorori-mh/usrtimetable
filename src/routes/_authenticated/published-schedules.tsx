@@ -130,28 +130,33 @@ function PublishedSchedulesPage() {
         new Set((sessionRows ?? []).map((row) => row.course_offering_id).filter(Boolean)),
       );
       // H-10: id lists are chunked (URL length) and each chunk is read in full.
-      const readByIds = async <T,>(table: "course_offerings" | "courses", columns: string, ids: string[]) => {
+      const readByIds = async <T,>(
+        table: "course_offerings" | "courses",
+        columns: string,
+        ids: string[],
+      ) => {
         const out: T[] = [];
         for (const chunk of chunkIds(ids)) {
-          const res = await readAllResult<T>((from, to) =>
-            supabase
-              .from(table)
-              .select(columns)
-              .eq("college_id", active!.id)
-              .in("id", chunk)
-              .order("id")
-              .range(from, to) as unknown as PromiseLike<{ data: T[] | null; error: unknown }>,
+          const res = await readAllResult<T>(
+            (from, to) =>
+              supabase
+                .from(table)
+                .select(columns)
+                .eq("college_id", active!.id)
+                .in("id", chunk)
+                .order("id")
+                .range(from, to) as unknown as PromiseLike<{ data: T[] | null; error: unknown }>,
           );
           if (res.error) throw res.error;
           out.push(...(res.data ?? []));
         }
         return out;
       };
-      const offeringRows = await readByIds<{ id: string; program_id: string | null; course_id: string | null }>(
-        "course_offerings",
-        "id, program_id, course_id",
-        offeringIds as string[],
-      );
+      const offeringRows = await readByIds<{
+        id: string;
+        program_id: string | null;
+        course_id: string | null;
+      }>("course_offerings", "id, program_id, course_id", offeringIds as string[]);
 
       const courseIds = Array.from(
         new Set((offeringRows ?? []).map((row) => row.course_id).filter(Boolean)),

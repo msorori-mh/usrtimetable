@@ -132,7 +132,9 @@ function Dashboard() {
               <div className="mt-4 max-w-lg space-y-2">
                 <div className="flex items-center justify-between text-xs">
                   <span>جاهزية البيانات</span>
-                  <span className="font-semibold">{formatNumber(readiness.data.percentComplete)}%</span>
+                  <span className="font-semibold">
+                    {formatNumber(readiness.data.percentComplete)}%
+                  </span>
                 </div>
                 <Progress value={readiness.data.percentComplete} className="h-2" />
               </div>

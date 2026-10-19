@@ -30,8 +30,8 @@ export function CohortGenerationSummaries({
           </p>
           {lastCurriculumSummary.skipped_unselected_elective > 0 ? (
             <p className="text-amber-700 dark:text-amber-400">
-              لم تُنشأ مقررات {formatNumber(lastCurriculumSummary.skipped_unselected_elective)} من الخانات
-              الاختيارية لعدم وجود اختيار معتمد للدفعة.
+              لم تُنشأ مقررات {formatNumber(lastCurriculumSummary.skipped_unselected_elective)} من
+              الخانات الاختيارية لعدم وجود اختيار معتمد للدفعة.
             </p>
           ) : null}
           <p className="text-xs text-muted-foreground">
@@ -46,12 +46,10 @@ export function CohortGenerationSummaries({
             <p>
               الخطة المستخدمة:{" "}
               <strong dir="ltr">
-                {lastSummary.curriculum.study_plan_code ??
-                  lastSummary.curriculum.study_plan_id}
+                {lastSummary.curriculum.study_plan_code ?? lastSummary.curriculum.study_plan_id}
               </strong>{" "}
               · المقررات:{" "}
-              {lastSummary.curriculum.inserted_offerings +
-                lastSummary.curriculum.skipped_existing}
+              {lastSummary.curriculum.inserted_offerings + lastSummary.curriculum.skipped_existing}
             </p>
           )}
           <p className="font-medium">
@@ -66,8 +64,9 @@ export function CohortGenerationSummaries({
             }
           </p>
           <p className="text-muted-foreground">
-            إنشاء {formatNumber(lastSummary.groups_created)} · تحديث {formatNumber(lastSummary.groups_updated)} · دون
-            تغيير {formatNumber(lastSummary.groups_unchanged)} · متوقفة عن الاستخدام{" "}
+            إنشاء {formatNumber(lastSummary.groups_created)} · تحديث{" "}
+            {formatNumber(lastSummary.groups_updated)} · دون تغيير{" "}
+            {formatNumber(lastSummary.groups_unchanged)} · متوقفة عن الاستخدام{" "}
             {formatNumber(lastSummary.groups_obsolete)}
           </p>
           {(lastSummary.validation_errors?.length ?? 0) > 0 ? (

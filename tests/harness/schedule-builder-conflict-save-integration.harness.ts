@@ -25,7 +25,14 @@ function run() {
   assert(existsSync(join(root, migrationRel)), "migration file exists");
   const migration = readSrc(migrationRel);
   // L-14: the builder page was split into the route + hooks/use-schedule-builder-workspace.ts + builder components.
-  const page = ["src/routes/_authenticated/schedule-builder.tsx", "src/hooks/use-schedule-builder-workspace.ts", "src/components/schedule-builder/builder-context-bar.tsx", "src/components/schedule-builder/builder-ui.tsx"].map((file) => readSrc(file)).join("\n");
+  const page = [
+    "src/routes/_authenticated/schedule-builder.tsx",
+    "src/hooks/use-schedule-builder-workspace.ts",
+    "src/components/schedule-builder/builder-context-bar.tsx",
+    "src/components/schedule-builder/builder-ui.tsx",
+  ]
+    .map((file) => readSrc(file))
+    .join("\n");
   const sheet = readSrc("src/components/schedule-builder/session-edit-sheet.tsx");
   const rpcClient = readSrc("src/lib/schedule-builder/session-move-rpc.ts");
   const types = readSrc("src/integrations/supabase/types.ts");

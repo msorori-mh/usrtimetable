@@ -175,11 +175,13 @@ function UsersPage() {
         // colleges or Auth metadata) through the dedicated directory RPC.
         const { data, error } = await supabase.rpc("list_user_directory" as never);
         if (error) throw new Error("تعذّر تحميل دليل المستخدمين. أعد المحاولة.");
-        return ((data ?? []) as unknown as Array<{
-          id: string;
-          full_name: string | null;
-          roles: string[] | null;
-        }>)
+        return (
+          (data ?? []) as unknown as Array<{
+            id: string;
+            full_name: string | null;
+            roles: string[] | null;
+          }>
+        )
           .map((row) => ({
             id: row.id,
             email: null,
@@ -578,16 +580,18 @@ function UsersPage() {
                             </Badge>
                           ))}
                       </div>
-                      {!viewOnly && u.roles.includes("college_admin") && u.collegeIds.length === 0 && (
-                        <button
-                          type="button"
-                          onClick={() => setExpandedUser(u.id)}
-                          className="mt-2 inline-flex items-center gap-1.5 rounded-md border border-amber-500/30 bg-amber-500/10 px-2 py-1 text-[11px] font-medium text-amber-700 transition-colors hover:bg-amber-500/20"
-                        >
-                          <AlertTriangle className="h-3.5 w-3.5" />
-                          دور غير مفعّل — لم تُسنَد كلّية. اضغط للإسناد
-                        </button>
-                      )}
+                      {!viewOnly &&
+                        u.roles.includes("college_admin") &&
+                        u.collegeIds.length === 0 && (
+                          <button
+                            type="button"
+                            onClick={() => setExpandedUser(u.id)}
+                            className="mt-2 inline-flex items-center gap-1.5 rounded-md border border-amber-500/30 bg-amber-500/10 px-2 py-1 text-[11px] font-medium text-amber-700 transition-colors hover:bg-amber-500/20"
+                          >
+                            <AlertTriangle className="h-3.5 w-3.5" />
+                            دور غير مفعّل — لم تُسنَد كلّية. اضغط للإسناد
+                          </button>
+                        )}
                       {!viewOnly && (
                         <p className="mt-2 text-[11px] text-muted-foreground">
                           آخر دخول:{" "}

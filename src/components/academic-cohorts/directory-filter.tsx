@@ -1,5 +1,3 @@
-
-
 /** Labelled native select used by the cohort directory filters. */
 export function DirectoryFilter({
   label,

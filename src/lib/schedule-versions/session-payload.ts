@@ -52,7 +52,7 @@ export function buildManualSessionPayload(
   payload.start_time = toTime(form.start_time);
   payload.end_time = toTime(form.end_time);
   payload.expected_students = Math.max(0, Math.trunc(Number(form.expected_students) || 0));
-  payload.lock_reason = form.is_locked ? (form.lock_reason?.trim() || null) : null;
+  payload.lock_reason = form.is_locked ? form.lock_reason?.trim() || null : null;
   if (scheduleVersionId) payload.schedule_version_id = scheduleVersionId;
   return payload;
 }

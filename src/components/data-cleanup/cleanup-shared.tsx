@@ -13,7 +13,13 @@ import {
 } from "@/components/ui/dialog";
 import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
-import { type BulkItem, runBulkConfirm, selectAll, selectedIds, shortRef } from "@/lib/data-cleanup-bulk";
+import {
+  type BulkItem,
+  runBulkConfirm,
+  selectAll,
+  selectedIds,
+  shortRef,
+} from "@/lib/data-cleanup-bulk";
 import { AlertTriangle, CheckCircle2, ShieldAlert } from "lucide-react";
 import { userErrorMessage } from "@/lib/user-error";
 import { formatNumber } from "@/lib/format";
@@ -35,7 +41,9 @@ export function DashboardCards({ diag, loading }: { diag: Diagnostics | null; lo
       </Card>
       <Card className="p-4">
         <div className="text-xs text-muted-foreground">الجاهزية المتوقّعة بعد الإصلاح</div>
-        <div className="mt-1 text-3xl font-bold text-emerald-600">{formatNumber(diag.estimatedAfter)}%</div>
+        <div className="mt-1 text-3xl font-bold text-emerald-600">
+          {formatNumber(diag.estimatedAfter)}%
+        </div>
         <Progress value={diag.estimatedAfter} className="mt-2 h-2" />
       </Card>
       <Card className="p-4">
@@ -55,7 +63,13 @@ export function DashboardCards({ diag, loading }: { diag: Diagnostics | null; lo
 }
 
 // ---------- shared issue row ----------
-export function IssueRow({ issue, actions }: { issue: Issue | undefined; actions?: React.ReactNode }) {
+export function IssueRow({
+  issue,
+  actions,
+}: {
+  issue: Issue | undefined;
+  actions?: React.ReactNode;
+}) {
   if (!issue) return null;
   const p = pct(issue.count, issue.total);
   const okay = issue.count === 0;
@@ -105,7 +119,11 @@ export const NATURE_AR: Record<string, string> = {
   college: "كلية",
   university: "جامعة",
 };
-export const SYSTEM_AR: Record<string, string> = { regular: "انتظام", parallel: "موازي", both: "كلاهما" };
+export const SYSTEM_AR: Record<string, string> = {
+  regular: "انتظام",
+  parallel: "موازي",
+  both: "كلاهما",
+};
 
 export function lookups(d: CleanupData | undefined) {
   return {

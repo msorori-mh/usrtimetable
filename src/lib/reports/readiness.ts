@@ -116,7 +116,10 @@ interface NewFlowSignals {
 async function readAllOrThrow<T>(
   prefix: string,
   relation: string,
-  page: (from: number, to: number) => PromiseLike<{ data: T[] | readonly unknown[] | null; error: unknown }>,
+  page: (
+    from: number,
+    to: number,
+  ) => PromiseLike<{ data: T[] | readonly unknown[] | null; error: unknown }>,
 ): Promise<T[]> {
   try {
     return await readAllRows<T>(page);
@@ -161,45 +164,57 @@ async function fetchNewFlowSignals(
             .range(from, to),
         ),
         // DELIVERY-GROUP-COVERAGE-FIX-01: historical (obsolete) groups never count.
-        readAllOrThrow<NewFlowSignals["deliveryGroups"][number]>(P, "operational_delivery_groups", (from, to) =>
-          supabase
-            .from("operational_delivery_groups")
-            .select("id, cohort_id")
-            .eq("college_id", collegeId)
-            .or("is_obsolete.is.null,is_obsolete.eq.false")
-            .order("id")
-            .range(from, to),
+        readAllOrThrow<NewFlowSignals["deliveryGroups"][number]>(
+          P,
+          "operational_delivery_groups",
+          (from, to) =>
+            supabase
+              .from("operational_delivery_groups")
+              .select("id, cohort_id")
+              .eq("college_id", collegeId)
+              .or("is_obsolete.is.null,is_obsolete.eq.false")
+              .order("id")
+              .range(from, to),
         ),
-        readAllOrThrow<NewFlowSignals["dgAssignments"][number]>(P, "teaching_assignments", (from, to) =>
-          supabase
-            .from("teaching_assignments")
-            .select("delivery_group_id, instructor_id")
-            .eq("college_id", collegeId)
-            .or("is_active.is.null,is_active.eq.true")
-            .not("delivery_group_id", "is", null)
-            .order("id")
-            .range(from, to),
+        readAllOrThrow<NewFlowSignals["dgAssignments"][number]>(
+          P,
+          "teaching_assignments",
+          (from, to) =>
+            supabase
+              .from("teaching_assignments")
+              .select("delivery_group_id, instructor_id")
+              .eq("college_id", collegeId)
+              .or("is_active.is.null,is_active.eq.true")
+              .not("delivery_group_id", "is", null)
+              .order("id")
+              .range(from, to),
         ),
-        readAllOrThrow<NewFlowSignals["sessionIdentity"][number]>(P, "schedule_sessions", (from, to) =>
-          supabase
-            .from("schedule_sessions")
-            .select("id, cohort_id, delivery_group_id")
-            .eq("college_id", collegeId)
-            .in("schedule_version_id", scheduleVersionIds)
-            .order("id")
-            .range(from, to),
+        readAllOrThrow<NewFlowSignals["sessionIdentity"][number]>(
+          P,
+          "schedule_sessions",
+          (from, to) =>
+            supabase
+              .from("schedule_sessions")
+              .select("id, cohort_id, delivery_group_id")
+              .eq("college_id", collegeId)
+              .in("schedule_version_id", scheduleVersionIds)
+              .order("id")
+              .range(from, to),
         ),
         // Generated client types can lag a source-only migration; runtime errors
         // are still checked and thrown.
-        readAllOrThrow<NewFlowSignals["approvedHeadcounts"][number]>(P, "scheduling_cohort_term_headcounts", (from, to) =>
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          (supabase as any)
-            .from("scheduling_cohort_term_headcounts")
-            .select("cohort_id, term_id")
-            .eq("college_id", collegeId)
-            .eq("approval_status", "approved")
-            .order("id")
-            .range(from, to),
+        readAllOrThrow<NewFlowSignals["approvedHeadcounts"][number]>(
+          P,
+          "scheduling_cohort_term_headcounts",
+          (from, to) =>
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            (supabase as any)
+              .from("scheduling_cohort_term_headcounts")
+              .select("cohort_id, term_id")
+              .eq("college_id", collegeId)
+              .eq("approval_status", "approved")
+              .order("id")
+              .range(from, to),
         ),
       ]);
     return {
@@ -305,15 +320,24 @@ export async function fetchCollegeReadiness(collegeId: string): Promise<Readines
         .order("id")
         .range(from, to),
     ),
-    readAllOrThrow<{ id: string; specialization: string | null; department_id: string | null }>(P, "instructors", (from, to) =>
-      supabase
-        .from("instructors")
-        .select("id, specialization, department_id")
-        .eq("college_id", collegeId)
-        .order("id")
-        .range(from, to),
+    readAllOrThrow<{ id: string; specialization: string | null; department_id: string | null }>(
+      P,
+      "instructors",
+      (from, to) =>
+        supabase
+          .from("instructors")
+          .select("id, specialization, department_id")
+          .eq("college_id", collegeId)
+          .order("id")
+          .range(from, to),
     ),
-    readAllOrThrow<{ id: string; capacity: number | null; room_type_id: string | null; room_type?: string | null; is_active?: boolean | null }>(P, "rooms", (from, to) =>
+    readAllOrThrow<{
+      id: string;
+      capacity: number | null;
+      room_type_id: string | null;
+      room_type?: string | null;
+      is_active?: boolean | null;
+    }>(P, "rooms", (from, to) =>
       supabase
         .from("rooms")
         .select("id, capacity, room_type_id, room_type, is_active")
@@ -321,23 +345,35 @@ export async function fetchCollegeReadiness(collegeId: string): Promise<Readines
         .order("id")
         .range(from, to),
     ),
-    readAllOrThrow<{ id: string; expected_students: number | null }>(P, "course_offerings", (from, to) =>
-      supabase
-        .from("course_offerings")
-        .select("id, expected_students")
-        .eq("college_id", collegeId)
-        .order("id")
-        .range(from, to),
+    readAllOrThrow<{ id: string; expected_students: number | null }>(
+      P,
+      "course_offerings",
+      (from, to) =>
+        supabase
+          .from("course_offerings")
+          .select("id, expected_students")
+          .eq("college_id", collegeId)
+          .order("id")
+          .range(from, to),
     ),
-    readAllOrThrow<{ id: string; instructor_id: string | null; course_offering_id: string }>(P, "teaching_assignments", (from, to) =>
-      supabase
-        .from("teaching_assignments")
-        .select("id, instructor_id, course_offering_id")
-        .eq("college_id", collegeId)
-        .order("id")
-        .range(from, to),
+    readAllOrThrow<{ id: string; instructor_id: string | null; course_offering_id: string }>(
+      P,
+      "teaching_assignments",
+      (from, to) =>
+        supabase
+          .from("teaching_assignments")
+          .select("id, instructor_id, course_offering_id")
+          .eq("college_id", collegeId)
+          .order("id")
+          .range(from, to),
     ),
-    readAllOrThrow<{ id: string; room_id: string | null; start_time: string | null; end_time: string | null; day_of_week: number | null }>(P, "schedule_sessions", (from, to) =>
+    readAllOrThrow<{
+      id: string;
+      room_id: string | null;
+      start_time: string | null;
+      end_time: string | null;
+      day_of_week: number | null;
+    }>(P, "schedule_sessions", (from, to) =>
       supabase
         .from("schedule_sessions")
         .select("id, room_id, start_time, end_time, day_of_week")
@@ -346,7 +382,12 @@ export async function fetchCollegeReadiness(collegeId: string): Promise<Readines
         .order("id")
         .range(from, to),
     ),
-    readAllOrThrow<{ id: string; default_capacity: number | null; name_ar?: string | null; code?: string | null }>(P, "room_types", (from, to) =>
+    readAllOrThrow<{
+      id: string;
+      default_capacity: number | null;
+      name_ar?: string | null;
+      code?: string | null;
+    }>(P, "room_types", (from, to) =>
       supabase
         .from("room_types")
         .select("id, default_capacity, name_ar, code")

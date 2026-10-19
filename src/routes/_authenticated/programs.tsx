@@ -72,18 +72,24 @@ function ProgramsPage() {
     enabled: !!active,
     queryFn: async () => {
       const { data, error } = await supabase
-          .from("departments")
-          .select("id, name")
-          .eq("college_id", active!.id)
-          // ACADEMIC-ARCHIVE-UI-01: pickers exclude archived records.
-          .eq("is_archived", false)
-          .order("name");
+        .from("departments")
+        .select("id, name")
+        .eq("college_id", active!.id)
+        // ACADEMIC-ARCHIVE-UI-01: pickers exclude archived records.
+        .eq("is_archived", false)
+        .order("name");
       if (error) throw error;
       return data ?? [];
     },
   });
 
-  const { data: rows, isLoading, isError, error: rowsError, refetch } = useQuery({
+  const {
+    data: rows,
+    isLoading,
+    isError,
+    error: rowsError,
+    refetch,
+  } = useQuery({
     queryKey: ["programs", active?.id],
     enabled: !!active,
     queryFn: async () => {
@@ -238,14 +244,16 @@ function ProgramsPage() {
                 </div>
                 <div>
                   <Label htmlFor="programs-f1">الاسم</Label>
-                  <Input id="programs-f1"
+                  <Input
+                    id="programs-f1"
                     value={form.name}
                     onChange={(e) => setForm({ ...form, name: e.target.value })}
                   />
                 </div>
                 <div>
                   <Label htmlFor="programs-f2">الرمز</Label>
-                  <Input id="programs-f2"
+                  <Input
+                    id="programs-f2"
                     value={form.code}
                     onChange={(e) => setForm({ ...form, code: e.target.value })}
                   />
@@ -270,7 +278,8 @@ function ProgramsPage() {
                 </div>
                 <div>
                   <Label htmlFor="programs-f3">عدد السنوات</Label>
-                  <Input id="programs-f3"
+                  <Input
+                    id="programs-f3"
                     type="number"
                     min={1}
                     max={10}
@@ -305,7 +314,9 @@ function ProgramsPage() {
         {isLoading ? (
           <p className="p-6 text-center text-muted-foreground">جارٍ التحميل...</p>
         ) : isError ? (
-          <div className="p-4"><QueryErrorNotice error={rowsError} onRetry={() => void refetch()} /></div>
+          <div className="p-4">
+            <QueryErrorNotice error={rowsError} onRetry={() => void refetch()} />
+          </div>
         ) : !rows || rows.length === 0 ? (
           <p className="p-6 text-center text-muted-foreground">لا توجد برامج بعد.</p>
         ) : (
@@ -321,7 +332,12 @@ function ProgramsPage() {
                 </div>
                 {canManage && (
                   <div className="flex gap-1">
-                    <Button size="sm" variant="ghost" aria-label={`تعديل ${p.name}`} onClick={() => startEdit(p)}>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      aria-label={`تعديل ${p.name}`}
+                      onClick={() => startEdit(p)}
+                    >
                       <Pencil className="h-3.5 w-3.5" />
                     </Button>
                     <Button
@@ -329,7 +345,14 @@ function ProgramsPage() {
                       variant="ghost"
                       aria-label={`حذف ${p.name}`}
                       onClick={async () => {
-                        const ok = await confirmAction({ title: `حذف البرنامج «${p.name}»؟`, description: "قد تُحذف معه خططه الدراسية وما يتبعها. لا يمكن التراجع عن هذا الإجراء.", confirmLabel: "حذف", destructive: true, typedConfirmation: p.name });
+                        const ok = await confirmAction({
+                          title: `حذف البرنامج «${p.name}»؟`,
+                          description:
+                            "قد تُحذف معه خططه الدراسية وما يتبعها. لا يمكن التراجع عن هذا الإجراء.",
+                          confirmLabel: "حذف",
+                          destructive: true,
+                          typedConfirmation: p.name,
+                        });
                         if (ok) del.mutate(p.id);
                       }}
                     >

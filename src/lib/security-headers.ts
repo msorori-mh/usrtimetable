@@ -51,10 +51,7 @@ export function buildContentSecurityPolicy(options: SecurityHeaderOptions): stri
   ];
   const directives: Array<[string, string[]]> = [
     ["default-src", ["'self'"]],
-    [
-      "script-src",
-["'self'", "'unsafe-inline'", "'wasm-unsafe-eval'"],
-    ],
+    ["script-src", ["'self'", "'unsafe-inline'", "'wasm-unsafe-eval'"]],
     ["style-src", ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"]],
     ["font-src", ["'self'", "https://fonts.gstatic.com", "data:"]],
     [

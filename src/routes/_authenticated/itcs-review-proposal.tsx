@@ -223,9 +223,7 @@ function ReviewProposalPage() {
             مع الحفاظ على سجل الجدول المنشور.
           </p>
           {proposal.saved_at && (
-            <p className="text-sm">
-              حُفظت بتاريخ {formatDateTime(proposal.saved_at)}
-            </p>
+            <p className="text-sm">حُفظت بتاريخ {formatDateTime(proposal.saved_at)}</p>
           )}
         </div>
         <div className="flex flex-wrap gap-2 print:hidden">
@@ -275,7 +273,8 @@ function ReviewProposalPage() {
       )}
       {(error || nativeQuery.error) && (
         <p role="alert" className="rounded border border-destructive p-3 text-destructive">
-          لم يكتمل الإجراء: {error || (nativeQuery.error ? userErrorMessage(nativeQuery.error) : null)}
+          لم يكتمل الإجراء:{" "}
+          {error || (nativeQuery.error ? userErrorMessage(nativeQuery.error) : null)}
         </p>
       )}
       <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
@@ -299,8 +298,8 @@ function ReviewProposalPage() {
             : `${formatNumber(checks.external_conflict_sessions)} محاضرات تتداخل مع التزامات مسجلة في كليات أخرى وتحتاج المعالجة قبل حفظ الجدول.`}
         </p>
         <p className="text-xs text-muted-foreground">
-          آخر مطابقة مع المنصة: {formatDateTime(checks.checked_at)}. يشمل الفحص
-          الحسابات المرتبطة للمحاضر نفسه.
+          آخر مطابقة مع المنصة: {formatDateTime(checks.checked_at)}. يشمل الفحص الحسابات المرتبطة
+          للمحاضر نفسه.
         </p>
         <div className="overflow-x-auto">
           <table className="w-full text-start text-sm">
@@ -408,7 +407,8 @@ function ReviewProposalPage() {
       </details>
       <Card className="space-y-4 p-4">
         <h2 className="font-bold">
-          المحاضرات المقترحة — {formatNumber(visible.length)} من {formatNumber(report.sessions.length)}
+          المحاضرات المقترحة — {formatNumber(visible.length)} من{" "}
+          {formatNumber(report.sessions.length)}
         </h2>
         <div className="grid gap-3 sm:grid-cols-3 print:hidden">
           <label className="text-sm">

@@ -200,8 +200,8 @@ function AuthPage() {
               resetSent ? (
                 <div className="space-y-4" data-testid="auth-reset-sent">
                   <p className="text-sm text-muted-foreground">
-                    إذا كان البريد مسجّلًا لدينا فقد أرسلنا إليه رابط استعادة كلمة المرور.
-                    تحقق من بريدك الوارد ومجلد الرسائل غير المرغوبة.
+                    إذا كان البريد مسجّلًا لدينا فقد أرسلنا إليه رابط استعادة كلمة المرور. تحقق من
+                    بريدك الوارد ومجلد الرسائل غير المرغوبة.
                   </p>
                   <Button
                     type="button"

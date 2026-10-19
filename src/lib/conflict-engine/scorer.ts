@@ -87,7 +87,11 @@ type ScoredSessionRow = {
 
 type SoftScore = Pick<
   QualityResult,
-  "total_score" | "soft_conflicts_count" | "total_deductions" | "soft_violations" | "metrics_breakdown"
+  | "total_score"
+  | "soft_conflicts_count"
+  | "total_deductions"
+  | "soft_violations"
+  | "metrics_breakdown"
 >;
 
 /** Soft quality metrics (preferences, balance, gaps, distribution). Never gates publication. */

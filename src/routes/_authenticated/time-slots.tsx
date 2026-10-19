@@ -61,7 +61,13 @@ function TimeSlotsPage() {
   const [editing, setEditing] = useState<TS | null>(null);
   const [form, setForm] = useState(emptyForm());
 
-  const { data: rows, isLoading, isError, error: rowsError, refetch } = useQuery({
+  const {
+    data: rows,
+    isLoading,
+    isError,
+    error: rowsError,
+    refetch,
+  } = useQuery({
     queryKey: ["time-slots", active?.id],
     enabled: !!active,
     queryFn: async () => {
@@ -118,7 +124,9 @@ function TimeSlotsPage() {
     },
     onError: (e: Error) =>
       toast.error(
-        e.message.includes("duplicate") ? "هناك فترة بنفس اليوم/الترتيب أو وقت البداية" : userErrorMessage(e),
+        e.message.includes("duplicate")
+          ? "هناك فترة بنفس اليوم/الترتيب أو وقت البداية"
+          : userErrorMessage(e),
       ),
   });
 
@@ -204,7 +212,8 @@ function TimeSlotsPage() {
                 <div className="grid grid-cols-3 gap-3">
                   <div>
                     <Label htmlFor="time-slots-f1">البداية</Label>
-                    <Input id="time-slots-f1"
+                    <Input
+                      id="time-slots-f1"
                       dir="ltr"
                       type="time"
                       value={form.start_time}
@@ -213,7 +222,8 @@ function TimeSlotsPage() {
                   </div>
                   <div>
                     <Label htmlFor="time-slots-f2">النهاية</Label>
-                    <Input id="time-slots-f2"
+                    <Input
+                      id="time-slots-f2"
                       dir="ltr"
                       type="time"
                       value={form.end_time}
@@ -222,7 +232,8 @@ function TimeSlotsPage() {
                   </div>
                   <div>
                     <Label htmlFor="time-slots-f3">الترتيب</Label>
-                    <Input id="time-slots-f3"
+                    <Input
+                      id="time-slots-f3"
                       type="number"
                       value={form.slot_order}
                       onChange={(e) => setForm({ ...form, slot_order: Number(e.target.value) })}
@@ -231,7 +242,8 @@ function TimeSlotsPage() {
                 </div>
                 <div className="flex items-center justify-between rounded border border-border p-3">
                   <Label htmlFor="time-slots-f4">نشط</Label>
-                  <Switch id="time-slots-f4"
+                  <Switch
+                    id="time-slots-f4"
                     checked={form.is_active}
                     onCheckedChange={(v) => setForm({ ...form, is_active: v })}
                   />
@@ -254,7 +266,9 @@ function TimeSlotsPage() {
         {isLoading ? (
           <p className="p-6 text-center text-muted-foreground">جارٍ التحميل...</p>
         ) : isError ? (
-          <div className="p-4"><QueryErrorNotice error={rowsError} onRetry={() => void refetch()} /></div>
+          <div className="p-4">
+            <QueryErrorNotice error={rowsError} onRetry={() => void refetch()} />
+          </div>
         ) : !rows || rows.length === 0 ? (
           <p className="p-6 text-center text-muted-foreground">لا توجد فترات بعد.</p>
         ) : (
@@ -274,7 +288,12 @@ function TimeSlotsPage() {
                 </div>
                 {canManage && (
                   <div className="flex gap-1">
-                    <Button size="sm" variant="ghost" aria-label={`تعديل ${`${DAYS[t.day_of_week]} فترة ${t.slot_order}`}`} onClick={() => startEdit(t)}>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      aria-label={`تعديل ${`${DAYS[t.day_of_week]} فترة ${t.slot_order}`}`}
+                      onClick={() => startEdit(t)}
+                    >
                       <Pencil className="h-3.5 w-3.5" />
                     </Button>
                     <Button
@@ -282,7 +301,12 @@ function TimeSlotsPage() {
                       variant="ghost"
                       aria-label={`حذف ${`${DAYS[t.day_of_week]} فترة ${t.slot_order}`}`}
                       onClick={async () => {
-                        const ok = await confirmAction({ title: `حذف ${DAYS[t.day_of_week]} — فترة ${t.slot_order}؟`, description: "لا يمكن التراجع عن هذا الإجراء.", confirmLabel: "حذف", destructive: true });
+                        const ok = await confirmAction({
+                          title: `حذف ${DAYS[t.day_of_week]} — فترة ${t.slot_order}؟`,
+                          description: "لا يمكن التراجع عن هذا الإجراء.",
+                          confirmLabel: "حذف",
+                          destructive: true,
+                        });
                         if (ok) del.mutate(t.id);
                       }}
                     >

@@ -79,7 +79,8 @@ export function SharedLecturesPanel({ collegeId }: { collegeId: string }) {
               onClick={async () => {
                 const ok = await confirmAction({
                   title: `فك دمج المحاضرة المشتركة «${l.course_name}»؟`,
-                  description: "تعود المحاضرة النظرية مجموعتين مستقلتين وتحتاج كل منهما إسنادًا وجدولة.",
+                  description:
+                    "تعود المحاضرة النظرية مجموعتين مستقلتين وتحتاج كل منهما إسنادًا وجدولة.",
                   confirmLabel: "فك الدمج",
                   destructive: true,
                 });
@@ -104,7 +105,8 @@ export function SharedLecturesPanel({ collegeId }: { collegeId: string }) {
             >
               <div>
                 <p>
-                  {c.course_name} — {formatNumber(c.total_students)} طالبًا — {formatDecimal(c.weekly_hours)} ساعات
+                  {c.course_name} — {formatNumber(c.total_students)} طالبًا —{" "}
+                  {formatDecimal(c.weekly_hours)} ساعات
                 </p>
                 <p className="text-xs text-muted-foreground">
                   {c.anchor_cohort_code} + {c.member_cohort_code}

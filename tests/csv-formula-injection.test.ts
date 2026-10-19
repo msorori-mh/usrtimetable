@@ -3,7 +3,17 @@ import { csvField, neutralizeFormulaText } from "../src/lib/reports/spreadsheet-
 import { buildAdminExportCsv } from "../src/lib/admin-export/dataset.ts";
 
 test("M-2: formula-triggering text cells are neutralized", () => {
-  for (const bad of ["=HYPERLINK(\"x\")", "+cmd", "-2+3", "@SUM(A1)", "\tx", "\rx", "\nx", "  =1", "﻿=1"])
+  for (const bad of [
+    '=HYPERLINK("x")',
+    "+cmd",
+    "-2+3",
+    "@SUM(A1)",
+    "\tx",
+    "\rx",
+    "\nx",
+    "  =1",
+    "﻿=1",
+  ])
     expect(String(neutralizeFormulaText(bad)).startsWith("'")).toBe(true);
   expect(neutralizeFormulaText("قاعة 1")).toBe("قاعة 1");
   expect(neutralizeFormulaText("a=b")).toBe("a=b");
@@ -38,6 +48,6 @@ test("M-2: admin CSV export neutralizes text cells and keeps numeric cells", () 
     } as never,
     new Date("2026-01-01T00:00:00Z"),
   );
-  const line = csv.replace(/^﻿/, "").split("\r\n")[1];
+  const line = csv.replace(/^\uFEFF/, "").split("\r\n")[1];
   expect(line).toBe(`'=cmd|' /C calc'!A0,-3`);
 });

@@ -52,9 +52,7 @@ function Status({ status }: { status: FacultyRequest["status"] }) {
 
 function requestDate(value: string) {
   const date = new Date(value);
-  return Number.isNaN(date.getTime())
-    ? "تاريخ غير متاح"
-    : formatLongDate(date);
+  return Number.isNaN(date.getTime()) ? "تاريخ غير متاح" : formatLongDate(date);
 }
 
 export function FacultyTeachingRequests({ collegeId }: { collegeId: string }) {

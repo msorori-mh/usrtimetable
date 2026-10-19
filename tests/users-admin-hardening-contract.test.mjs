@@ -59,12 +59,18 @@ test("L-3: the page no longer writes user_roles / user_colleges directly", () =>
 });
 
 test("L-8: institutional viewers load the name+role directory only", () => {
-  const query = page.slice(page.indexOf('queryKey: ["all-users-admin"'), page.indexOf("const { data: colleges }"));
+  const query = page.slice(
+    page.indexOf('queryKey: ["all-users-admin"'),
+    page.indexOf("const { data: colleges }"),
+  );
   const viewerBranch = query.slice(query.indexOf("if (viewOnly)"), query.indexOf("H-10"));
   assert.match(viewerBranch, /rpc\("list_user_directory"/);
   assert.doesNotMatch(viewerBranch, /from\("profiles"\)|listMeta\(/);
   assert.match(viewerBranch, /email: null/);
-  assert.match(page, /\{!viewOnly && \(\s*<p className="text-xs text-muted-foreground" dir="ltr">\s*\{u\.email\}/);
+  assert.match(
+    page,
+    /\{!viewOnly && \(\s*<p className="text-xs text-muted-foreground" dir="ltr">\s*\{u\.email\}/,
+  );
   assert.match(page, /expanded && !viewOnly/);
 });
 
@@ -73,7 +79,9 @@ test("H-10 (users page): the full lists are read page by page in a deterministic
   for (const table of ["profiles", "user_roles", "user_colleges"])
     assert.match(
       page,
-      new RegExp(`from\\("${table}"\\)[\\s\\S]{0,120}\\.order\\([\\s\\S]{0,80}\\.range\\(from, to\\)`),
+      new RegExp(
+        `from\\("${table}"\\)[\\s\\S]{0,120}\\.order\\([\\s\\S]{0,80}\\.range\\(from, to\\)`,
+      ),
       table,
     );
 });
@@ -81,5 +89,8 @@ test("H-10 (users page): the full lists are read page by page in a deterministic
 test("L-6: the AI suggestions feature is gone", () => {
   assert.equal(existsSync("src/lib/unresolved-row-suggestions.functions.ts"), false);
   assert.equal(existsSync("src/routes/_authenticated/unresolved-suggestions.tsx"), false);
-  assert.doesNotMatch(readFileSync("src/routeTree.gen.ts", "utf8"), /unresolved-suggestions|UnresolvedSuggestions/);
+  assert.doesNotMatch(
+    readFileSync("src/routeTree.gen.ts", "utf8"),
+    /unresolved-suggestions|UnresolvedSuggestions/,
+  );
 });

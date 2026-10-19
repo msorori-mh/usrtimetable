@@ -8,7 +8,13 @@ import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { toast } from "sonner";
 import { logAudit } from "@/lib/audit";
 import { Trash2 } from "lucide-react";
@@ -30,7 +36,12 @@ import { confirmAction } from "@/components/confirm-dialog";
 import { QueryErrorNotice } from "@/components/app-states/query-error-notice";
 import { chunkIds, readAllRows } from "@/lib/supabase/read-all";
 import { formatNumber } from "@/lib/format";
-import { rpcErrorMessage, useWorkingDays, AffectedDaysPreview, DaySelectItems } from "@/components/availability/availability-shared";
+import {
+  rpcErrorMessage,
+  useWorkingDays,
+  AffectedDaysPreview,
+  DaySelectItems,
+} from "@/components/availability/availability-shared";
 
 /** Instructor availability windows tab (hard and preference windows). */
 interface IU {
@@ -142,13 +153,17 @@ export function InstructorUnavailability() {
           ? `لا تغيير: النوافذ موجودة مسبقًا في ${result.days_unchanged} يومًا.`
           : `تم إنشاء النافذة في ${result.days_created} يومًا${result.days_unchanged ? ` · موجودة مسبقًا في ${result.days_unchanged}` : ""}.`,
       );
-      qc.invalidateQueries({ queryKey: ["instructor-availability-windows", active?.id, instructorId] });
+      qc.invalidateQueries({
+        queryKey: ["instructor-availability-windows", active?.id, instructorId],
+      });
       qc.invalidateQueries({ queryKey: ["instructor-availability-readiness", active?.id] });
     },
     onError: (e: unknown) => {
       toast.error(rpcErrorMessage(e));
       // Never leave the list showing a stale optimistic state after a failed write.
-      qc.invalidateQueries({ queryKey: ["instructor-availability-windows", active?.id, instructorId] });
+      qc.invalidateQueries({
+        queryKey: ["instructor-availability-windows", active?.id, instructorId],
+      });
     },
   });
 
@@ -190,7 +205,9 @@ export function InstructorUnavailability() {
     },
     onSuccess: () => {
       toast.success("تم الحذف");
-      qc.invalidateQueries({ queryKey: ["instructor-availability-windows", active?.id, instructorId] });
+      qc.invalidateQueries({
+        queryKey: ["instructor-availability-windows", active?.id, instructorId],
+      });
       qc.invalidateQueries({ queryKey: ["instructor-availability-readiness", active?.id] });
     },
     onError: (e: unknown) => {
@@ -200,7 +217,9 @@ export function InstructorUnavailability() {
           ? "لا يمكن حذف آخر نافذة توفر إلزامية لمحاضر خارجي والقيد مفعّل. عطّل القيد أولًا أو أضف نافذة بديلة."
           : userErrorMessage(e),
       );
-      qc.invalidateQueries({ queryKey: ["instructor-availability-windows", active?.id, instructorId] });
+      qc.invalidateQueries({
+        queryKey: ["instructor-availability-windows", active?.id, instructorId],
+      });
     },
   });
 
@@ -265,7 +284,8 @@ export function InstructorUnavailability() {
             </div>
             <div>
               <Label htmlFor="availability-f1">من</Label>
-              <Input id="availability-f1"
+              <Input
+                id="availability-f1"
                 dir="ltr"
                 type="time"
                 value={form.start_time}
@@ -274,7 +294,8 @@ export function InstructorUnavailability() {
             </div>
             <div>
               <Label htmlFor="availability-f2">إلى</Label>
-              <Input id="availability-f2"
+              <Input
+                id="availability-f2"
                 dir="ltr"
                 type="time"
                 value={form.end_time}
@@ -283,7 +304,8 @@ export function InstructorUnavailability() {
             </div>
             <div>
               <Label htmlFor="availability-f3">ملاحظات</Label>
-              <Input id="availability-f3"
+              <Input
+                id="availability-f3"
                 value={form.notes}
                 onChange={(e) => setForm({ ...form, notes: e.target.value })}
               />

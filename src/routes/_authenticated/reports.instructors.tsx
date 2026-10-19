@@ -214,17 +214,40 @@ function Report() {
     enabled: !!active,
     queryFn: async () => {
       // H-10: page through the college's instructor records.
-      const data = await readAllRows<Pick<Tables<"instructors">, "id" | "college_id" | "full_name" | "full_name_ar" | "employee_number" | "affiliation_college_id" | "affiliation_department_id" | "specialization" | "academic_rank" | "instructor_type_id" | "max_weekly_hours" | "administrative_release_hours" | "administrative_position" | "administrative_department_id" | "administrative_support_department_id" | "employment_type" | "availability_status" | "email" | "phone" | "is_active">>(
-        (from, to) =>
-          supabase
-            .from("instructors")
-            .select(
-              "id, college_id, full_name, full_name_ar, employee_number, affiliation_college_id, affiliation_department_id, specialization, academic_rank, instructor_type_id, max_weekly_hours, administrative_release_hours, administrative_position, administrative_department_id, administrative_support_department_id, employment_type, availability_status, email, phone, is_active",
-            )
-            .eq("college_id", active!.id)
-            .order("full_name")
-            .order("id")
-            .range(from, to),
+      const data = await readAllRows<
+        Pick<
+          Tables<"instructors">,
+          | "id"
+          | "college_id"
+          | "full_name"
+          | "full_name_ar"
+          | "employee_number"
+          | "affiliation_college_id"
+          | "affiliation_department_id"
+          | "specialization"
+          | "academic_rank"
+          | "instructor_type_id"
+          | "max_weekly_hours"
+          | "administrative_release_hours"
+          | "administrative_position"
+          | "administrative_department_id"
+          | "administrative_support_department_id"
+          | "employment_type"
+          | "availability_status"
+          | "email"
+          | "phone"
+          | "is_active"
+        >
+      >((from, to) =>
+        supabase
+          .from("instructors")
+          .select(
+            "id, college_id, full_name, full_name_ar, employee_number, affiliation_college_id, affiliation_department_id, specialization, academic_rank, instructor_type_id, max_weekly_hours, administrative_release_hours, administrative_position, administrative_department_id, administrative_support_department_id, employment_type, availability_status, email, phone, is_active",
+          )
+          .eq("college_id", active!.id)
+          .order("full_name")
+          .order("id")
+          .range(from, to),
       );
       const { data: homes, error: homeError } = await facultyWorkflow.rpc(
         "get_faculty_home_profiles",

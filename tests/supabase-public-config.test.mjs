@@ -7,7 +7,10 @@ const serverClient = readFileSync("src/integrations/supabase/client.server.ts", 
 
 test("browser client reads deployment configuration only (no hard-coded project fallback)", () => {
   assert.match(client, /VITE_SUPABASE_URL\s*\|\|\s*runtimeEnv\.SUPABASE_URL/);
-  assert.match(client, /VITE_SUPABASE_PUBLISHABLE_KEY\s*\|\|\s*runtimeEnv\.SUPABASE_PUBLISHABLE_KEY/);
+  assert.match(
+    client,
+    /VITE_SUPABASE_PUBLISHABLE_KEY\s*\|\|\s*runtimeEnv\.SUPABASE_PUBLISHABLE_KEY/,
+  );
   assert.doesNotMatch(client, /PUBLIC_SUPABASE_URL|PUBLIC_SUPABASE_PUBLISHABLE_KEY/);
   assert.doesNotMatch(client, /https:\/\/[a-z0-9]{20}\.supabase\.co/);
   assert.doesNotMatch(client, /eyJ[A-Za-z0-9_-]{10,}\./, "no embedded JWT/publishable key");

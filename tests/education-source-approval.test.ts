@@ -11,8 +11,18 @@ const EDUCATION_SOURCE_PUBLICATION_VERSION_ID = "11111111-1111-4111-8111-1111111
 const EDUCATION_SOURCE_IDENTITY_REVISION_ID = "22222222-2222-4222-8222-222222222222";
 const EDUCATION_SOURCE_PUBLICATION_TERM_ID = "33333333-3333-4333-8333-333333333333";
 setEducationSourcePublications([
-  { version_id: EDUCATION_SOURCE_PUBLICATION_VERSION_ID, college_id: "c", term_id: EDUCATION_SOURCE_PUBLICATION_TERM_ID, role: "source" },
-  { version_id: EDUCATION_SOURCE_IDENTITY_REVISION_ID, college_id: "c", term_id: EDUCATION_SOURCE_PUBLICATION_TERM_ID, role: "identity_revision" },
+  {
+    version_id: EDUCATION_SOURCE_PUBLICATION_VERSION_ID,
+    college_id: "c",
+    term_id: EDUCATION_SOURCE_PUBLICATION_TERM_ID,
+    role: "source",
+  },
+  {
+    version_id: EDUCATION_SOURCE_IDENTITY_REVISION_ID,
+    college_id: "c",
+    term_id: EDUCATION_SOURCE_PUBLICATION_TERM_ID,
+    role: "identity_revision",
+  },
 ]);
 
 test("publication markers are data", () => {

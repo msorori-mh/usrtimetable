@@ -180,7 +180,12 @@ export function PlanCoursesManager({
     },
   });
 
-  const { data: planCourses, isLoading, error: planCoursesError, refetch: refetchPlanCourses } = useQuery({
+  const {
+    data: planCourses,
+    isLoading,
+    error: planCoursesError,
+    refetch: refetchPlanCourses,
+  } = useQuery({
     queryKey: ["plan-courses", collegeId, plan.id],
     enabled: open,
     queryFn: async () => {
@@ -607,16 +612,22 @@ export function PlanCoursesManager({
                 data-testid="plan-level-quick-add"
               >
                 <div>
-                  <Label htmlFor="plan-courses-f1" className="text-xs">اسم المستوى</Label>
-                  <Input id="plan-courses-f1"
+                  <Label htmlFor="plan-courses-f1" className="text-xs">
+                    اسم المستوى
+                  </Label>
+                  <Input
+                    id="plan-courses-f1"
                     value={levelForm.name}
                     onChange={(e) => setLevelForm({ ...levelForm, name: e.target.value })}
                     placeholder="المستوى الأول"
                   />
                 </div>
                 <div>
-                  <Label htmlFor="plan-courses-f2" className="text-xs">رقم المستوى</Label>
-                  <Input id="plan-courses-f2"
+                  <Label htmlFor="plan-courses-f2" className="text-xs">
+                    رقم المستوى
+                  </Label>
+                  <Input
+                    id="plan-courses-f2"
                     type="number"
                     min={1}
                     max={programDurationYears}
@@ -645,7 +656,9 @@ export function PlanCoursesManager({
             <p className="mb-2 text-sm font-semibold">إضافة مقرر إلى الخطة</p>
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <div className="sm:col-span-2">
-                <Label htmlFor="plan-courses-f5" className="text-xs">المقرر</Label>
+                <Label htmlFor="plan-courses-f5" className="text-xs">
+                  المقرر
+                </Label>
                 <Select
                   value={form.course_id}
                   onValueChange={(v) => setForm({ ...form, course_id: v })}
@@ -663,7 +676,9 @@ export function PlanCoursesManager({
                 </Select>
               </div>
               <div>
-                <Label htmlFor="plan-courses-f6" className="text-xs">المستوى</Label>
+                <Label htmlFor="plan-courses-f6" className="text-xs">
+                  المستوى
+                </Label>
                 <Select
                   value={form.level_id}
                   onValueChange={(v) => setForm({ ...form, level_id: v })}
@@ -681,7 +696,9 @@ export function PlanCoursesManager({
                 </Select>
               </div>
               <div>
-                <Label htmlFor="plan-courses-f7" className="text-xs">الفصل</Label>
+                <Label htmlFor="plan-courses-f7" className="text-xs">
+                  الفصل
+                </Label>
                 <Select
                   value={String(form.semester)}
                   onValueChange={(v) => setForm({ ...form, semester: Number(v) })}
@@ -749,8 +766,10 @@ export function PlanCoursesManager({
                         className="text-xs text-muted-foreground"
                         data-testid={`plan-course-counters-${row.id}`}
                       >
-                        محاضرات/أسبوع {formatNumber(row.lectures_per_week)} × {formatDecimal(row.lecture_session_duration)} س ·
-                        معامل/أسبوع {formatNumber(row.labs_per_week)} × {formatDecimal(row.lab_session_duration)} س
+                        محاضرات/أسبوع {formatNumber(row.lectures_per_week)} ×{" "}
+                        {formatDecimal(row.lecture_session_duration)} س · معامل/أسبوع{" "}
+                        {formatNumber(row.labs_per_week)} ×{" "}
+                        {formatDecimal(row.lab_session_duration)} س
                       </p>
                     </div>
                     {canManage && (
@@ -826,7 +845,9 @@ export function PlanCoursesManager({
                       data-testid={`plan-course-edit-form-${row.id}`}
                     >
                       <div>
-                        <Label htmlFor="plan-courses-f8" className="text-xs">المستوى</Label>
+                        <Label htmlFor="plan-courses-f8" className="text-xs">
+                          المستوى
+                        </Label>
                         <Select
                           value={editRow.level_id}
                           onValueChange={(v) => setEditRow({ ...editRow, level_id: v })}
@@ -844,7 +865,9 @@ export function PlanCoursesManager({
                         </Select>
                       </div>
                       <div>
-                        <Label htmlFor="plan-courses-f9" className="text-xs">الفصل</Label>
+                        <Label htmlFor="plan-courses-f9" className="text-xs">
+                          الفصل
+                        </Label>
                         <Select
                           value={String(editRow.semester)}
                           onValueChange={(v) => setEditRow({ ...editRow, semester: Number(v) })}
@@ -928,7 +951,8 @@ export function PlanCoursesManager({
                                 onClick={async () => {
                                   const ok = await confirmAction({
                                     title: `حذف ${COMPONENT_TYPE_LABEL_AR[c.component_type as ComponentType] ?? c.component_type} من المقرر؟`,
-                                    description: "تُحدَّث بيانات الجدولة للمقرر بعد الحذف. لا يمكن التراجع عن هذا الإجراء.",
+                                    description:
+                                      "تُحدَّث بيانات الجدولة للمقرر بعد الحذف. لا يمكن التراجع عن هذا الإجراء.",
                                     confirmLabel: "حذف",
                                     destructive: true,
                                   });

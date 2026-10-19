@@ -70,7 +70,14 @@ describe("STAFF-METADATA-01 instructor metadata truthfulness", () => {
 
   test("instructors page uses shared maps, unknown default and new labels", () => {
     // L-14: the instructors page was split into the route + hook + form/search components.
-    const src = ["src/routes/_authenticated/instructors.tsx", "src/hooks/use-instructor-directory.ts", "src/components/instructors/instructor-form-fields.tsx", "src/components/instructors/university-instructor-search.tsx"].map((file) => readFileSync(resolve(root, file), "utf8")).join("\n");
+    const src = [
+      "src/routes/_authenticated/instructors.tsx",
+      "src/hooks/use-instructor-directory.ts",
+      "src/components/instructors/instructor-form-fields.tsx",
+      "src/components/instructors/university-instructor-search.tsx",
+    ]
+      .map((file) => readFileSync(resolve(root, file), "utf8"))
+      .join("\n");
     expect(src.includes("employment_type: UNKNOWN_EMPLOYMENT_TYPE")).toBe(true);
     expect(src.includes("حالة التفرغ/التعاقد")).toBe(false);
     // M-22: labels are now linked to their control (htmlFor), so match the label text.

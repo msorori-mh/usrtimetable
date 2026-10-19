@@ -25,7 +25,10 @@ function best(fn: () => unknown): number {
   for (let i = 0; i < repeats; i++) min = Math.min(min, time(fn).ms);
   return min;
 }
-function sweep(impl: { compactSlots: typeof compactSlots; placementIssue: typeof placementIssue }, s: ReturnType<typeof syntheticSnapshot>) {
+function sweep(
+  impl: { compactSlots: typeof compactSlots; placementIssue: typeof placementIssue },
+  s: ReturnType<typeof syntheticSnapshot>,
+) {
   let n = 0;
   for (const o of s.sessions)
     for (const slot of impl.compactSlots(s, o))
@@ -33,7 +36,14 @@ function sweep(impl: { compactSlots: typeof compactSlots; placementIssue: typeof
         impl.placementIssue(
           s,
           s.sessions,
-          { ...o, is_locked: false, day_of_week: slot.day, start_time: slot.start, end_time: slot.end, room_id: room.id },
+          {
+            ...o,
+            is_locked: false,
+            day_of_week: slot.day,
+            start_time: slot.start,
+            end_time: slot.end,
+            room_id: room.id,
+          },
           { ...o, is_locked: false },
         );
         n++;
@@ -41,7 +51,9 @@ function sweep(impl: { compactSlots: typeof compactSlots; placementIssue: typeof
   return n;
 }
 
-console.log("sessions | candidates | build legacy ms | build new ms | speedup | feasibility checks | sweep legacy ms | sweep new ms | speedup");
+console.log(
+  "sessions | candidates | build legacy ms | build new ms | speedup | feasibility checks | sweep legacy ms | sweep new ms | speedup",
+);
 for (const n of sizes) {
   const fresh = () => syntheticSnapshot({ sessions: n, seed: 42, extended: true });
   const stressed = () => syntheticSnapshot({ sessions: n, seed: 42, extended: true, stress: true });

@@ -1,7 +1,13 @@
 import { type ReactNode } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { AlertCircle } from "lucide-react";
 
 /** Small presentational pieces of the schedule builder page (split from schedule-builder.tsx, L-14). */
@@ -55,7 +61,15 @@ export function FilterSelect({
   );
 }
 
-export function EmptyState({ icon, title, message }: { icon: ReactNode; title: string; message: string }) {
+export function EmptyState({
+  icon,
+  title,
+  message,
+}: {
+  icon: ReactNode;
+  title: string;
+  message: string;
+}) {
   return (
     <Card>
       <CardContent className="flex flex-col items-center gap-3 py-16 text-center">

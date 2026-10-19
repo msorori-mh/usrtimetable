@@ -91,7 +91,12 @@ export async function fetchOnboardingReadinessSnapshot(
       (data) => ({ data, error: null as { message: string } | null }),
       (error: unknown) => ({
         data: null,
-        error: { message: error instanceof Error ? error.message : String((error as { message?: unknown })?.message ?? error) },
+        error: {
+          message:
+            error instanceof Error
+              ? error.message
+              : String((error as { message?: unknown })?.message ?? error),
+        },
       }),
     ),
     countExact("elective_slots", collegeId),
@@ -109,9 +114,7 @@ export async function fetchOnboardingReadinessSnapshot(
     );
   }
 
-  const availIds = new Set(
-    (availability.data ?? []).map((r) => r.instructor_id),
-  );
+  const availIds = new Set((availability.data ?? []).map((r) => r.instructor_id));
 
   const counts: OnboardingCounts = {
     departments,

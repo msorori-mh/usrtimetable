@@ -86,7 +86,10 @@ export function DeliveryCoverageCard({
 
   if (error && !coverage) {
     return (
-      <div role="alert" className="rounded-md border border-destructive/40 bg-destructive/5 p-2 text-[11px] text-destructive">
+      <div
+        role="alert"
+        className="rounded-md border border-destructive/40 bg-destructive/5 p-2 text-[11px] text-destructive"
+      >
         تعذّر حساب اكتمال نسخة الجدول؛ لا تعتمد النسخة قبل إعادة المحاولة.
       </div>
     );

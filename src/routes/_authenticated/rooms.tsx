@@ -88,7 +88,13 @@ function RoomsPage() {
   const [editing, setEditing] = useState<Room | null>(null);
   const [form, setForm] = useState(emptyForm());
 
-  const { data: rows, isLoading, isError, error: rowsError, refetch } = useQuery({
+  const {
+    data: rows,
+    isLoading,
+    isError,
+    error: rowsError,
+    refetch,
+  } = useQuery({
     queryKey: ["rooms", active?.id],
     enabled: !!active,
     queryFn: async () => {
@@ -155,7 +161,9 @@ function RoomsPage() {
       setEditing(null);
     },
     onError: (e: Error) =>
-      toast.error(e.message.includes("duplicate") ? "رمز القاعة مستخدم في هذه الكلّية" : userErrorMessage(e)),
+      toast.error(
+        e.message.includes("duplicate") ? "رمز القاعة مستخدم في هذه الكلّية" : userErrorMessage(e),
+      ),
   });
 
   const del = useMutation({
@@ -246,14 +254,16 @@ function RoomsPage() {
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <Label htmlFor="room-f1">الرمز</Label>
-                    <Input id="room-f1"
+                    <Input
+                      id="room-f1"
                       value={form.code}
                       onChange={(e) => setForm({ ...form, code: e.target.value })}
                     />
                   </div>
                   <div>
                     <Label htmlFor="room-f2">الاسم</Label>
-                    <Input id="room-f2"
+                    <Input
+                      id="room-f2"
                       value={form.name}
                       onChange={(e) => setForm({ ...form, name: e.target.value })}
                     />
@@ -280,7 +290,8 @@ function RoomsPage() {
                   </div>
                   <div>
                     <Label htmlFor="room-f3">السعة</Label>
-                    <Input id="room-f3"
+                    <Input
+                      id="room-f3"
                       type="number"
                       value={form.capacity}
                       onChange={(e) => setForm({ ...form, capacity: Number(e.target.value) })}
@@ -290,14 +301,16 @@ function RoomsPage() {
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <Label htmlFor="room-f4">المبنى</Label>
-                    <Input id="room-f4"
+                    <Input
+                      id="room-f4"
                       value={form.building}
                       onChange={(e) => setForm({ ...form, building: e.target.value })}
                     />
                   </div>
                   <div>
                     <Label htmlFor="room-f5">الدور</Label>
-                    <Input id="room-f5"
+                    <Input
+                      id="room-f5"
                       value={form.floor}
                       onChange={(e) => setForm({ ...form, floor: e.target.value })}
                     />
@@ -305,7 +318,8 @@ function RoomsPage() {
                 </div>
                 <div>
                   <Label htmlFor="room-f6">ملاحظات</Label>
-                  <Input id="room-f6"
+                  <Input
+                    id="room-f6"
                     value={form.notes}
                     onChange={(e) => setForm({ ...form, notes: e.target.value })}
                   />
@@ -336,7 +350,9 @@ function RoomsPage() {
         {isLoading ? (
           <p className="p-6 text-center text-muted-foreground">جارٍ التحميل...</p>
         ) : isError ? (
-          <div className="p-4"><QueryErrorNotice error={rowsError} onRetry={() => void refetch()} /></div>
+          <div className="p-4">
+            <QueryErrorNotice error={rowsError} onRetry={() => void refetch()} />
+          </div>
         ) : !rows || rows.length === 0 ? (
           <p className="p-6 text-center text-muted-foreground">لا توجد قاعات بعد.</p>
         ) : (
@@ -358,7 +374,12 @@ function RoomsPage() {
                 </div>
                 {canManage && (
                   <div className="flex gap-1">
-                    <Button size="sm" variant="ghost" aria-label={`تعديل ${r.name}`} onClick={() => startEdit(r)}>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      aria-label={`تعديل ${r.name}`}
+                      onClick={() => startEdit(r)}
+                    >
                       <Pencil className="h-3.5 w-3.5" />
                     </Button>
                     <Button

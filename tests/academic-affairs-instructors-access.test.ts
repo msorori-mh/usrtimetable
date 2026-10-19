@@ -36,7 +36,14 @@ describe("academic affairs route scope", () => {
 
 describe("instructor edit wiring", () => {
   // L-14: the instructors page was split into the route + hook + form/search components.
-  const src = ["src/routes/_authenticated/instructors.tsx", "src/hooks/use-instructor-directory.ts", "src/components/instructors/instructor-form-fields.tsx", "src/components/instructors/university-instructor-search.tsx"].map((file) => readFileSync(file, "utf8")).join("\n");
+  const src = [
+    "src/routes/_authenticated/instructors.tsx",
+    "src/hooks/use-instructor-directory.ts",
+    "src/components/instructors/instructor-form-fields.tsx",
+    "src/components/instructors/university-instructor-search.tsx",
+  ]
+    .map((file) => readFileSync(file, "utf8"))
+    .join("\n");
   const migration = readFileSync(
     "supabase/migrations/20260915034500_academic_affairs_instructor_basic_edit.sql",
     "utf8",

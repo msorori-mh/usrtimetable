@@ -360,7 +360,8 @@ function TimeSlotTemplatesWorkspace() {
         collegeId: collegeId ?? undefined,
       });
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: collegeScopedQueryKey("time-slot-templates", collegeId) }),
+    onSuccess: () =>
+      qc.invalidateQueries({ queryKey: collegeScopedQueryKey("time-slot-templates", collegeId) }),
     onError: (e: Error) => toast.error(userErrorMessage(e)),
   });
 
@@ -537,7 +538,8 @@ function TimeSlotTemplatesWorkspace() {
                             </label>
                             <div>
                               <Label htmlFor="tst-form-f3">بداية الدوام</Label>
-                              <Input id="tst-form-f3"
+                              <Input
+                                id="tst-form-f3"
                                 dir="ltr"
                                 type="time"
                                 value={dayOverrides[customizingDay].startTime}
@@ -554,7 +556,8 @@ function TimeSlotTemplatesWorkspace() {
                             </div>
                             <div>
                               <Label htmlFor="tst-form-f4">نهاية الدوام</Label>
-                              <Input id="tst-form-f4"
+                              <Input
+                                id="tst-form-f4"
                                 dir="ltr"
                                 type="time"
                                 value={dayOverrides[customizingDay].endTime}
@@ -626,7 +629,8 @@ function TimeSlotTemplatesWorkspace() {
                       <div className="grid gap-3 md:grid-cols-3">
                         <div>
                           <Label htmlFor="tst-form-f5">بداية الدوام</Label>
-                          <Input id="tst-form-f5"
+                          <Input
+                            id="tst-form-f5"
                             dir="ltr"
                             type="time"
                             value={dayStart}
@@ -635,7 +639,8 @@ function TimeSlotTemplatesWorkspace() {
                         </div>
                         <div>
                           <Label htmlFor="tst-form-f6">نهاية الدوام</Label>
-                          <Input id="tst-form-f6"
+                          <Input
+                            id="tst-form-f6"
                             dir="ltr"
                             type="time"
                             value={dayEnd}
@@ -644,7 +649,8 @@ function TimeSlotTemplatesWorkspace() {
                         </div>
                         <div>
                           <Label htmlFor="tst-form-f7">دقة الشبكة (دقيقة)</Label>
-                          <Input id="tst-form-f7"
+                          <Input
+                            id="tst-form-f7"
                             dir="ltr"
                             type="number"
                             min={15}
@@ -785,7 +791,8 @@ function TimeSlotTemplatesWorkspace() {
                             </div>
                             <div>
                               <Label htmlFor="tst-form-f8">من</Label>
-                              <Input id="tst-form-f8"
+                              <Input
+                                id="tst-form-f8"
                                 dir="ltr"
                                 type="time"
                                 value={singleForm.start_time}
@@ -796,7 +803,8 @@ function TimeSlotTemplatesWorkspace() {
                             </div>
                             <div>
                               <Label htmlFor="tst-form-f9">إلى</Label>
-                              <Input id="tst-form-f9"
+                              <Input
+                                id="tst-form-f9"
                                 dir="ltr"
                                 type="time"
                                 value={singleForm.end_time}
@@ -807,7 +815,8 @@ function TimeSlotTemplatesWorkspace() {
                             </div>
                             <div>
                               <Label htmlFor="tst-form-f10">المدة (دقيقة)</Label>
-                              <Input id="tst-form-f10"
+                              <Input
+                                id="tst-form-f10"
                                 dir="ltr"
                                 type="number"
                                 min={15}

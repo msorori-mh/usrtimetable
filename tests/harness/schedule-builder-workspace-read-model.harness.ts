@@ -357,7 +357,14 @@ function run() {
 
   // Page source guards
   // L-14: the builder page was split into the route + hooks/use-schedule-builder-workspace.ts + builder components.
-  const page = ["src/routes/_authenticated/schedule-builder.tsx", "src/hooks/use-schedule-builder-workspace.ts", "src/components/schedule-builder/builder-context-bar.tsx", "src/components/schedule-builder/builder-ui.tsx"].map((file) => readSrc(file)).join("\n");
+  const page = [
+    "src/routes/_authenticated/schedule-builder.tsx",
+    "src/hooks/use-schedule-builder-workspace.ts",
+    "src/components/schedule-builder/builder-context-bar.tsx",
+    "src/components/schedule-builder/builder-ui.tsx",
+  ]
+    .map((file) => readSrc(file))
+    .join("\n");
   assert(page.includes("shouldLoadWorkspaceCollegeScoped"), "page uses college guard");
   assert(page.includes("enabled: canLoadCollege"), "terms gated on college");
   assert(page.includes("canLoadVersions"), "versions gated");

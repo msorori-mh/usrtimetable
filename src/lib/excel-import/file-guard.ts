@@ -21,9 +21,17 @@ export class ImportFileError extends Error {
   }
 }
 
-type FileLike = { name: string; size: number; arrayBuffer(): Promise<ArrayBuffer>; text?(): Promise<string> };
+type FileLike = {
+  name: string;
+  size: number;
+  arrayBuffer(): Promise<ArrayBuffer>;
+  text?(): Promise<string>;
+};
 
-export function assertImportFileSize(file: { size: number }, maxBytes = MAX_IMPORT_FILE_BYTES): void {
+export function assertImportFileSize(
+  file: { size: number },
+  maxBytes = MAX_IMPORT_FILE_BYTES,
+): void {
   if (!Number.isFinite(file.size) || file.size <= 0)
     throw new ImportFileError("الملف فارغ أو غير قابل للقراءة.");
   if (file.size > maxBytes)
@@ -33,7 +41,13 @@ export function assertImportFileSize(file: { size: number }, maxBytes = MAX_IMPO
 }
 
 export function hasZipMagic(bytes: Uint8Array): boolean {
-  return bytes.length >= 4 && bytes[0] === 0x50 && bytes[1] === 0x4b && bytes[2] === 0x03 && bytes[3] === 0x04;
+  return (
+    bytes.length >= 4 &&
+    bytes[0] === 0x50 &&
+    bytes[1] === 0x4b &&
+    bytes[2] === 0x03 &&
+    bytes[3] === 0x04
+  );
 }
 
 /** Reads an .xlsx upload after size, extension and ZIP-signature checks. */
@@ -51,7 +65,10 @@ export async function readGuardedXlsxBytes(
 }
 
 /** Reads a JSON upload after the size check; parse errors become an Arabic message. */
-export async function readGuardedJson(file: FileLike, maxBytes = MAX_IMPORT_FILE_BYTES): Promise<unknown> {
+export async function readGuardedJson(
+  file: FileLike,
+  maxBytes = MAX_IMPORT_FILE_BYTES,
+): Promise<unknown> {
   if (!/\.json$/i.test(file.name)) throw new ImportFileError("استخدم ملف JSON.");
   assertImportFileSize(file, maxBytes);
   const text = file.text ? await file.text() : new TextDecoder().decode(await file.arrayBuffer());
@@ -64,7 +81,10 @@ export async function readGuardedJson(file: FileLike, maxBytes = MAX_IMPORT_FILE
 
 /** Minimal SheetJS surface the guard relies on. */
 export interface XlsxLike {
-  read(data: Uint8Array, opts: Record<string, unknown>): {
+  read(
+    data: Uint8Array,
+    opts: Record<string, unknown>,
+  ): {
     SheetNames: string[];
     Sheets: Record<string, Record<string, unknown>>;
     vbaraw?: unknown;
@@ -132,12 +152,16 @@ export async function readGuardedWorkbook<X extends XlsxLike = XlsxLike>(
   options: GuardedWorkbookOptions = {},
 ): Promise<{ XLSX: X; workbook: ReturnType<X["read"]>; bytes: Uint8Array }> {
   const bytes = await readGuardedXlsxBytes(file, options.maxBytes);
-  const XLSX = (await (options.loadXlsx ?? (() => import("xlsx") as unknown as Promise<XlsxLike>))()) as X;
+  const XLSX = (await (
+    options.loadXlsx ?? (() => import("xlsx") as unknown as Promise<XlsxLike>)
+  )()) as X;
   let workbook: ReturnType<X["read"]>;
   try {
-    workbook = XLSX.read(bytes, { ...(options.read ?? {}), type: "array", bookVBA: true }) as ReturnType<
-      X["read"]
-    >;
+    workbook = XLSX.read(bytes, {
+      ...(options.read ?? {}),
+      type: "array",
+      bookVBA: true,
+    }) as ReturnType<X["read"]>;
   } catch {
     throw new ImportFileError("تعذر قراءة ملف XLSX؛ تأكد أنه غير تالف وغير محمي بكلمة مرور.");
   }

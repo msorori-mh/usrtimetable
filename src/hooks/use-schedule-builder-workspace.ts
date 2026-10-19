@@ -12,7 +12,11 @@ import {
   shouldLoadWorkspaceVersions,
   type ScheduleVersionStatus,
 } from "@/lib/schedule-builder/access";
-import { canEnterEditMode, canOpenSessionForLocalEdit, editModeBlockedReason } from "@/lib/schedule-builder/edit-access";
+import {
+  canEnterEditMode,
+  canOpenSessionForLocalEdit,
+  editModeBlockedReason,
+} from "@/lib/schedule-builder/edit-access";
 import {
   applyPendingToSessions,
   buildPendingChange,
@@ -81,7 +85,9 @@ export type PendingAction =
   | { kind: "set-perspective"; perspective: BuilderPerspective }
   | { kind: "set-instructor"; instructorId: string };
 
-export function sessionDurationHours(session: Pick<WorkspaceSessionView, "start_time" | "end_time">) {
+export function sessionDurationHours(
+  session: Pick<WorkspaceSessionView, "start_time" | "end_time">,
+) {
   const minutes = (value: string) => {
     const [hours, mins] = value.slice(0, 5).split(":").map(Number);
     return hours * 60 + mins;

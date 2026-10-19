@@ -12,7 +12,10 @@ import {
 } from "../../../src/lib/auto-scheduler/attendance-objective.ts";
 import { isInstructorAvailabilityEnforced } from "../../../src/lib/scheduling/instructor-availability-policy.ts";
 import { evaluateInstructorSlotAvailability } from "../../../src/lib/scheduling/instructor-slot-availability.ts";
-import { isRoomTypeCompatible, roomTypeRank } from "../../../src/lib/scheduling/room-type-policy.ts";
+import {
+  isRoomTypeCompatible,
+  roomTypeRank,
+} from "../../../src/lib/scheduling/room-type-policy.ts";
 import {
   addStudentDailyLoad,
   emptyStudentDailyLoad,
@@ -189,12 +192,7 @@ export interface Move {
   room_id: string;
 }
 export type SearchOutcome =
-  | "local_minimum"
-  | "time_limit"
-  | "candidate_limit"
-  | "pass_limit"
-  | "cancelled"
-  | "empty";
+  "local_minimum" | "time_limit" | "candidate_limit" | "pass_limit" | "cancelled" | "empty";
 export interface Proposal {
   qualitySearch?: import("../../../src/lib/auto-scheduler/quality-search.ts").QualitySearchReport;
   applicationMode?: "simultaneous";

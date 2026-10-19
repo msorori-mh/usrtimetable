@@ -55,7 +55,12 @@ describe("L-3 validateRoleChange", () => {
       validateRoleChange({ ...base, currentRoles: [], role: "college_admin", enabled: true }),
     ).toBeNull();
     expect(
-      validateRoleChange({ ...base, currentRoles: ["read_only"], role: "read_only", enabled: false }),
+      validateRoleChange({
+        ...base,
+        currentRoles: ["read_only"],
+        role: "read_only",
+        enabled: false,
+      }),
     ).toBeNull();
   });
 });

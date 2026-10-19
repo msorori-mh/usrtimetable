@@ -15,30 +15,113 @@ export const Route = createFileRoute("/_authenticated/instructor-types")({
       subtitle={`محاضر دائم / ${OTHER_COLLEGE_INSTRUCTOR_LABEL_AR} / محاضر زائر…`}
       icon={<UserCog className="h-5 w-5" />}
       orderBy="display_order"
-      emptyForm={() => ({ code: "", name_ar: "", name_en: "", is_external: false, color: "", display_order: 0, is_active: true })}
-      toForm={(r) => ({ code: r.code, name_ar: r.name_ar, name_en: r.name_en ?? "", is_external: r.is_external, color: r.color ?? "", display_order: r.display_order, is_active: r.is_active })}
-      validate={(f) => (!String(f.code).trim() || !String(f.name_ar).trim()) ? "الرمز والاسم العربي مطلوبان" : null}
+      emptyForm={() => ({
+        code: "",
+        name_ar: "",
+        name_en: "",
+        is_external: false,
+        color: "",
+        display_order: 0,
+        is_active: true,
+      })}
+      toForm={(r) => ({
+        code: r.code,
+        name_ar: r.name_ar,
+        name_en: r.name_en ?? "",
+        is_external: r.is_external,
+        color: r.color ?? "",
+        display_order: r.display_order,
+        is_active: r.is_active,
+      })}
+      validate={(f) =>
+        !String(f.code).trim() || !String(f.name_ar).trim() ? "الرمز والاسم العربي مطلوبان" : null
+      }
       renderForm={(f, set) => (
         <>
           <div className="grid grid-cols-2 gap-3">
-            <div><Label htmlFor="instructor-types-f1">الرمز</Label><Input id="instructor-types-f1" value={String(f.code ?? "")} onChange={(e) => set({ ...f, code: e.target.value })} /></div>
-            <div><Label htmlFor="instructor-types-f2">الترتيب</Label><Input id="instructor-types-f2" type="number" value={Number(f.display_order ?? 0)} onChange={(e) => set({ ...f, display_order: Number(e.target.value) })} /></div>
+            <div>
+              <Label htmlFor="instructor-types-f1">الرمز</Label>
+              <Input
+                id="instructor-types-f1"
+                value={String(f.code ?? "")}
+                onChange={(e) => set({ ...f, code: e.target.value })}
+              />
+            </div>
+            <div>
+              <Label htmlFor="instructor-types-f2">الترتيب</Label>
+              <Input
+                id="instructor-types-f2"
+                type="number"
+                value={Number(f.display_order ?? 0)}
+                onChange={(e) => set({ ...f, display_order: Number(e.target.value) })}
+              />
+            </div>
           </div>
-          <div><Label htmlFor="instructor-types-f3">الاسم بالعربية</Label><Input id="instructor-types-f3" value={String(f.name_ar ?? "")} onChange={(e) => set({ ...f, name_ar: e.target.value })} /></div>
-          <div><Label htmlFor="instructor-types-f4">الاسم بالإنجليزية</Label><Input id="instructor-types-f4" value={String(f.name_en ?? "")} onChange={(e) => set({ ...f, name_en: e.target.value })} /></div>
-          <div><Label htmlFor="instructor-types-f5">اللون (hex)</Label><Input id="instructor-types-f5" value={String(f.color ?? "")} onChange={(e) => set({ ...f, color: e.target.value })} placeholder="#3b82f6" /></div>
-          <label className="flex items-center gap-2 text-sm"><Checkbox checked={Boolean(f.is_external)} onCheckedChange={(v) => set({ ...f, is_external: !!v })} /> يتطلب أوقات توفر خاصة</label>
-          <label className="flex items-center gap-2 text-sm"><Checkbox checked={Boolean(f.is_active)} onCheckedChange={(v) => set({ ...f, is_active: !!v })} /> نشط</label>
+          <div>
+            <Label htmlFor="instructor-types-f3">الاسم بالعربية</Label>
+            <Input
+              id="instructor-types-f3"
+              value={String(f.name_ar ?? "")}
+              onChange={(e) => set({ ...f, name_ar: e.target.value })}
+            />
+          </div>
+          <div>
+            <Label htmlFor="instructor-types-f4">الاسم بالإنجليزية</Label>
+            <Input
+              id="instructor-types-f4"
+              value={String(f.name_en ?? "")}
+              onChange={(e) => set({ ...f, name_en: e.target.value })}
+            />
+          </div>
+          <div>
+            <Label htmlFor="instructor-types-f5">اللون (hex)</Label>
+            <Input
+              id="instructor-types-f5"
+              value={String(f.color ?? "")}
+              onChange={(e) => set({ ...f, color: e.target.value })}
+              placeholder="#3b82f6"
+            />
+          </div>
+          <label className="flex items-center gap-2 text-sm">
+            <Checkbox
+              checked={Boolean(f.is_external)}
+              onCheckedChange={(v) => set({ ...f, is_external: !!v })}
+            />{" "}
+            يتطلب أوقات توفر خاصة
+          </label>
+          <label className="flex items-center gap-2 text-sm">
+            <Checkbox
+              checked={Boolean(f.is_active)}
+              onCheckedChange={(v) => set({ ...f, is_active: !!v })}
+            />{" "}
+            نشط
+          </label>
         </>
       )}
       renderRow={(r) => (
         <>
-          <p className="font-semibold">{r.name_ar} {r.is_external && <span className="rounded bg-accent/20 px-2 py-0.5 text-[11px]">توفر خاص</span>}</p>
-          <p className="text-xs text-muted-foreground"><span dir="ltr">{r.code}</span>{r.name_en && ` · ${r.name_en}`}</p>
+          <p className="font-semibold">
+            {r.name_ar}{" "}
+            {r.is_external && (
+              <span className="rounded bg-accent/20 px-2 py-0.5 text-[11px]">توفر خاص</span>
+            )}
+          </p>
+          <p className="text-xs text-muted-foreground">
+            <span dir="ltr">{r.code}</span>
+            {r.name_en && ` · ${r.name_en}`}
+          </p>
         </>
       )}
     />
   ),
 });
 
-interface Row extends LookupRow { code: string; name_ar: string; name_en: string | null; is_external: boolean; color: string | null; display_order: number; is_active: boolean }
+interface Row extends LookupRow {
+  code: string;
+  name_ar: string;
+  name_en: string | null;
+  is_external: boolean;
+  color: string | null;
+  display_order: number;
+  is_active: boolean;
+}

@@ -121,7 +121,13 @@ export function CollegeSourceTimetable({
     enabled: rows.length > 0 && !!source,
     queryFn: async () => {
       const [sessions, rooms] = await Promise.all([
-        readAllResult<{ id: string; day_of_week: number; start_time: string; end_time: string; room_id: string | null }>((from, to) =>
+        readAllResult<{
+          id: string;
+          day_of_week: number;
+          start_time: string;
+          end_time: string;
+          room_id: string | null;
+        }>((from, to) =>
           supabase
             .from("schedule_sessions")
             .select("id,day_of_week,start_time,end_time,room_id")
@@ -130,7 +136,12 @@ export function CollegeSourceTimetable({
             .range(from, to),
         ),
         readAllResult<{ id: string; name: string }>((from, to) =>
-          supabase.from("rooms").select("id,name").eq("college_id", source!.college_id).order("id").range(from, to),
+          supabase
+            .from("rooms")
+            .select("id,name")
+            .eq("college_id", source!.college_id)
+            .order("id")
+            .range(from, to),
         ),
       ]);
       if (sessions.error) throw sessions.error;

@@ -74,7 +74,13 @@ function SchedulingHeadcountsPage() {
       return data as Term[];
     },
   });
-  const { data: rows = [], isLoading, isError, error: rowsError, refetch } = useQuery({
+  const {
+    data: rows = [],
+    isLoading,
+    isError,
+    error: rowsError,
+    refetch,
+  } = useQuery({
     queryKey: ["scheduling-headcounts", active?.id],
     enabled: Boolean(active),
     queryFn: async () => {
@@ -91,7 +97,11 @@ function SchedulingHeadcountsPage() {
       return data as unknown as SchedulingHeadcount[];
     },
   });
-  const { data: history, isError: historyFailed, error: historyError } = useQuery({
+  const {
+    data: history,
+    isError: historyFailed,
+    error: historyError,
+  } = useQuery({
     queryKey: ["scheduling-headcount-history", historyId],
     enabled: Boolean(historyId),
     queryFn: async () => listSchedulingHeadcountRevisions(historyId!),
@@ -200,8 +210,12 @@ function SchedulingHeadcountsPage() {
           title="تعذّر تحميل الدفعات أو الفصول؛ قد تكون قائمة الدفعات غير المعتمدة ناقصة."
           error={cohortsError ?? termsError}
           onRetry={() => {
-            void queryClient.invalidateQueries({ queryKey: ["scheduling-headcount-cohorts", active?.id] });
-            void queryClient.invalidateQueries({ queryKey: ["scheduling-headcount-terms", active?.id] });
+            void queryClient.invalidateQueries({
+              queryKey: ["scheduling-headcount-cohorts", active?.id],
+            });
+            void queryClient.invalidateQueries({
+              queryKey: ["scheduling-headcount-terms", active?.id],
+            });
           }}
         />
       )}
@@ -233,8 +247,10 @@ function SchedulingHeadcountsPage() {
                   <td className="px-3 py-2">{termName.get(row.term_id) ?? "—"}</td>
                   <td className="px-3 py-2">{row.study_system}</td>
                   <td className="px-3 py-2">
-                    {formatNumber(row.registered_student_count)} / {formatNumber(row.eligible_student_count)} /{" "}
-                    {formatNumber(row.expected_attendance_count)} / <strong>{formatNumber(row.scheduling_headcount)}</strong>
+                    {formatNumber(row.registered_student_count)} /{" "}
+                    {formatNumber(row.eligible_student_count)} /{" "}
+                    {formatNumber(row.expected_attendance_count)} /{" "}
+                    <strong>{formatNumber(row.scheduling_headcount)}</strong>
                     {differsMateriallyFromEligible(
                       row.scheduling_headcount,
                       row.eligible_student_count,
@@ -248,29 +264,29 @@ function SchedulingHeadcountsPage() {
                   <td className="px-3 py-2">{row.notes ?? "—"}</td>
                   <td className="px-3 py-2">
                     <div className="flex flex-wrap gap-1">
-                    {canManage && (
-                      <Button size="sm" variant="outline" onClick={() => setEditing(row)}>
-                        تعديل
+                      {canManage && (
+                        <Button size="sm" variant="outline" onClick={() => setEditing(row)}>
+                          تعديل
+                        </Button>
+                      )}
+                      {canManage && row.approval_status !== "approved" && (
+                        <Button
+                          size="sm"
+                          onClick={async () => {
+                            const ok = await confirmAction({
+                              title: `اعتماد عدد ${cohortName.get(row.cohort_id) ?? "الدفعة"} للجدولة؟`,
+                              description: `سيُعتمد العدد ${formatNumber(row.scheduling_headcount)} مصدرًا لتقسيم مجموعات التدريس.`,
+                              confirmLabel: "اعتماد",
+                            });
+                            if (ok) approve.mutate(row.id);
+                          }}
+                        >
+                          اعتماد
+                        </Button>
+                      )}
+                      <Button size="sm" variant="ghost" onClick={() => setHistoryId(row.id)}>
+                        السجل
                       </Button>
-                    )}
-                    {canManage && row.approval_status !== "approved" && (
-                      <Button
-                        size="sm"
-                        onClick={async () => {
-                          const ok = await confirmAction({
-                            title: `اعتماد عدد ${cohortName.get(row.cohort_id) ?? "الدفعة"} للجدولة؟`,
-                            description: `سيُعتمد العدد ${formatNumber(row.scheduling_headcount)} مصدرًا لتقسيم مجموعات التدريس.`,
-                            confirmLabel: "اعتماد",
-                          });
-                          if (ok) approve.mutate(row.id);
-                        }}
-                      >
-                        اعتماد
-                      </Button>
-                    )}
-                    <Button size="sm" variant="ghost" onClick={() => setHistoryId(row.id)}>
-                      السجل
-                    </Button>
                     </div>
                   </td>
                 </tr>
@@ -305,7 +321,9 @@ function SchedulingHeadcountsPage() {
           {historyFailed ? (
             <QueryErrorNotice title="تعذّر تحميل سجل التعديلات." error={historyError} />
           ) : history && !history.ok ? (
-            <p className="text-sm text-destructive">{userErrorMessage(history.message, "تعذّر تحميل سجل التعديلات.")}</p>
+            <p className="text-sm text-destructive">
+              {userErrorMessage(history.message, "تعذّر تحميل سجل التعديلات.")}
+            </p>
           ) : history?.ok ? (
             (
               (history.revisions ?? []) as Array<{

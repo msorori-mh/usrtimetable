@@ -94,10 +94,20 @@ export function ExistingScheduleWorkspace({
             .range(from, to),
         ),
         readAllResult((from, to) =>
-          supabase.from("instructors").select("id,full_name").eq("college_id", collegeId).order("id").range(from, to),
+          supabase
+            .from("instructors")
+            .select("id,full_name")
+            .eq("college_id", collegeId)
+            .order("id")
+            .range(from, to),
         ),
         readAllResult((from, to) =>
-          supabase.from("study_plans").select("id,name").eq("college_id", collegeId).order("id").range(from, to),
+          supabase
+            .from("study_plans")
+            .select("id,name")
+            .eq("college_id", collegeId)
+            .order("id")
+            .range(from, to),
         ),
       ]);
       for (const r of responses) if (r.error) throw r.error;
@@ -240,11 +250,9 @@ export function ExistingScheduleWorkspace({
   const sealedSource = educationSourcePublications.data
     ? educationSourceVersionFor(collegeId, termId)
     : null;
-  const isSealedEducationSource = !!sealedSource && !!versionId && sealedSource.version_id === versionId;
-  if (
-    showCollegeSourceTimetable &&
-    isSealedEducationSource
-  ) {
+  const isSealedEducationSource =
+    !!sealedSource && !!versionId && sealedSource.version_id === versionId;
+  if (showCollegeSourceTimetable && isSealedEducationSource) {
     return (
       <CollegeSourceTimetable rows={rows} onBack={() => setShowCollegeSourceTimetable(false)} />
     );
@@ -289,15 +297,15 @@ export function ExistingScheduleWorkspace({
         </p>
         <div className="flex flex-wrap gap-3">
           {isSealedEducationSource && (
-              <Button onClick={() => setShowCollegeSourceTimetable(true)}>
-                جدول الكلية حسب ملفات الأقسام
-              </Button>
-            )}
+            <Button onClick={() => setShowCollegeSourceTimetable(true)}>
+              جدول الكلية حسب ملفات الأقسام
+            </Button>
+          )}
           {isSealedEducationSource && (
-              <Button variant="outline" asChild>
-                <a href="/reports/education-source-timetable">فتح جدول الأقسام في صفحة مستقلة</a>
-              </Button>
-            )}
+            <Button variant="outline" asChild>
+              <a href="/reports/education-source-timetable">فتح جدول الأقسام في صفحة مستقلة</a>
+            </Button>
+          )}
           <Button onClick={() => setShowSourceReport(true)}>
             تقرير الجداول المستوردة — جميع صفوف المصدر
           </Button>

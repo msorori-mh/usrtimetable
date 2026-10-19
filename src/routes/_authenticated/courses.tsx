@@ -110,12 +110,12 @@ function CoursesPage() {
     enabled: !!active,
     queryFn: async () => {
       const { data, error } = await supabase
-          .from("departments")
-          .select("id, name")
-          .eq("college_id", active!.id)
-          // ACADEMIC-ARCHIVE-UI-01: pickers exclude archived records.
-          .eq("is_archived", false)
-          .order("name");
+        .from("departments")
+        .select("id, name")
+        .eq("college_id", active!.id)
+        // ACADEMIC-ARCHIVE-UI-01: pickers exclude archived records.
+        .eq("is_archived", false)
+        .order("name");
       if (error) throw error;
       return (data ?? []) as Department[];
     },
@@ -126,12 +126,12 @@ function CoursesPage() {
     enabled: !!active,
     queryFn: async () => {
       const { data, error } = await supabase
-          .from("academic_programs")
-          .select("id, name, department_id")
-          .eq("college_id", active!.id)
-          // ACADEMIC-ARCHIVE-UI-01: pickers exclude archived records.
-          .eq("is_archived", false)
-          .order("name");
+        .from("academic_programs")
+        .select("id, name, department_id")
+        .eq("college_id", active!.id)
+        // ACADEMIC-ARCHIVE-UI-01: pickers exclude archived records.
+        .eq("is_archived", false)
+        .order("name");
       if (error) throw error;
       return (data ?? []) as Program[];
     },
@@ -142,10 +142,10 @@ function CoursesPage() {
     enabled: !!active,
     queryFn: async () => {
       const { data, error } = await supabase
-          .from("study_plans")
-          .select("id, name, program_id, version")
-          .eq("college_id", active!.id)
-          .order("name");
+        .from("study_plans")
+        .select("id, name, program_id, version")
+        .eq("college_id", active!.id)
+        .order("name");
       if (error) throw error;
       return (data ?? []) as StudyPlan[];
     },
@@ -160,8 +160,8 @@ function CoursesPage() {
           .from("course_programs")
           .select("course_id, program_id")
           .eq("college_id", active!.id)
-            .order("id")
-            .range(from, to),
+          .order("id")
+          .range(from, to),
       );
       return (data ?? []) as { course_id: string; program_id: string }[];
     },
@@ -176,8 +176,8 @@ function CoursesPage() {
           .from("plan_courses")
           .select("id, study_plan_id, course_id")
           .eq("college_id", active!.id)
-            .order("id")
-            .range(from, to),
+          .order("id")
+          .range(from, to),
       );
       return (data ?? []) as { id: string; study_plan_id: string; course_id: string }[];
     },
@@ -192,27 +192,33 @@ function CoursesPage() {
           .from("plan_course_components")
           .select("plan_course_id, component_type")
           .eq("college_id", active!.id)
-            .order("id")
-            .range(from, to),
+          .order("id")
+          .range(from, to),
       );
       return (data ?? []) as { plan_course_id: string; component_type: string }[];
     },
   });
 
-  const { data: rows, isLoading, isError, error: rowsError, refetch } = useQuery({
+  const {
+    data: rows,
+    isLoading,
+    isError,
+    error: rowsError,
+    refetch,
+  } = useQuery({
     queryKey: ["courses", active?.id],
     enabled: !!active,
     queryFn: async () => {
       const data = await readAllRows((from, to) =>
         supabase
-        .from("courses")
-        .select(
-          "id, name, code, department_id, credit_hours, theory_hours, practical_hours, college_id, course_nature, is_shared",
-        )
-        .eq("college_id", active!.id)
-        .order("code")
-            .order("id")
-            .range(from, to),
+          .from("courses")
+          .select(
+            "id, name, code, department_id, credit_hours, theory_hours, practical_hours, college_id, course_nature, is_shared",
+          )
+          .eq("college_id", active!.id)
+          .order("code")
+          .order("id")
+          .range(from, to),
       );
       return (data ?? []) as Course[];
     },
@@ -377,7 +383,12 @@ function CoursesPage() {
   );
 
   const filterDataError =
-    deptsError ?? progsError ?? plansError ?? courseProgramsError ?? planCoursesError ?? planComponentsError;
+    deptsError ??
+    progsError ??
+    plansError ??
+    courseProgramsError ??
+    planCoursesError ??
+    planComponentsError;
   const rowWindow = useRowWindow(filtered);
 
   const creditOptions = useMemo(() => creditHourOptions(rows ?? []), [rows]);
@@ -476,14 +487,16 @@ function CoursesPage() {
                   <div className="grid grid-cols-2 gap-3">
                     <div>
                       <Label htmlFor="course-f1">الرمز</Label>
-                      <Input id="course-f1"
+                      <Input
+                        id="course-f1"
                         value={form.code}
                         onChange={(e) => setForm({ ...form, code: e.target.value })}
                       />
                     </div>
                     <div>
                       <Label htmlFor="course-f2">الاسم</Label>
-                      <Input id="course-f2"
+                      <Input
+                        id="course-f2"
                         value={form.name}
                         onChange={(e) => setForm({ ...form, name: e.target.value })}
                       />
@@ -492,16 +505,23 @@ function CoursesPage() {
                   <div className="grid grid-cols-3 gap-3">
                     <div>
                       <Label htmlFor="course-f3">الساعات المعتمدة</Label>
-                      <Input id="course-f3"
+                      <Input
+                        id="course-f3"
                         type="number"
                         step="0.5"
                         value={form.credit_hours ?? ""}
-                        onChange={(e) => setForm({ ...form, credit_hours: e.target.value === "" ? null : Number(e.target.value) })}
+                        onChange={(e) =>
+                          setForm({
+                            ...form,
+                            credit_hours: e.target.value === "" ? null : Number(e.target.value),
+                          })
+                        }
                       />
                     </div>
                     <div>
                       <Label htmlFor="course-f4">نظري</Label>
-                      <Input id="course-f4"
+                      <Input
+                        id="course-f4"
                         type="number"
                         value={form.theory_hours}
                         onChange={(e) => setForm({ ...form, theory_hours: Number(e.target.value) })}
@@ -509,7 +529,8 @@ function CoursesPage() {
                     </div>
                     <div>
                       <Label htmlFor="course-f5">عملي</Label>
-                      <Input id="course-f5"
+                      <Input
+                        id="course-f5"
                         type="number"
                         value={form.practical_hours}
                         onChange={(e) =>
@@ -556,7 +577,9 @@ function CoursesPage() {
           className={`grid grid-cols-1 gap-3 sm:grid-cols-2 ${showPlanFilter ? "lg:grid-cols-5" : "lg:grid-cols-4"}`}
         >
           <div>
-            <Label htmlFor="course-f7" className="text-xs">القسم</Label>
+            <Label htmlFor="course-f7" className="text-xs">
+              القسم
+            </Label>
             <Select
               value={deptFilter}
               onValueChange={(v) => {
@@ -579,7 +602,9 @@ function CoursesPage() {
             </Select>
           </div>
           <div>
-            <Label htmlFor="course-f8" className="text-xs">البرنامج</Label>
+            <Label htmlFor="course-f8" className="text-xs">
+              البرنامج
+            </Label>
             <Select
               value={progFilter}
               onValueChange={(v) => {
@@ -602,7 +627,9 @@ function CoursesPage() {
           </div>
           {showPlanFilter && (
             <div>
-              <Label htmlFor="course-f9" className="text-xs">الخطة</Label>
+              <Label htmlFor="course-f9" className="text-xs">
+                الخطة
+              </Label>
               <Select value={effectivePlanFilter} onValueChange={setPlanFilter}>
                 <SelectTrigger id="course-f9">
                   <SelectValue />
@@ -619,9 +646,15 @@ function CoursesPage() {
             </div>
           )}
           <div>
-            <Label htmlFor="course-f10" className="text-xs">تكوين المقرر</Label>
+            <Label htmlFor="course-f10" className="text-xs">
+              تكوين المقرر
+            </Label>
             <Select value={compFilter} onValueChange={setCompFilter}>
-              <SelectTrigger id="course-f10" aria-label="تصفية بتكوين المقرر" data-testid="courses-composition">
+              <SelectTrigger
+                id="course-f10"
+                aria-label="تصفية بتكوين المقرر"
+                data-testid="courses-composition"
+              >
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -639,9 +672,15 @@ function CoursesPage() {
             </Select>
           </div>
           <div>
-            <Label htmlFor="course-f11" className="text-xs">الساعات المعتمدة</Label>
+            <Label htmlFor="course-f11" className="text-xs">
+              الساعات المعتمدة
+            </Label>
             <Select value={creditFilter} onValueChange={setCreditFilter}>
-              <SelectTrigger id="course-f11" aria-label="تصفية بالساعات المعتمدة" data-testid="courses-credit">
+              <SelectTrigger
+                id="course-f11"
+                aria-label="تصفية بالساعات المعتمدة"
+                data-testid="courses-credit"
+              >
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -683,7 +722,19 @@ function CoursesPage() {
           className="mb-3"
           title="تعذّر تحميل بيانات الفلاتر (الأقسام أو البرامج أو الخطط)؛ قد تكون نتائج التصفية ناقصة."
           error={filterDataError}
-          onRetry={() => void qc.invalidateQueries({ predicate: (q) => ["departments", "programs", "study-plans", "course-programs", "plan-courses", "plan-course-components"].includes(String(q.queryKey[0])) })}
+          onRetry={() =>
+            void qc.invalidateQueries({
+              predicate: (q) =>
+                [
+                  "departments",
+                  "programs",
+                  "study-plans",
+                  "course-programs",
+                  "plan-courses",
+                  "plan-course-components",
+                ].includes(String(q.queryKey[0])),
+            })
+          }
         />
       )}
 
@@ -691,56 +742,64 @@ function CoursesPage() {
         {isLoading ? (
           <p className="p-6 text-center text-muted-foreground">جارٍ التحميل...</p>
         ) : isError ? (
-          <div className="p-4"><QueryErrorNotice error={rowsError} onRetry={() => void refetch()} /></div>
+          <div className="p-4">
+            <QueryErrorNotice error={rowsError} onRetry={() => void refetch()} />
+          </div>
         ) : !rows || rows.length === 0 ? (
           <p className="p-6 text-center text-muted-foreground">لا توجد مقررات بعد.</p>
         ) : filtered.length === 0 ? (
           <p className="p-6 text-center text-muted-foreground">لا توجد نتائج مطابقة للفلاتر.</p>
         ) : (
           <>
-          <ul className="divide-y divide-border">
-            {rowWindow.visible.map((c) => (
-              <li key={c.id} className="flex items-center justify-between p-4">
-                <div>
-                  <p className="font-semibold">{c.name}</p>
-                  <p className="text-xs text-muted-foreground">
-                    {deptMap.get(c.department_id) ?? "—"} · {c.credit_hours ?? "غير محددة"} س.م · نظري{" "}
-                    {c.theory_hours} / عملي {c.practical_hours}
-                  </p>
-                </div>
-                {canManage && (
-                  <div className="flex gap-1">
-                    <Button size="sm" variant="ghost" aria-label={`تعديل ${c.name}`} onClick={() => startEdit(c)}>
-                      <Pencil className="h-3.5 w-3.5" />
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      aria-label={`حذف ${c.name}`}
-                      onClick={async () => {
-                        const ok = await confirmAction({
-                          title: `حذف المقرر «${c.code} — ${c.name}»؟`,
-                          description: "سيُحذف المقرر من الكتالوج. لا يمكن التراجع عن هذا الإجراء.",
-                          confirmLabel: "حذف",
-                          destructive: true,
-                        });
-                        if (ok) del.mutate(c.id);
-                      }}
-                    >
-                      <Trash2 className="h-3.5 w-3.5" />
-                    </Button>
+            <ul className="divide-y divide-border">
+              {rowWindow.visible.map((c) => (
+                <li key={c.id} className="flex items-center justify-between p-4">
+                  <div>
+                    <p className="font-semibold">{c.name}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {deptMap.get(c.department_id) ?? "—"} · {c.credit_hours ?? "غير محددة"} س.م ·
+                      نظري {c.theory_hours} / عملي {c.practical_hours}
+                    </p>
                   </div>
-                )}
-              </li>
-            ))}
-          </ul>
-          <ShowMoreRows
-            shown={rowWindow.shown}
-            total={rowWindow.total}
-            hasMore={rowWindow.hasMore}
-            onShowMore={rowWindow.showMore}
-            onShowAll={rowWindow.showAll}
-          />
+                  {canManage && (
+                    <div className="flex gap-1">
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        aria-label={`تعديل ${c.name}`}
+                        onClick={() => startEdit(c)}
+                      >
+                        <Pencil className="h-3.5 w-3.5" />
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        aria-label={`حذف ${c.name}`}
+                        onClick={async () => {
+                          const ok = await confirmAction({
+                            title: `حذف المقرر «${c.code} — ${c.name}»؟`,
+                            description:
+                              "سيُحذف المقرر من الكتالوج. لا يمكن التراجع عن هذا الإجراء.",
+                            confirmLabel: "حذف",
+                            destructive: true,
+                          });
+                          if (ok) del.mutate(c.id);
+                        }}
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </Button>
+                    </div>
+                  )}
+                </li>
+              ))}
+            </ul>
+            <ShowMoreRows
+              shown={rowWindow.shown}
+              total={rowWindow.total}
+              hasMore={rowWindow.hasMore}
+              onShowMore={rowWindow.showMore}
+              onShowAll={rowWindow.showAll}
+            />
           </>
         )}
       </Card>

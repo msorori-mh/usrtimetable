@@ -395,7 +395,9 @@ function Stat({ label, v }: { label: string; v: number | string }) {
   return (
     <div className="flex items-center justify-between rounded border p-2">
       <span>{label}</span>
-      <Badge variant={v === 0 ? "secondary" : "destructive"}>{typeof v === "number" ? formatNumber(v) : v}</Badge>
+      <Badge variant={v === 0 ? "secondary" : "destructive"}>
+        {typeof v === "number" ? formatNumber(v) : v}
+      </Badge>
     </div>
   );
 }

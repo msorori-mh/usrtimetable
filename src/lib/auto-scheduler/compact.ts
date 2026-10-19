@@ -32,7 +32,9 @@ import {
  * to the linear scans they replace.
  */
 const idIndexes = new WeakMap<object, { length: number; map: Map<string, unknown> }>();
-export function indexById<T extends { id: string }>(rows: readonly T[] | null | undefined): Map<string, T> {
+export function indexById<T extends { id: string }>(
+  rows: readonly T[] | null | undefined,
+): Map<string, T> {
   if (!rows) return new Map();
   const cached = idIndexes.get(rows);
   if (cached && cached.length === rows.length) return cached.map as Map<string, T>;
@@ -41,7 +43,10 @@ export function indexById<T extends { id: string }>(rows: readonly T[] | null | 
   idIndexes.set(rows, { length: rows.length, map });
   return map;
 }
-const groupIndexes = new WeakMap<object, Map<string, { length: number; map: Map<unknown, unknown[]> }>>();
+const groupIndexes = new WeakMap<
+  object,
+  Map<string, { length: number; map: Map<unknown, unknown[]> }>
+>();
 export function groupRowsBy<T, K>(
   rows: readonly T[] | null | undefined,
   name: string,
@@ -229,12 +234,7 @@ export interface Move {
   room_id: string;
 }
 export type SearchOutcome =
-  | "local_minimum"
-  | "time_limit"
-  | "candidate_limit"
-  | "pass_limit"
-  | "cancelled"
-  | "empty";
+  "local_minimum" | "time_limit" | "candidate_limit" | "pass_limit" | "cancelled" | "empty";
 export interface Proposal {
   qualitySearch?: import("./quality-search.ts").QualitySearchReport;
   applicationMode?: "simultaneous";
@@ -297,7 +297,8 @@ export function context(s: Snapshot) {
     const memoKey = `${id}\u0000${fallbackId}`;
     const memo = groupCohortMemo.get(memoKey);
     if (memo) return memo;
-    const anchored = groupRowsBy(s.sharedLectures, "anchor", (l) => l.anchor_group_id).get(id) ?? EMPTY;
+    const anchored =
+      groupRowsBy(s.sharedLectures, "anchor", (l) => l.anchor_group_id).get(id) ?? EMPTY;
     const value = [
       ...new Set([
         fallbackId,
@@ -535,11 +536,12 @@ export function placementIssue(
     end = minutes(candidate.end_time),
     day = candidate.day_of_week;
   if (
-    (groupRowsBy(s.externalBusy, "instructor", (b) => b.instructor_id).get(candidate.instructor_id) ?? EMPTY).some(
-      (b) =>
-        b.day_of_week === day &&
-        minutes(b.start_time) < end &&
-        start < minutes(b.end_time),
+    (
+      groupRowsBy(s.externalBusy, "instructor", (b) => b.instructor_id).get(
+        candidate.instructor_id,
+      ) ?? EMPTY
+    ).some(
+      (b) => b.day_of_week === day && minutes(b.start_time) < end && start < minutes(b.end_time),
     )
   )
     return "external_instructor_conflict";

@@ -333,23 +333,24 @@ export async function fetchWorkspaceSessions(params: {
   studySystem: WorkspaceStudySystem;
 }): Promise<WorkspaceSessionHydratedRow[]> {
   // H-10: a version can exceed PostgREST's 1000-row cap — read every page.
-  const flat = await readAllRows<WorkspaceSessionFlatRow>((from, to) =>
-    applyStudySystemFilter(
-      supabase
-        .from("schedule_sessions")
-        .select(WORKSPACE_SESSION_FLAT_SELECT)
-        .eq("college_id", params.collegeId)
-        .eq("schedule_version_id", params.versionId)
-        .eq("replaced_by_split", false),
-      params.studySystem,
-    )
-      .order("day_of_week")
-      .order("start_time")
-      .order("id")
-      .range(from, to) as unknown as PromiseLike<{
-      data: WorkspaceSessionFlatRow[] | null;
-      error: unknown;
-    }>,
+  const flat = await readAllRows<WorkspaceSessionFlatRow>(
+    (from, to) =>
+      applyStudySystemFilter(
+        supabase
+          .from("schedule_sessions")
+          .select(WORKSPACE_SESSION_FLAT_SELECT)
+          .eq("college_id", params.collegeId)
+          .eq("schedule_version_id", params.versionId)
+          .eq("replaced_by_split", false),
+        params.studySystem,
+      )
+        .order("day_of_week")
+        .order("start_time")
+        .order("id")
+        .range(from, to) as unknown as PromiseLike<{
+        data: WorkspaceSessionFlatRow[] | null;
+        error: unknown;
+      }>,
   );
   const hydrated = await applyVersionGroupFacts(
     await hydrateWorkspaceSessions(flat),
