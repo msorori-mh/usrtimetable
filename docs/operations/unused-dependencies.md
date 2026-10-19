@@ -1,5 +1,9 @@
 # Unused npm dependencies after M-18 (unused shadcn/ui components removed)
 
+> **Done (2026-10-19):** the 19 packages below were removed from `package.json` and `bun.lock`
+> was regenerated on the public registry (fresh install, frozen install, build, `tsc` and
+> `bun audit` all passed in CI). This page is kept as the record of why they went.
+
 Audit finding M-18 removed shadcn/ui wrapper files under `src/components/ui/` that had no
 importer anywhere in `src/` or `tests/`:
 
