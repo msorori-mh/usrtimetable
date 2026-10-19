@@ -24,7 +24,9 @@ for path in sorted(Path("repeated-header-proof").glob("*.pdf")):
         assert page.get_images(), f"{path}:{number}: missing university logo"
         header_rects = page.search_for("PRINT_HEADER_PROOF_2026")
         row_ids = ["ROW" + re.sub(r"\s", "", match) for match in re.findall(r"ROW\s*(\d(?:\s*\d){2})", text)]
-        row_rects = [fitz.Rect(word[:4]) for word in page.get_text("words") if word[4].startswith("ROW")]
+        # A row id can be glued to the preceding Arabic cell text in extraction ("…الأولROW00"),
+        # so match it anywhere in the word rather than only at its start.
+        row_rects = [fitz.Rect(word[:4]) for word in page.get_text("words") if "ROW" in word[4]]
         if path.name.startswith("university") and not row_rects:
             assert number == len(doc) and "BUSINESS_V1" in text, f"{path}: unexpected blank page"
             continue

@@ -116,7 +116,7 @@ interface NewFlowSignals {
 async function readAllOrThrow<T>(
   prefix: string,
   relation: string,
-  page: (from: number, to: number) => PromiseLike<{ data: T[] | null; error: unknown }>,
+  page: (from: number, to: number) => PromiseLike<{ data: T[] | readonly unknown[] | null; error: unknown }>,
 ): Promise<T[]> {
   try {
     return await readAllRows<T>(page);

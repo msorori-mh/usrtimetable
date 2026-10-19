@@ -18,6 +18,18 @@ import {
   roomHourEquivalents,
   type LeadershipCapacityCollege,
 } from "../src/lib/reports/leadership-room-capacity";
+import { setEducationSourcePublications } from "../src/lib/schedule-versions/education-publication";
+
+// Education source publication markers are data (M-11), not ids in code: seed the
+// fixture version used below as a sealed source publication.
+setEducationSourcePublications([
+  {
+    version_id: "7430bad7-2de7-5c90-9368-b214a199d6c3",
+    college_id: "education",
+    term_id: "93705393-609d-4605-ae94-9572cd8b2090",
+    role: "source",
+  },
+]);
 
 const college = (id: string, patch: Partial<LeadershipCollege> = {}): LeadershipCollege => ({
   college_id: id,
