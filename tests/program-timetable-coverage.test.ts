@@ -1,4 +1,5 @@
 import { describe, expect, it } from "bun:test";
+import { readFileSync } from "node:fs";
 import {
   buildDeliveryGroupCoverage,
   coverageExportRows,
@@ -97,10 +98,10 @@ describe("delivery group coverage", () => {
 });
 
 describe("report route wiring", () => {
-  const route = require("node:fs").readFileSync(
+  const route = readFileSync(
     "src/routes/_authenticated/reports.program-level-timetable.tsx",
     "utf8",
-  ) as string;
+  );
 
   it("builds the delivery group filter from the catalogue, not sessions", () => {
     expect(route).toContain("fetchCohortDeliveryGroupCatalog");
