@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any -- untyped dynamic tables, as in the original data-cleanup page */
 import { supabase } from "@/integrations/supabase/client";
 import { chunkIds, readAllRows } from "@/lib/supabase/read-all";
 import { firstQueryError } from "@/lib/data-cleanup-bulk";

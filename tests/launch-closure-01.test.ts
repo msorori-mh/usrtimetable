@@ -191,8 +191,8 @@ describe("LAUNCH-CLOSURE-01 gap 1 — write path keeps tenant scope and honest r
 
   test("a failed save refetches instead of leaving stale UI", () => {
     // L-10: the cryptic "iu"/"ru" keys were renamed to descriptive ones.
-    expect(ui).toContain(
-      'qc.invalidateQueries({ queryKey: ["instructor-availability-windows", active?.id, instructorId] })',
+    expect(ui).toMatch(
+      /qc\.invalidateQueries\(\{\s*queryKey: \["instructor-availability-windows", active\?\.id, instructorId\],?\s*\}\)/,
     );
     expect(ui).toContain(
       'qc.invalidateQueries({ queryKey: ["room-unavailability", active?.id, roomId] })',
