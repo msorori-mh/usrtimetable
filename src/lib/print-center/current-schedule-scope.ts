@@ -20,3 +20,30 @@ export function filterCurrentScheduleScope(
     return true;
   });
 }
+
+/**
+ * Courses taught inside the chosen department/program/level, so the course picker of a
+ * level print lists only that level's courses. Returns null when no scope is chosen
+ * (the picker then lists every course of the term, across all departments).
+ */
+export function courseIdsInScope(
+  sessions: PrintSessionLike[],
+  programs: { id: string; department_id: string | null }[],
+  departmentId: string,
+  programId: string,
+  levelId = "all",
+): Set<string> | null {
+  if (departmentId === "all" && programId === "all" && levelId === "all") return null;
+  const ids = new Set<string>();
+  for (const session of filterCurrentScheduleScope(
+    sessions,
+    programs,
+    departmentId,
+    programId,
+    levelId,
+  )) {
+    const courseId = session.course_offerings?.course_id;
+    if (courseId) ids.add(courseId);
+  }
+  return ids;
+}

@@ -86,3 +86,20 @@ test("different study-plan pathways under one program are retained without mutat
   ]);
   assert.deepEqual(rows, before);
 });
+
+test("course picker of a level print lists only that level's courses", async () => {
+  const { courseIdsInScope } = await import("../src/lib/print-center/current-schedule-scope.ts");
+  const rows = [
+    session("l1a", "cs", "general", "l1", "math"),
+    session("l1b", "cs", "general", "l1", "physics"),
+    session("l2a", "cs", "general", "l2", "ai"),
+    session("it1", "it", "general", "l1", "networks"),
+  ];
+  assert.equal(courseIdsInScope(rows, programs, "all", "all", "all"), null);
+  const scoped = (department, program, level) =>
+    [...courseIdsInScope(rows, programs, department, program, level)].sort();
+  assert.deepEqual(scoped("all", "cs", "l1"), ["math", "physics"]);
+  assert.deepEqual(scoped("all", "cs", "all"), ["ai", "math", "physics"]);
+  assert.deepEqual(scoped("computing", "all", "all"), ["ai", "math", "networks", "physics"]);
+  assert.deepEqual(scoped("arts", "all", "all"), []);
+});
