@@ -7,7 +7,7 @@ import base64
 import gzip
 import sys
 
-CHUNK = 12000
+CHUNK = 4000
 path, shard, part = sys.argv[1], int(sys.argv[2]), int(sys.argv[3])
 data = base64.b64encode(gzip.compress(open(path, "rb").read(), 9)).decode()
 chunks = [data[i:i + CHUNK] for i in range(0, len(data), CHUNK)] or ["-"]
