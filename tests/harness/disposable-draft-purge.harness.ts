@@ -107,9 +107,12 @@ assert(
     lifecycle.includes('rpc("purge_disposable_draft_schedule_version"'),
   "client purge helper calls official RPC",
 );
+// M-11: protection is data (schedule_versions.protected), not a hard-coded version id.
 assert(
-  purgeHelper.includes("835e50fe-3ad2-4232-8c15-0f403c668a7f"),
-  "client protects accepted version id",
+  purgeHelper.includes("input.protectedVersion === true") &&
+    purgeHelper.includes("PURGE_PROTECTED_VERSION") &&
+    !purgeHelper.includes("835e50fe-3ad2-4232-8c15-0f403c668a7f"),
+  "client refuses protected versions by flag, without a literal id",
 );
 assert(
   scheduleVersionsUi.includes("canMarkDisposable") &&

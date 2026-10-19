@@ -18,12 +18,16 @@ for (const relation of [
   "room_types",
 ]) {
   assert.ok(
-    readiness.includes(`["${relation}",`),
+    // H-10: each relation is read through readAllOrThrow(P, "<relation>", …) (paginated).
+    readiness.includes(`["${relation}",`) ||
+      new RegExp(`\\(\\s*P,\\s*"${relation}",`).test(readiness),
     `${relation} must be included in the fail-closed query result set`,
   );
 }
 assert.ok(
-  readiness.includes("READINESS_QUERY_FAILED[${relation}]"),
+  readiness.includes("READINESS_QUERY_FAILED[${relation}]") ||
+    (readiness.includes('const P = "READINESS_QUERY_FAILED"') &&
+      readiness.includes("throw new Error(`${prefix}[${relation}]: ${message}`)")),
   "base query failures preserve the failing relation and throw",
 );
 assert.ok(

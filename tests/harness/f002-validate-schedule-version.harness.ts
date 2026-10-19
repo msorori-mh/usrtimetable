@@ -39,6 +39,8 @@ function assert(cond: boolean, msg: string) {
 
 const tests: Array<{ name: string; run: () => void }> = [];
 
+// Pre-Q-2 wiring check, kept for reference.
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 function assertExceptionWiring(src: string) {
   const source = ts.createSourceFile("validator.ts", src, ts.ScriptTarget.Latest, true);
   const fn = source.statements.find(
@@ -90,41 +92,26 @@ const validatorSource = readFileSync(
   path.join(root, "src/lib/conflict-engine/validator.ts"),
   "utf8",
 );
+// Q-2: the version-wide result (conflicts, approved exceptions, counts) is computed on the
+// server (public.validate_schedule_version); the client must not re-apply exceptions to it.
 tests.push({
-  name: "validateScheduleVersion awaits scoped exceptions before applying them regardless of formatting",
-  run: () => assertExceptionWiring(validatorSource),
+  name: "validateScheduleVersion uses the server-computed result, exceptions included",
+  run: () => {
+    const source = ts.createSourceFile("validator.ts", validatorSource, ts.ScriptTarget.Latest, true);
+    const fn = source.statements.find(
+      (node): node is ts.FunctionDeclaration =>
+        ts.isFunctionDeclaration(node) && node.name?.text === "validateScheduleVersion",
+    );
+    assert(!!fn?.body, "validateScheduleVersion must exist");
+    const body = fn!.body!.getText(source);
+    assert(
+      /await fetchServerVersionValidation\(\s*scheduleVersionId\s*\)/.test(body),
+      "must await the server validation for the same version",
+    );
+    assert(body.includes("server.approvedCount") && body.includes("server.hardCount"), "counts come from the server");
+    assert(!body.includes("applyApprovedExceptions"), "must not re-apply exceptions on the client");
+  },
 });
-for (const [name, mutated] of [
-  [
-    "missing loaded argument",
-    validatorSource.replace(
-      /(applyApprovedExceptions\(\s*conflicts,\s*scheduleVersionId,\s*)approvedExceptions,?(\s*\))/,
-      "$1$2",
-    ),
-  ],
-  [
-    "unawaited loader",
-    validatorSource.replace("await loadApprovedExceptions", "loadApprovedExceptions"),
-  ],
-  [
-    "missing college scope",
-    validatorSource.replace(/(loadApprovedExceptions\(\{\s*scheduleVersionId,\s*)collegeId,/, "$1"),
-  ],
-]) {
-  tests.push({
-    name: `wiring guard rejects ${name}`,
-    run: () => {
-      assert(mutated !== validatorSource, "mutation must change the real source");
-      let rejected = false;
-      try {
-        assertExceptionWiring(mutated);
-      } catch {
-        rejected = true;
-      }
-      assert(rejected, `guard must reject ${name}`);
-    },
-  });
-}
 
 tests.push({
   name: "loadApprovedExceptions throws on query error (no silent empty fallback)",

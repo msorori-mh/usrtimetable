@@ -167,8 +167,9 @@ function run() {
       hasActiveCollege: true,
       versionId: "v1",
       versionStatus: "approved",
-    }) === true,
-    "manager + approved can enter",
+    }) === false,
+    // H-8 (decision 2026-10-15): an approved version is locked; changes go to a new draft.
+    "manager + approved is locked",
   );
 
   // 4–5. published / archived not editable

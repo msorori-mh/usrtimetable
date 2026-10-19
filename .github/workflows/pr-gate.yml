@@ -41,7 +41,9 @@ jobs:
       - name: TypeScript
         run: bunx tsc --noEmit
       - name: ESLint (whole repository)
-        run: bunx eslint .
+        # Lint rules for the whole repository; formatting (prettier) is enforced on changed
+        # files by runtime-gates, so legacy files are not reformatted wholesale.
+        run: bunx eslint . --rule 'prettier/prettier: off'
       - name: Every new migration ships a rollback (supabase/rollbacks/<name>.down.sql)
         run: node scripts/check-rollbacks.mjs
       - name: Logical (RTL-safe) direction classes only
