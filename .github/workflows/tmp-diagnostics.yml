@@ -1,0 +1,43 @@
+name: tmp-diagnostics
+# Temporary (read-only token): regenerates bun.lock after removing unused packages,
+# runs install/build/audit, and emits the lockfile as annotations.
+on:
+  push:
+    branches: [audit-remediation]
+    paths: [".github/workflows/tmp-diagnostics.yml", ".github/scripts/tmp-emit-annotations.py"]
+permissions:
+  contents: read
+jobs:
+  diag:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    strategy:
+      matrix:
+        shard: [0]
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
+        with:
+          bun-version: "1.4.2"
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: "24"
+      - name: Build report
+        shell: bash
+        run: |
+          set +e
+          OUT="$RUNNER_TEMP/out.txt"
+          bash scripts/exit-lovable/regenerate-lockfile.sh > "$RUNNER_TEMP/regen.log" 2>&1; R=$?
+          bunx tsc --noEmit > "$RUNNER_TEMP/tsc.log" 2>&1; T=$?
+          bun audit --audit-level=high > "$RUNNER_TEMP/audit.log" 2>&1; A=$?
+          {
+            echo "regen=$R tsc=$T audit=$A"
+            tail -c 2500 "$RUNNER_TEMP/regen.log"; tail -c 3000 "$RUNNER_TEMP/tsc.log"; tail -c 1500 "$RUNNER_TEMP/audit.log"
+            echo "=====SHA====="; sha256sum bun.lock | cut -d' ' -f1
+            echo "=====BUNLOCK====="; cat bun.lock
+          } > "$OUT"
+          exit 0
+      - name: Emit part 1
+        run: python3 .github/scripts/tmp-emit-annotations.py "$RUNNER_TEMP/out.txt" ${{ matrix.shard }} 1
+      - name: Emit part 2
+        run: python3 .github/scripts/tmp-emit-annotations.py "$RUNNER_TEMP/out.txt" ${{ matrix.shard }} 2
