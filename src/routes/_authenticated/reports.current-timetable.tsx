@@ -35,7 +35,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { filterCurrentScheduleScope } from "@/lib/print-center/current-schedule-scope";
+import {
+  courseIdsInScope,
+  filterCurrentScheduleScope,
+} from "@/lib/print-center/current-schedule-scope";
 import { normalizedMatchKey } from "@/lib/excel-import/arabic-normalize";
 import { STUDY_SYSTEM_LABELS } from "@/lib/reports/filters";
 import { compactAcademicLevelLabel } from "@/lib/reports/formatters";
@@ -155,13 +158,6 @@ function Page() {
   const availableLevels = (catalog?.levels ?? []).filter(
     (level) => programId !== "all" && level.program_id === programId,
   );
-  const normalizedCourseSearch = normalizedMatchKey(courseSearch);
-  const availableCourses = (catalog?.courses ?? []).filter((course) => {
-    if (!normalizedCourseSearch) return true;
-    return normalizedMatchKey(`${course.code ?? ""} ${course.name ?? ""}`).includes(
-      normalizedCourseSearch,
-    );
-  });
   const selectedDepartment = catalog?.departments.find((d) => d.id === departmentId);
   const selectedProgram = availablePrograms.find((p) => p.id === programId);
   const selectedLevel = availableLevels.find((level) => level.id === levelId);
@@ -218,6 +214,26 @@ function Page() {
     },
   });
 
+  const normalizedCourseSearch = normalizedMatchKey(courseSearch);
+  // A chosen department/program/level narrows the course picker to the courses taught there.
+  const scopedCourseIds = useMemo(
+    () =>
+      courseIdsInScope(
+        bundle?.sessions ?? EMPTY_SESSIONS,
+        catalog?.programs ?? [],
+        departmentId,
+        programId,
+        levelId,
+      ),
+    [bundle?.sessions, catalog?.programs, departmentId, programId, levelId],
+  );
+  const availableCourses = (catalog?.courses ?? []).filter((course) => {
+    if (scopedCourseIds && !scopedCourseIds.has(course.id)) return false;
+    if (!normalizedCourseSearch) return true;
+    return normalizedMatchKey(`${course.code ?? ""} ${course.name ?? ""}`).includes(
+      normalizedCourseSearch,
+    );
+  });
   const coverage = useQuery({
     queryKey: ["current-timetable-coverage", ctx.collegeId, ctx.versionId],
     enabled: !!ctx.collegeId && !!ctx.versionId,
@@ -441,7 +457,9 @@ function Page() {
                 </Select>
               </ReportFilterField>
               <ReportFilterField
-                label="المادة — جميع أقسام الكلية"
+                label={
+                  scopedCourseIds ? "المادة — ضمن النطاق المختار" : "المادة — جميع أقسام الكلية"
+                }
                 htmlFor="current-print-course-search"
               >
                 <div className="space-y-2">
@@ -458,14 +476,7 @@ function Page() {
                   />
                   <Select
                     value={courseId}
-                    onValueChange={(value) => {
-                      setCourseId(value);
-                      if (value !== "all") {
-                        setDepartmentId("all");
-                        setProgramId("all");
-                        setLevelId("all");
-                      }
-                    }}
+                    onValueChange={(value) => setCourseId(value)}
                     disabled={catalogLoading || !!catalogError}
                   >
                     <SelectTrigger id="current-print-course" aria-label="المادة">
