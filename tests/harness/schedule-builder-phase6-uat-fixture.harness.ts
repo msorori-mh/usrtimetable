@@ -125,7 +125,10 @@ function run() {
   assert(harden.includes("BEGIN;") && harden.includes("COMMIT;"), "harden txn");
 
   const migrationOrder = ["20260715200200", "20260715200300", "20260715200400"];
-  assert(migrationOrder.every((stamp, i) => i === 0 || migrationOrder[i - 1] < stamp), "order");
+  assert(
+    migrationOrder.every((stamp, i) => i === 0 || migrationOrder[i - 1] < stamp),
+    "order",
+  );
 
   console.log("schedule-builder-phase6-uat-fixture.harness.ts: PASS");
 }
