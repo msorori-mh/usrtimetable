@@ -24,6 +24,9 @@ import {
   type PayFilter,
   type PayData,
 } from "@/lib/reports/teaching-pay";
+import { formatNumber } from "@/lib/format";
+import { userErrorMessage } from "@/lib/user-error";
+import { confirmAction } from "@/components/confirm-dialog";
 
 type Api = {
   public: {
@@ -144,7 +147,7 @@ function PayWorkspace({
   const totals = payTotals(entries);
   const totalLabel =
     Object.entries(totals)
-      .map(([currency, n]) => `${n.toLocaleString("ar")} ${currency}`)
+      .map(([currency, n]) => `${formatNumber(n)} ${currency}`)
       .join(" · ") || "لا توجد مستحقات معتمدة";
   const termName = data?.terms.find((t) => t.id === term)?.name ?? "لم يحدد الفصل";
   const programs = [
@@ -207,7 +210,7 @@ function PayWorkspace({
       await query.refetch();
       return true;
     } catch (error) {
-      setMutationError(error instanceof Error ? error.message : "تعذر الحفظ");
+      setMutationError(userErrorMessage(error, "تعذر الحفظ"));
       return false;
     } finally {
       setBusy(false);
@@ -536,7 +539,7 @@ function PayWorkspace({
                       </p>
                       <p className="text-sm">
                         {rate
-                          ? `السعر النافذ: ${rate.hourly_rate} ${rate.currency} · المستحق: ${(Math.round(e.payable_hours * rate.hourly_rate * 100) / 100).toLocaleString("ar")} ${rate.currency}`
+                          ? `السعر النافذ: ${rate.hourly_rate} ${rate.currency} · المستحق: ${formatNumber(Math.round(e.payable_hours * rate.hourly_rate * 100) / 100)} ${rate.currency}`
                           : "لا يوجد سعر نافذ مطابق؛ يلزم استكمال الأسعار قبل الاعتماد."}
                       </p>
                       <div className="flex flex-wrap gap-2">
@@ -556,9 +559,17 @@ function PayWorkspace({
                         </Button>
                         <form
                           className="flex gap-2"
-                          onSubmit={(event) => {
+                          onSubmit={async (event) => {
                             event.preventDefault();
                             const fd = new FormData(event.currentTarget);
+                            // M-15: voiding a draft is irreversible — ask first.
+                            const ok = await confirmAction({
+                              title: "إلغاء مسودة التنفيذ؟",
+                              description: `سيُلغى سجل ${e.instructor_name} بتاريخ ${e.work_date} نهائيًا مع حفظ أثره، ولا يمكن اعتماده بعد ذلك.`,
+                              confirmLabel: "إلغاء المسودة",
+                              destructive: true,
+                            });
+                            if (!ok) return;
                             void mutate("void", {
                               id: e.id,
                               reason: fd.get("reason"),
@@ -584,7 +595,7 @@ function PayWorkspace({
                           aria-label="تأكيد الاعتماد المالي"
                         >
                           <p>
-                            اعتماد {review.amount.toLocaleString("ar")} {review.currency} وفق المرجع{" "}
+                            اعتماد {formatNumber(review.amount)} {review.currency} وفق المرجع{" "}
                             {e.approval_ref}؟ سيُقفل السجل والسعر بعد الاعتماد.
                           </p>
                           <Button

@@ -487,7 +487,9 @@ for (const p of parts) {
     overs.push(`${p.name}:data_apply`);
   }
   rows.push(
-    [p.name, order++, buf.length, sha, p.creates, `"${p.stop}"`, "NO", p.definer, p.client].join(","),
+    [p.name, order++, buf.length, sha, p.creates, `"${p.stop}"`, "NO", p.definer, p.client].join(
+      ",",
+    ),
   );
   console.log(String(buf.length).padStart(4), p.name);
 }
@@ -502,7 +504,7 @@ const reportDir = path.join(
   root,
   "implementation-reports/phase-6-conflict-rpc-tooling-compatible-refactor-01",
 );
-const exp = path.join(reportDir, "lovable-compact-migration-exports");
+const exp = path.join(reportDir, "compact-migration-exports");
 fs.mkdirSync(exp, { recursive: true });
 fs.writeFileSync(path.join(reportDir, "compact-migration-manifest.csv"), rows.join("\n") + "\n");
 for (const p of parts) {

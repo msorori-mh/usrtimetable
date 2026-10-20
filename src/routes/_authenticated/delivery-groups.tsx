@@ -2,7 +2,7 @@ import { SharedLecturesPanel } from "@/components/shared-lectures-panel";
 import { fetchSharedLectures } from "@/lib/academic-delivery/shared-lectures";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { UsersRound } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useActiveCollege } from "@/hooks/use-colleges";
@@ -16,6 +16,11 @@ import {
   splitDeliveryGroupsByObsolescence,
   visibleDeliveryGroups,
 } from "@/lib/academic-delivery/delivery-group-visibility";
+import { QueryErrorNotice } from "@/components/app-states/query-error-notice";
+import { readAllRows } from "@/lib/supabase/read-all";
+import { useRowWindow } from "@/hooks/use-row-window";
+import { ShowMoreRows } from "@/components/app-states/show-more-rows";
+import { formatNumber } from "@/lib/format";
 
 export const Route = createFileRoute("/_authenticated/delivery-groups")({
   head: () => ({ meta: [{ title: "مجموعات المحاضرات والمعامل" }] }),
@@ -45,20 +50,36 @@ function DeliveryGroupsPage() {
   const { active } = useActiveCollege();
   const [showObsolete, setShowObsolete] = useState(false);
 
-  const { data: rows, isLoading } = useQuery({
+  const {
+    data: rows,
+    isLoading,
+    isError,
+    error: rowsError,
+    refetch,
+  } = useQuery({
     queryKey: ["delivery-groups", active?.id, "all"],
     enabled: !!active,
     queryFn: async () => {
-      const full = await supabase
-        .from("delivery_groups")
-        .select(
-          "id, group_code, group_number, expected_students, capacity_limit, is_obsolete, excluded_from_standard_workload, cohort_id, component_id, plan_course_components!dg_component_college_fkey(component_type)",
-        )
-        .eq("college_id", active!.id)
-        .order("group_code", { ascending: true });
-      if (!full.error) {
+      let full: Row[] | null = null;
+      try {
+        full = (await readAllRows((from, to) =>
+          supabase
+            .from("delivery_groups")
+            .select(
+              "id, group_code, group_number, expected_students, capacity_limit, is_obsolete, excluded_from_standard_workload, cohort_id, component_id, plan_course_components!dg_component_college_fkey(component_type)",
+            )
+            .eq("college_id", active!.id)
+            .order("group_code", { ascending: true })
+            .order("id")
+            .range(from, to),
+        )) as unknown as Row[];
+      } catch {
+        // Older schema without the obsolescence/workload columns: fall back below.
+        full = null;
+      }
+      if (full) {
         const shared = await fetchSharedLectures(active!.id);
-        return ((full.data ?? []) as unknown as Row[])
+        return full
           .filter((g) => !shared.some((l) => l.member_group_id === g.id))
           .map((g) => {
             const link = shared.find((l) => l.anchor_group_id === g.id);
@@ -71,29 +92,35 @@ function DeliveryGroupsPage() {
               : g;
           });
       }
-      const { data, error } = await supabase
-        .from("delivery_groups")
-        .select(
-          "id, group_code, expected_students, capacity_limit, cohort_id, component_id, plan_course_components!dg_component_college_fkey(component_type)",
-        )
-        .eq("college_id", active!.id)
-        .order("group_code", { ascending: true });
-      if (error) throw error;
-      return (data ?? []) as unknown as Row[];
+      const data = await readAllRows((from, to) =>
+        supabase
+          .from("delivery_groups")
+          .select(
+            "id, group_code, expected_students, capacity_limit, cohort_id, component_id, plan_course_components!dg_component_college_fkey(component_type)",
+          )
+          .eq("college_id", active!.id)
+          .order("group_code", { ascending: true })
+          .order("id")
+          .range(from, to),
+      );
+      return data as unknown as Row[];
     },
   });
 
-  const { data: assignmentRows } = useQuery({
+  const { data: assignmentRows, error: assignmentsError } = useQuery({
     queryKey: ["delivery-group-assignments-all", active?.id],
     enabled: !!active && (rows?.length ?? 0) > 0,
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("teaching_assignments")
-        .select("delivery_group_id")
-        .eq("college_id", active!.id)
-        .not("delivery_group_id", "is", null);
-      if (error) throw error;
-      const set = new Set((data ?? []).map((r) => r.delivery_group_id).filter(Boolean));
+      const data = await readAllRows<{ id: string; delivery_group_id: string | null }>((from, to) =>
+        supabase
+          .from("teaching_assignments")
+          .select("id, delivery_group_id")
+          .eq("college_id", active!.id)
+          .not("delivery_group_id", "is", null)
+          .order("id")
+          .range(from, to),
+      );
+      const set = new Set(data.map((r) => r.delivery_group_id).filter(Boolean));
       return set;
     },
   });
@@ -101,7 +128,11 @@ function DeliveryGroupsPage() {
   const allRows = rows ?? [];
   const { operational: operationalRows, obsolete } = splitDeliveryGroupsByObsolescence(allRows);
   const obsoleteCount = obsolete.length;
-  const visibleRows = visibleDeliveryGroups(allRows, showObsolete);
+  const visibleRows = useMemo(
+    () => visibleDeliveryGroups(allRows, showObsolete),
+    [allRows, showObsolete],
+  );
+  const rowWindow = useRowWindow(visibleRows);
 
   return (
     <div className="mx-auto max-w-5xl">
@@ -153,11 +184,13 @@ function DeliveryGroupsPage() {
 
       <div className="mb-4 flex flex-wrap items-center justify-between gap-2 text-sm">
         <p className="text-muted-foreground">
-          المجموعات النشطة: <span className="font-semibold">{operationalRows.length}</span>
+          المجموعات النشطة:{" "}
+          <span className="font-semibold">{formatNumber(operationalRows.length)}</span>
           {obsoleteCount > 0 ? (
             <>
               {" "}
-              — التاريخية/الملغاة: <span className="font-semibold">{obsoleteCount}</span>
+              — التاريخية/الملغاة:{" "}
+              <span className="font-semibold">{formatNumber(obsoleteCount)}</span>
             </>
           ) : null}
         </p>
@@ -191,6 +224,8 @@ function DeliveryGroupsPage() {
         <p className="text-sm text-muted-foreground">اختر كلية.</p>
       ) : isLoading ? (
         <p className="text-sm text-muted-foreground">جاري التحميل…</p>
+      ) : isError ? (
+        <QueryErrorNotice error={rowsError} onRetry={() => void refetch()} />
       ) : visibleRows.length === 0 ? (
         <Card className="border-dashed p-6 text-sm text-muted-foreground">
           {allRows.length > 0
@@ -199,20 +234,27 @@ function DeliveryGroupsPage() {
         </Card>
       ) : (
         <Card className="overflow-hidden">
+          {assignmentsError && (
+            <QueryErrorNotice
+              className="m-3"
+              title="تعذّر تحميل حالة الإسناد؛ عمود «حالة الإسناد» غير موثوق حتى يُعاد التحميل."
+              error={assignmentsError}
+            />
+          )}
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead className="bg-muted/40 text-muted-foreground">
                 <tr>
-                  <th className="px-3 py-2 text-right font-medium">نوع المحاضرة</th>
-                  <th className="px-3 py-2 text-right font-medium">رقم المجموعة</th>
-                  <th className="px-3 py-2 text-right font-medium">طلاب متوقع</th>
-                  <th className="px-3 py-2 text-right font-medium">السعة</th>
-                  <th className="px-3 py-2 text-right font-medium">الحالة</th>
-                  <th className="px-3 py-2 text-right font-medium">حالة الإسناد</th>
+                  <th className="px-3 py-2 text-start font-medium">نوع المحاضرة</th>
+                  <th className="px-3 py-2 text-start font-medium">رقم المجموعة</th>
+                  <th className="px-3 py-2 text-start font-medium">طلاب متوقع</th>
+                  <th className="px-3 py-2 text-start font-medium">السعة</th>
+                  <th className="px-3 py-2 text-start font-medium">الحالة</th>
+                  <th className="px-3 py-2 text-start font-medium">حالة الإسناد</th>
                 </tr>
               </thead>
               <tbody>
-                {visibleRows.map((g) => (
+                {rowWindow.visible.map((g) => (
                   <tr
                     key={g.id}
                     className={`border-t ${g.is_obsolete ? "bg-muted/30 text-muted-foreground" : ""}`}
@@ -226,12 +268,12 @@ function DeliveryGroupsPage() {
                     <td className="px-3 py-2" dir="ltr">
                       {g.group_code}
                     </td>
-                    <td className="px-3 py-2">{g.expected_students}</td>
+                    <td className="px-3 py-2">{formatNumber(g.expected_students)}</td>
                     <td className="px-3 py-2">{g.capacity_limit ?? "—"}</td>
                     <td className="px-3 py-2">
                       {g.is_obsolete ? (
                         <span className="text-xs font-medium text-amber-700 dark:text-amber-400">
-                          obsolete
+                          تاريخية/ملغاة
                         </span>
                       ) : (
                         "نشطة"
@@ -240,6 +282,8 @@ function DeliveryGroupsPage() {
                     <td className="px-3 py-2">
                       {g.is_obsolete ? (
                         <span className="text-xs text-muted-foreground">غير قابلة للإسناد</span>
+                      ) : assignmentsError ? (
+                        "—"
                       ) : assignmentRows?.has(g.id) ? (
                         "مسند"
                       ) : (
@@ -251,6 +295,13 @@ function DeliveryGroupsPage() {
               </tbody>
             </table>
           </div>
+          <ShowMoreRows
+            shown={rowWindow.shown}
+            total={rowWindow.total}
+            hasMore={rowWindow.hasMore}
+            onShowMore={rowWindow.showMore}
+            onShowAll={rowWindow.showAll}
+          />
         </Card>
       )}
     </div>

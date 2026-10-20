@@ -16,6 +16,10 @@ import {
   downloadHeadcountWorkbook,
   readHeadcountWorkbook,
 } from "@/lib/scheduling-headcount/import-workbook";
+import { userErrorMessage } from "@/lib/user-error";
+import { confirmAction } from "@/components/confirm-dialog";
+import { formatNumber } from "@/lib/format";
+import { withStableKeys } from "@/hooks/stable-keys";
 
 export function HeadcountImportWorkspace({ onCommitted }: { onCommitted?: () => void }) {
   const { active } = useActiveCollege();
@@ -62,8 +66,7 @@ function HeadcountImportForm({
     try {
       await task();
     } catch (error) {
-      if (alive.current)
-        toast.error(error instanceof Error ? error.message : "تعذر تنفيذ العملية.");
+      if (alive.current) toast.error(userErrorMessage(error, "تعذر تنفيذ العملية."));
     } finally {
       running.current = false;
       if (alive.current) setBusy(false);
@@ -156,6 +159,7 @@ function HeadcountImportForm({
           <input
             type="file"
             accept=".xlsx"
+            aria-label="ملف أعداد الطلاب (XLSX)"
             className="block w-full rounded border p-2"
             onChange={(e) => {
               setFile(e.target.files?.[0] ?? null);
@@ -196,15 +200,18 @@ function HeadcountImportForm({
         <div className="space-y-3" aria-live="polite">
           <p className="text-sm text-muted-foreground">{sheetInfo}</p>
           <p className="text-sm">
-            الصفوف: {preview.total} · الصالحة: {preview.rows.length} · الأخطاء:{" "}
-            {preview.errors.length} · مجموع أعداد الجدولة الصالحة:{" "}
-            {preview.rows.reduce((sum, r) => sum + r.scheduling_headcount, 0)}
+            الصفوف: {formatNumber(preview.total)} · الصالحة: {formatNumber(preview.rows.length)} ·
+            الأخطاء: {formatNumber(preview.errors.length)} · مجموع أعداد الجدولة الصالحة:{" "}
+            {formatNumber(preview.rows.reduce((sum, r) => sum + r.scheduling_headcount, 0))}
           </p>
           {preview.errors.length > 0 && (
             <div className="max-h-64 overflow-auto rounded border border-destructive p-3 text-sm text-destructive">
               <p className="mb-2 font-semibold">صحح جميع الأخطاء ثم أعد الفحص. لم يُحفظ أي صف.</p>
-              {preview.errors.map((e, i) => (
-                <p key={i}>
+              {withStableKeys<HeadcountPreview["errors"][number]>(
+                preview.errors,
+                (e) => `${e.row}:${e.column}:${e.message}`,
+              ).map(({ key, item: e }) => (
+                <p key={key}>
                   الصف {e.row} · {e.column}: {e.message}
                 </p>
               ))}
@@ -224,7 +231,7 @@ function HeadcountImportForm({
                       "المصدر",
                       "ملاحظات",
                     ].map((h) => (
-                      <th key={h} className="p-2 text-right">
+                      <th key={h} className="p-2 text-start">
                         {h}
                       </th>
                     ))}
@@ -235,7 +242,7 @@ function HeadcountImportForm({
                     const c = cohorts.find((item) => item.id === row.cohort_id);
                     return (
                       <tr className="border-t" key={row.row}>
-                        <td className="p-2">{row.row}</td>
+                        <td className="p-2">{formatNumber(row.row)}</td>
                         <td className="p-2">{c?.code}</td>
                         <td className="p-2">{c?.term_code}</td>
                         <td className="p-2">
@@ -243,7 +250,9 @@ function HeadcountImportForm({
                         </td>
                         {COUNT_COLUMNS.map(([key]) => (
                           <td key={key} className="p-2">
-                            {row[key]}
+                            {typeof row[key] === "number"
+                              ? formatNumber(row[key] as number)
+                              : row[key]}
                           </td>
                         ))}
                         <td className="p-2">{row.source}</td>
@@ -260,7 +269,18 @@ function HeadcountImportForm({
               <p className="text-sm text-muted-foreground">
                 تغيير أعداد معتمدة يعيدها إلى مسودة. الأعداد المطابقة تمامًا تحتفظ باعتمادها.
               </p>
-              <Button disabled={busy} onClick={() => void commit("save")}>
+              <Button
+                disabled={busy}
+                onClick={async () => {
+                  const ok = await confirmAction({
+                    title: `حفظ ${formatNumber(preview.rows.length)} صفًا كمسودات؟`,
+                    description:
+                      "الأعداد المعتمدة التي تتغير قيمها تعود إلى مسودة وتحتاج اعتمادًا جديدًا.",
+                    confirmLabel: "حفظ",
+                  });
+                  if (ok) void commit("save");
+                }}
+              >
                 حفظ الأعداد كمسودات ({preview.rows.length})
               </Button>
             </div>

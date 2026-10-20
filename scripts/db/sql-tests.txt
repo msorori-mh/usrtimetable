@@ -1,0 +1,46 @@
+# SQL test manifest for scripts/db/run-sql-tests.sh (H-13 / M-25).
+#
+#   <mode> <path> [# reason]
+#
+# Modes
+#   migrated    run in a fresh database cloned from the replayed schema
+#               (scripts/db/replay-migrations.sh). DEFAULT for any tests/*.sql or
+#               supabase/tests/*.sql file that is NOT listed here, so new self-contained
+#               BEGIN … ROLLBACK tests are picked up automatically.
+#   empty       run in a brand-new throwaway PostgreSQL cluster (the file creates its own
+#               roles/schemas/fixtures and \ir's the migrations it needs).
+#   runner      execute the given shell runner (it manages its own throwaway cluster).
+#   known-fail  run like "migrated" and report, but do not fail the job. Every entry must
+#               name the defect and the owner; remove the line once it passes.
+#   skip        never run here (fixture include, PGlite fixture, or needs production data).
+
+empty   tests/faculty-numbering-db.sql
+empty   tests/generation-atomic-db.sql
+empty   tests/instructor-daily-session-cap.sql
+empty   tests/instructor-extra-hours-limit.sql
+empty   tests/itcs-theory-room-policy.sql
+empty   tests/itcs-v2-delivery-baseline-db.sql
+empty   tests/itcs-version-scoped-guards-db.sql
+empty   tests/version-shared-lecture-merge.sql
+
+migrated tests/itcs-partition-daily-hours.sql
+
+runner  tests/run-itcs-cutover-orchestrator.sh
+runner  tests/run-itcs-version-scoped-assignments.sh
+runner  tests/run-itcs-version-scoped-workload-guards.sh
+
+
+skip    tests/faculty-numbering.sql                    # included by faculty-numbering-db.sql
+skip    tests/itcs-cutover-orchestrator-db.sql         # run by tests/run-itcs-cutover-orchestrator.sh
+skip    tests/itcs-version-scoped-assignments-db.sql   # run by tests/run-itcs-version-scoped-assignments.sh
+skip    tests/itcs-version-scoped-workload-guards-db.sql # run by tests/run-itcs-version-scoped-workload-guards.sh
+skip    tests/faculty-workflow-fixture.sql             # PGlite fixture for faculty-workflow-db.test.mjs
+skip    tests/leadership-fixture.sql                   # PGlite fixture for leadership-db.test.mjs
+skip    tests/teaching-coverage-live.sql               # needs production data (a super_admin and real coverage)
+skip    tests/teaching-pay-bulk-live.sql               # needs production data (real colleges and academic-affairs user)
+skip    tests/teaching-pay.sql                         # needs production data (super_admin + home profiles)
+skip    tests/faculty-employment-numbers.sql           # needs the disposable TEST_ONLY college d534bf5a… and its instructor types
+skip    tests/education-term-completion.sql            # needs Education college source revision data (COMPLETION_COVERAGE_DRIFT on replay)
+skip    tests/jawf-term-completion.sql                 # needs Jawf source data (its migration fails on a fresh replay)
+skip    tests/shared-lecture-load.sql                  # read-only invariant over published production timetables
+skip    tests/timetable-work-items-live.sql            # needs production data (the ITCS acceptance account and published version)

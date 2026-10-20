@@ -1,12 +1,20 @@
 import { useState } from "react";
+import {
+  assertImportFileSize,
+  readGuardedJson,
+  readGuardedWorkbook,
+} from "@/lib/excel-import/file-guard";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+import { chunkIds, readAllRows } from "@/lib/supabase/read-all";
 import {
   previewSourceRows,
   type SourceImportInput,
 } from "@/lib/existing-schedules/source-row-import";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { userErrorMessage } from "@/lib/user-error";
+import { formatNumber } from "@/lib/format";
 
 type ExistingRow = Parameters<typeof previewSourceRows>[1][number];
 
@@ -31,17 +39,24 @@ export function SourceRowsImport({
     if (!file) return;
     try {
       let matrix: Record<string, unknown>[];
+      // L-4: every upload goes through the shared size/signature guard.
       if (file.name.toLowerCase().endsWith(".json")) {
-        const parsed: unknown = JSON.parse(await file.text());
+        const parsed: unknown = await readGuardedJson(file);
         if (
           !Array.isArray(parsed) ||
           !parsed.every((row) => row && typeof row === "object" && !Array.isArray(row))
         )
           throw new Error("ملف JSON يجب أن يحتوي قائمة صفوف المصدر");
         matrix = parsed as Record<string, unknown>[];
-      } else {
+      } else if (file.name.toLowerCase().endsWith(".csv")) {
+        assertImportFileSize(file);
         const XLSX = await import("xlsx");
-        const workbook = XLSX.read(await file.arrayBuffer(), { type: "array" });
+        const workbook = XLSX.read(await file.text(), { type: "string" });
+        const sheet = workbook.Sheets[workbook.SheetNames[0]];
+        if (!sheet) throw new Error("الملف لا يحتوي ورقة بيانات");
+        matrix = XLSX.utils.sheet_to_json(sheet, { defval: "" }) as Record<string, unknown>[];
+      } else {
+        const { XLSX, workbook } = await readGuardedWorkbook<typeof import("xlsx")>(file);
         const sheet = workbook.Sheets[workbook.SheetNames[0]];
         if (!sheet) throw new Error("الملف لا يحتوي ورقة بيانات");
         matrix = XLSX.utils.sheet_to_json<Record<string, unknown>>(sheet, {
@@ -50,7 +65,7 @@ export function SourceRowsImport({
       }
       setPreview(previewSourceRows(matrix, existing));
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : String(error));
+      toast.error(userErrorMessage(error));
     }
   }
 
@@ -60,26 +75,45 @@ export function SourceRowsImport({
     try {
       // Recheck stable identities immediately before inserting. A second editor
       // can add rows while this preview is open; never overwrite their work.
-      const [byId, byFile] = await Promise.all([
-        supabase
-          .from("existing_schedule_source_rows")
-          .select("source_id")
-          .eq("college_id", collegeId)
-          .eq("term_id", termId)
-          .in(
-            "source_id",
-            preview.rows.map((row) => row.source_id),
-          ),
-        supabase
-          .from("existing_schedule_source_rows")
-          .select("source_file,source_cell")
-          .eq("college_id", collegeId)
-          .eq("term_id", termId)
-          .in("source_file", [...new Set(preview.rows.map((row) => row.source_file))])
-          .in("source_cell", [...new Set(preview.rows.map((row) => row.source_cell))]),
-      ]);
-      if (byId.error) throw byId.error;
-      if (byFile.error) throw byFile.error;
+      // H-10: chunk the id lists (URL length) and page each chunk (1000-row cap).
+      const sourceIds = [...new Set(preview.rows.map((row) => row.source_id))];
+      const sourceFiles = [...new Set(preview.rows.map((row) => row.source_file))];
+      const sourceCells = [...new Set(preview.rows.map((row) => row.source_cell))];
+      const byIdRows: { source_id: string }[] = [];
+      for (const chunk of chunkIds(sourceIds)) {
+        byIdRows.push(
+          ...(await readAllRows<{ source_id: string }>((from, to) =>
+            supabase
+              .from("existing_schedule_source_rows")
+              .select("source_id")
+              .eq("college_id", collegeId)
+              .eq("term_id", termId)
+              .in("source_id", chunk)
+              .order("id")
+              .range(from, to),
+          )),
+        );
+      }
+      const byFileRows: { source_file: string; source_cell: string }[] = [];
+      for (const files of chunkIds(sourceFiles, 50)) {
+        for (const cells of chunkIds(sourceCells)) {
+          byFileRows.push(
+            ...(await readAllRows<{ source_file: string; source_cell: string }>((from, to) =>
+              supabase
+                .from("existing_schedule_source_rows")
+                .select("source_file,source_cell")
+                .eq("college_id", collegeId)
+                .eq("term_id", termId)
+                .in("source_file", files)
+                .in("source_cell", cells)
+                .order("id")
+                .range(from, to),
+            )),
+          );
+        }
+      }
+      const byId = { data: byIdRows };
+      const byFile = { data: byFileRows };
       const locations = new Set(
         preview.rows.map((row) => `${row.source_file}|_${row.source_cell}`),
       );
@@ -106,7 +140,7 @@ export function SourceRowsImport({
       toast.success(`حُفظت ${preview.rows.length} من صفوف المصدر في المسودة`);
       setPreview(null);
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : String(error));
+      toast.error(userErrorMessage(error));
       // A partial batch may have been committed; force a fresh preview.
       await onSaved();
       setPreview(null);
@@ -126,18 +160,18 @@ export function SourceRowsImport({
       </p>
       <input
         type="file"
-        accept=".json,.xlsx,.xls,.csv"
+        accept=".json,.xlsx,.csv"
         aria-label="ملف صفوف مواعيد الكلية"
         onChange={(event) => void selectFile(event.target.files?.[0])}
       />
       {preview && (
         <div className="space-y-2 text-sm" role="status">
           <p>
-            جديد: {preview.rows.length} · موجود مطابق: {preview.skipped} · أخطاء:
-            {preview.errors.length}
+            جديد: {formatNumber(preview.rows.length)} · موجود مطابق: {formatNumber(preview.skipped)}{" "}
+            · أخطاء: {formatNumber(preview.errors.length)}
           </p>
           {preview.errors.length > 0 && (
-            <ul className="list-disc space-y-1 pr-5 text-destructive">
+            <ul className="list-disc space-y-1 ps-5 text-destructive">
               {preview.errors.slice(0, 20).map((error) => (
                 <li key={error}>{error}</li>
               ))}
@@ -149,7 +183,7 @@ export function SourceRowsImport({
             }
             onClick={() => void save()}
           >
-            {loading ? "جارٍ الحفظ…" : `حفظ ${preview.rows.length} صف مصدر`}
+            {loading ? "جارٍ الحفظ…" : `حفظ ${formatNumber(preview.rows.length)} صف مصدر`}
           </Button>
         </div>
       )}

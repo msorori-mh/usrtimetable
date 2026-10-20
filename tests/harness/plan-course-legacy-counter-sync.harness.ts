@@ -158,7 +158,8 @@ assert(
   "partial failure must surface an explicit actionable error",
 );
 assert(
-  /onError: \(e: Error\) => \{\s*toast\.error\(e\.message\);\s*invalidate\(\);/.test(ui),
+  // L-5: raw error text now goes through userErrorMessage (still toasts + refetches).
+  /onError: \(e: Error\) => \{\s*toast\.error\(userErrorMessage\(e\)\);\s*invalidate\(\);/.test(ui),
   "failed sync must refetch instead of claiming success",
 );
 assert(

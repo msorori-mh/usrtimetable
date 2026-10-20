@@ -105,7 +105,10 @@ describe("cross-college instructor candidates", () => {
 });
 
 describe("assignment dialog wiring", () => {
-  const page = readFileSync(resolve(root, "src/routes/_authenticated/teaching-assignments.tsx"), "utf8");
+  const page = readFileSync(
+    resolve(root, "src/routes/_authenticated/teaching-assignments.tsx"),
+    "utf8",
+  );
 
   test("renders a source-college picker plus loading/error/empty states", () => {
     expect(page.includes('data-testid="ta-v2-source-college-select"')).toBe(true);
@@ -121,15 +124,23 @@ describe("assignment dialog wiring", () => {
   });
 
   test("saving stays behind the existing manage-permission gate", () => {
-    expect(page.includes("const readOnly = !canManage || workspace.data?.can_manage === false;")).toBe(
-      true,
-    );
+    expect(
+      page.includes("const readOnly = !canManage || workspace.data?.can_manage === false;"),
+    ).toBe(true);
     expect(page.includes("{!readOnly && (")).toBe(true);
   });
 });
 
 describe("instructor category dropdown states", () => {
-  const page = readFileSync(resolve(root, "src/routes/_authenticated/instructors.tsx"), "utf8");
+  // L-14: the instructors page was split into the route + hook + form/search components.
+  const page = [
+    "src/routes/_authenticated/instructors.tsx",
+    "src/hooks/use-instructor-directory.ts",
+    "src/components/instructors/instructor-form-fields.tsx",
+    "src/components/instructors/university-instructor-search.tsx",
+  ]
+    .map((file) => readFileSync(resolve(root, file), "utf8"))
+    .join("\n");
 
   test("exposes loading, error and empty states for categories", () => {
     expect(page.includes('data-testid="instructor-category-loading"')).toBe(true);

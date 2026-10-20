@@ -3,9 +3,9 @@ import {
   roomHourEquivalents,
   type LeadershipCapacityCollege,
 } from "@/lib/reports/leadership-room-capacity";
+import { formatDecimal } from "@/lib/format";
 
-const number = (n: number | null) =>
-  n === null ? "غير محسوب" : n.toLocaleString("ar", { maximumFractionDigits: 2 });
+const number = (n: number | null) => (n === null ? "غير محسوب" : formatDecimal(n, 2));
 const hours = (n: number | null) => (n === null ? "غير محسوب" : `${number(n)} ساعة`);
 export function capacityEquivalentText(
   value: ReturnType<typeof roomHourEquivalents>,
@@ -202,7 +202,7 @@ export function LeadershipRoomCapacitySummary({
                     تفاصيل ساعات كل قاعة
                   </summary>
                   <div className="mt-3 overflow-x-auto">
-                    <table className="w-full min-w-[580px] text-right text-xs">
+                    <table className="w-full min-w-[580px] text-start text-xs">
                       <caption className="sr-only">ساعات قاعات {college.name}</caption>
                       <thead>
                         <tr className="border-b bg-muted/40">

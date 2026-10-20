@@ -1,0 +1,164 @@
+name: deploy-production
+
+# Manual production deployment of the Cloudflare Worker (Lovable exit, step E).
+#
+# GitHub setup (Settings → Environments → "production"), done once by a repository admin:
+#   - Required reviewers: at least one person other than the one who dispatches the run
+#     (enable "Prevent self-review"). The job waits for that approval before any secret is
+#     released to it.
+#   - Deployment branches and tags: "Selected branches" → main only.
+#   - Variables: PROD_WORKER_NAME (e.g. usrtimetable), PROD_ROUTE (custom domain hostname,
+#     e.g. timetable.usr.edu.ye).
+#   - Secrets: CLOUDFLARE_ACCOUNT_ID, CLOUDFLARE_API_TOKEN (Workers Scripts:Edit +
+#     Workers Routes/Custom Domains:Edit on the zone), PROD_SUPABASE_URL,
+#     PROD_SUPABASE_PROJECT_ID, PROD_SUPABASE_PUBLISHABLE_KEY,
+#     PROD_SUPABASE_SERVICE_ROLE_KEY, PROD_SITE_URL.
+#
+# This workflow NEVER applies database migrations: those follow
+# docs/operations/release-runbook.md and are applied separately before the deploy.
+
+on:
+  workflow_dispatch:
+    inputs:
+      sha:
+        description: "Full 40-character SHA on main that passed pr-gate"
+        required: true
+        type: string
+      confirmation:
+        description: "Type deploy-production"
+        required: true
+        type: string
+
+permissions:
+  contents: read
+  checks: read
+  deployments: write
+
+concurrency:
+  group: usrtimetable-production
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    if: github.event_name == 'workflow_dispatch' && inputs.confirmation == 'deploy-production'
+    name: guarded production deployment
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    environment:
+      name: production
+      url: ${{ format('https://{0}', vars.PROD_ROUTE) }}
+    env:
+      DEPLOY_SHA: ${{ inputs.sha }}
+      PRODUCTION_DEPLOY_CONFIRM: ${{ inputs.confirmation }}
+      PROD_WORKER_NAME: ${{ vars.PROD_WORKER_NAME }}
+      PROD_ROUTE: ${{ vars.PROD_ROUTE }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      PROD_SUPABASE_URL: ${{ secrets.PROD_SUPABASE_URL }}
+      PROD_SUPABASE_PROJECT_ID: ${{ secrets.PROD_SUPABASE_PROJECT_ID }}
+      PROD_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.PROD_SUPABASE_PUBLISHABLE_KEY }}
+      PROD_SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.PROD_SUPABASE_SERVICE_ROLE_KEY }}
+      PROD_SITE_URL: ${{ secrets.PROD_SITE_URL }}
+
+    steps:
+      - name: Checkout the exact candidate SHA
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ inputs.sha }}
+          fetch-depth: 0
+
+      - name: Prove the candidate is on main
+        shell: bash
+        run: |
+          echo "$DEPLOY_SHA" | grep -Eq '^[0-9a-f]{40}$'
+          test "$(git rev-parse HEAD)" = "$DEPLOY_SHA"
+          git fetch --no-tags origin refs/heads/main:refs/remotes/origin/main
+          git merge-base --is-ancestor "$DEPLOY_SHA" origin/main
+
+      - name: Require a green pr-gate on this exact SHA
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh api --paginate "repos/${GITHUB_REPOSITORY}/commits/${DEPLOY_SHA}/check-runs?per_page=100" \
+            --jq '.check_runs[] | [.name, .status, (.conclusion // "")] | @tsv' > check-runs.tsv
+          missing=0
+          for job in \
+            "typecheck, lint, repository rules" \
+            "unit tests (bun, vitest, node, scripts)" \
+            "PGlite database tests" \
+            "SQL tests on the replayed schema"; do
+            if awk -F'\t' -v j="$job" '$1==j && $2=="completed" && $3=="success" {found=1} END {exit !found}' check-runs.tsv; then
+              echo "pr-gate OK: $job"
+            else
+              echo "::error::pr-gate job '$job' has not passed on $DEPLOY_SHA"; missing=1
+            fi
+          done
+          exit "$missing"
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
+        with:
+          bun-version: "1.4.2"
+
+      - name: Install locked dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Fail-closed production target preflight
+        run: node scripts/staging/deploy-preflight.mjs --production
+
+      - name: TypeScript
+        run: bunx tsc --noEmit
+
+      - name: Unit tests (pr-gate equivalent, defence in depth)
+        run: |
+          node scripts/run-all-tests.mjs --group=bun
+          node scripts/run-all-tests.mjs --group=node
+
+      - name: Build the Cloudflare Worker against production public configuration
+        env:
+          VITE_SUPABASE_URL: ${{ secrets.PROD_SUPABASE_URL }}
+          VITE_SUPABASE_PROJECT_ID: ${{ secrets.PROD_SUPABASE_PROJECT_ID }}
+          VITE_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.PROD_SUPABASE_PUBLISHABLE_KEY }}
+        run: bun run build
+
+      - name: Validate and bind the generated config to the production Worker and route
+        env:
+          PRODUCTION_REQUIRE_BUILD: "1"
+        run: node scripts/staging/deploy-preflight.mjs --production --prepare-build-config
+
+      - name: Deploy the production Worker
+        id: deploy
+        uses: cloudflare/wrangler-action@953926a2e2182532811c01a25e53647d93bf07c0 # v4
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          packageManager: bun
+          wranglerVersion: "4.136.3"
+          command: deploy --config .output/server/wrangler.json
+          gitHubToken: ${{ secrets.GITHUB_TOKEN }}
+          secrets: |
+            SUPABASE_URL
+            SUPABASE_PUBLISHABLE_KEY
+            SUPABASE_SERVICE_ROLE_KEY
+            SITE_URL
+        env:
+          SUPABASE_URL: ${{ secrets.PROD_SUPABASE_URL }}
+          SUPABASE_PUBLISHABLE_KEY: ${{ secrets.PROD_SUPABASE_PUBLISHABLE_KEY }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.PROD_SUPABASE_SERVICE_ROLE_KEY }}
+          SITE_URL: ${{ secrets.PROD_SITE_URL }}
+
+      - name: Post-deploy smoke check (/ and /auth return 200 with security headers)
+        env:
+          PROD_BASE_URL: ${{ secrets.PROD_SITE_URL }}
+        run: node scripts/production/smoke.mjs
+
+      - name: Record the deployed SHA
+        if: success()
+        run: |
+          {
+            echo "### Production deployment"
+            echo "- SHA: \`$DEPLOY_SHA\`"
+            echo "- Worker: \`$PROD_WORKER_NAME\` on \`$PROD_ROUTE\`"
+            echo "- Rollback: \`wrangler rollback --name $PROD_WORKER_NAME\` (see docs/operations/lovable-exit-runbook.md)"
+          } >> "$GITHUB_STEP_SUMMARY"

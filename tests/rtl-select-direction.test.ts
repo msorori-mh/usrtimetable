@@ -20,7 +20,7 @@ describe("RTL direction for shared selectors", () => {
 
     for (const block of [trigger, content, item]) {
       expect(block).toContain('dir="rtl"');
-      expect(block).toContain("text-right");
+      expect(block).toContain("text-start");
     }
     // check indicator sits on the logical end side, not hardcoded right/left
     expect(item).toContain("absolute end-2");
@@ -35,7 +35,7 @@ describe("RTL direction for shared selectors", () => {
       src.indexOf("const DropdownMenuContent"),
       src.indexOf("const DropdownMenuCheckboxItem"),
     );
-    expect(content).toContain("text-right");
+    expect(content).toContain("text-start");
     expect(src).toContain("rtl:rotate-180");
     expect(src).not.toContain("absolute left-2");
   });
@@ -43,20 +43,22 @@ describe("RTL direction for shared selectors", () => {
   it("command palette (combobox list) is RTL", () => {
     const src = read("src/components/ui/command.tsx");
     expect(src.match(/dir="rtl"/g)?.length ?? 0).toBeGreaterThanOrEqual(3);
-    expect(src).toContain("text-right");
+    expect(src).toContain("text-start");
     expect(src).not.toContain("mr-2 h-4 w-4 shrink-0");
   });
 
   it("popover content is RTL", () => {
     const src = read("src/components/ui/popover.tsx");
     expect(src).toContain('dir="rtl"');
-    expect(src).toContain("text-right");
+    expect(src).toContain("text-start");
   });
 
   it("instructor combobox trigger is RTL with logical icon spacing", () => {
     const src = read("src/components/teaching-assignments/instructor-combobox.tsx");
     expect(src).toContain('dir="rtl"');
-    expect(src).toContain("text-right");
+    // M-16: logical alignment (text-start == right under dir="rtl").
+    expect(src).toContain("text-start");
+    expect(src).not.toContain("text-right");
     expect(src).toContain("ms-2 h-4 w-4 shrink-0");
     expect(src).not.toContain('"ml-2 h-4 w-4"');
   });

@@ -6,6 +6,8 @@
  * criteria that produced it. Rendering to CSV/XLSX lives in ./download.ts so
  * these builders stay pure and unit-testable.
  */
+import { csvField } from "../reports/spreadsheet-safe";
+import { formatDateTime } from "@/lib/format";
 
 export type AdminExportCell = string | number;
 
@@ -111,7 +113,7 @@ export function buildAdminExportMetadata<T>(
     ["التقرير", dataset.title],
     ["الكلية", formatAdminExportValue(dataset.collegeName)],
     ["عدد السجلات المصدَّرة", dataset.rows.length],
-    ["تاريخ التصدير", now.toLocaleString("ar-EG")],
+    ["تاريخ التصدير", formatDateTime(now)],
   ];
   if (dataset.scopeNote) rows.push(["نطاق التصدير", dataset.scopeNote]);
   rows.push([ADMIN_EXPORT_CRITERIA_SHEET_AR, ""]);
@@ -123,9 +125,9 @@ export function buildAdminExportMetadata<T>(
   return rows;
 }
 
+/** M-2: formula-looking text is neutralized (numbers untouched), then quoted. */
 function csvCell(value: AdminExportCell): string {
-  const text = String(value).replace(/"/g, '""');
-  return /[",\n\r;]/.test(text) ? `"${text}"` : text;
+  return csvField(value, /[",\n\r;]/);
 }
 
 function csvLines(matrix: AdminExportCell[][]): string {

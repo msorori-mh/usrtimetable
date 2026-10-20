@@ -10,6 +10,8 @@ import type { LeadershipDetailRow } from "./leadership-metrics";
 import type { CapacitySources } from "./leadership-room-capacity";
 import { minutes, roomUtilizationMetrics } from "./presentation-metrics";
 import { roomCategoryFromType } from "@/lib/room-category";
+import { formatDecimal } from "@/lib/format";
+import { userErrorMessage } from "@/lib/user-error";
 
 export type OverviewSourceMode = "presentation" | "published";
 export interface OverviewVersion {
@@ -152,7 +154,7 @@ const known = (n: unknown): n is number => typeof n === "number" && Number.isFin
 const practical = new Set(["lab", "practical", "clinical", "field_training"]);
 const theory = new Set(["theory", "lecture", "tutorial"]);
 export const overviewNumber = (n: number | null | undefined) =>
-  n == null ? "غير محسوب" : n.toLocaleString("ar", { maximumFractionDigits: 1 });
+  n == null ? "غير محسوب" : formatDecimal(n, 1);
 
 /** Unknown values remain unknown; neither unavailable schedules nor RLS-limited reads become zero. */
 export function completeSum(values: Array<number | null | undefined>): number | null {
@@ -480,10 +482,7 @@ export function buildUniversityOverview(
                 result.issue = `${metrics.outside_hours} ساعة خارج إتاحة سجل الكلية و${result.overlapHours} ساعة تزامن سجلات القاعة`;
             }
           } catch (error) {
-            result.issue =
-              error instanceof Error
-                ? error.message
-                : "بيانات إتاحة المكان غير مكتملة أو غير صالحة";
+            result.issue = userErrorMessage(error, "بيانات إتاحة المكان غير مكتملة أو غير صالحة");
           }
           return result;
         })

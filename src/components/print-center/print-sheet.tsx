@@ -22,6 +22,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { sessionToExportRow, type CohortDgLabels } from "@/lib/print-center/export-rows";
+import { formatDateTime } from "@/lib/format";
 
 export interface PrintSheetMeta {
   collegeName?: string | null;
@@ -40,10 +41,6 @@ export interface PrintSheetMeta {
   isDemo: boolean;
   pageIndex: number;
   pageCount: number;
-}
-
-function formatDateTime(d: Date): string {
-  return d.toLocaleString("ar", { dateStyle: "medium", timeStyle: "short" });
 }
 
 /** Paper clock: omit zero minutes and use the 12-hour clock without AM/PM suffixes. */
@@ -136,9 +133,7 @@ export function PrintSheet(props: {
     <footer className="print-center-footer mt-4 border-t border-border pt-2 text-xs text-muted-foreground print:text-foreground">
       <div className="flex flex-wrap justify-between gap-2">
         <span>{printGroupCounterLabelAr(meta.pageIndex, meta.pageCount)}</span>
-        {meta.lastUpdate && (
-          <span>آخر تحديث: {new Date(meta.lastUpdate).toLocaleString("ar")}</span>
-        )}
+        {meta.lastUpdate && <span>آخر تحديث: {formatDateTime(meta.lastUpdate)}</span>}
       </div>
       <p className="mt-1">
         {meta.versionStatus === "published"
@@ -312,7 +307,7 @@ export function PrintSheet(props: {
             {/* On program/level sheets the large cohort headline already names the sheet. */}
             {!readable && !(props.comfortable && cohortHeadline.length > 0) && (
               <TableRow className="print-center-context-row">
-                <TableHead colSpan={columnCount} className="text-right font-semibold">
+                <TableHead colSpan={columnCount} className="text-start font-semibold">
                   {page.title}
                 </TableHead>
               </TableRow>

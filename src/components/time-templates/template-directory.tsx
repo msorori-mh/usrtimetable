@@ -233,7 +233,7 @@ export function TemplateDirectory({
                   aria-controls="saved-template-results"
                   onClick={() => chooseDay(dayNumber)}
                   className={
-                    "rounded-lg border p-3 text-right transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring " +
+                    "rounded-lg border p-3 text-start transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring " +
                     (day === dayNumber
                       ? "border-primary bg-primary/10 text-primary"
                       : "border-border hover:bg-muted/50")
@@ -295,7 +295,7 @@ export function TemplateDirectory({
                       <th
                         key={label}
                         scope="col"
-                        className="px-3 py-3 text-right text-xs font-medium text-muted-foreground"
+                        className="px-3 py-3 text-start text-xs font-medium text-muted-foreground"
                       >
                         {label}
                       </th>
@@ -305,7 +305,7 @@ export function TemplateDirectory({
                 <tbody>
                   {page.rows.map((row) => (
                     <tr key={row.id} className="border-t hover:bg-muted/30">
-                      <th scope="row" className="px-3 py-3 text-right font-medium">
+                      <th scope="row" className="px-3 py-3 text-start font-medium">
                         {DAY_LABELS_AR[row.day_of_week] ?? row.day_of_week}
                       </th>
                       <td className="px-3 py-3 tabular-nums">

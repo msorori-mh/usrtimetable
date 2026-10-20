@@ -1,11 +1,38 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {
-  EDUCATION_SOURCE_PUBLICATION_TERM_ID,
-  EDUCATION_SOURCE_PUBLICATION_VERSION_ID,
-  EDUCATION_SOURCE_IDENTITY_REVISION_ID,
   educationSourceTimetableApprovalPercent,
+  isEducationSourcePublication,
+  setEducationSourcePublications,
 } from "../src/lib/schedule-versions/education-publication";
+
+// Fixture ids (production markers are rows of public.scheduling_policy_exceptions).
+const EDUCATION_SOURCE_PUBLICATION_VERSION_ID = "11111111-1111-4111-8111-111111111111";
+const EDUCATION_SOURCE_IDENTITY_REVISION_ID = "22222222-2222-4222-8222-222222222222";
+const EDUCATION_SOURCE_PUBLICATION_TERM_ID = "33333333-3333-4333-8333-333333333333";
+setEducationSourcePublications([
+  {
+    version_id: EDUCATION_SOURCE_PUBLICATION_VERSION_ID,
+    college_id: "c",
+    term_id: EDUCATION_SOURCE_PUBLICATION_TERM_ID,
+    role: "source",
+  },
+  {
+    version_id: EDUCATION_SOURCE_IDENTITY_REVISION_ID,
+    college_id: "c",
+    term_id: EDUCATION_SOURCE_PUBLICATION_TERM_ID,
+    role: "identity_revision",
+  },
+]);
+
+test("publication markers are data", () => {
+  assert.equal(isEducationSourcePublication(EDUCATION_SOURCE_PUBLICATION_VERSION_ID), true);
+  assert.equal(isEducationSourcePublication("other-version"), false);
+  assert.equal(
+    isEducationSourcePublication(EDUCATION_SOURCE_IDENTITY_REVISION_ID, "other-term"),
+    false,
+  );
+});
 
 const published = {
   version_id: EDUCATION_SOURCE_PUBLICATION_VERSION_ID,

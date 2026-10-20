@@ -244,6 +244,10 @@ function state() {
         order() {
           return q;
         },
+        // H-10: version-wide reads are paginated with .range(); one page holds every fixture row.
+        range() {
+          return q;
+        },
         insert(value) {
           assert.equal(table, "auto_schedule_runs");
           st.runs.push(value);

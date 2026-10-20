@@ -225,7 +225,16 @@ function run() {
 
   // --- UI domain: expanded policy centre keeps the original room-unavailability flow,
   // while instructor windows now intentionally support hard and preference policies. ---
-  const ui = readSrc("src/routes/_authenticated/availability.tsx");
+  // L-14: the availability page was split into the route + src/components/availability/*.
+  const ui = [
+    "src/routes/_authenticated/availability.tsx",
+    "src/components/availability/availability-shared.tsx",
+    "src/components/availability/instructor-unavailability.tsx",
+    "src/components/availability/instructor-requests.tsx",
+    "src/components/availability/room-unavailability.tsx",
+  ]
+    .map(readSrc)
+    .join("\n");
   assert(ui.includes("إتاحة الموارد وطلبات المحاضرين"), "page is the policy centre");
   assert(ui.includes("كل أيام الدوام"), "all active days option");
   assert(ui.includes("سيتم تطبيق الفترة على"), "affected-day count preview");

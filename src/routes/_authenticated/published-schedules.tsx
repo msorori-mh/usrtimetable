@@ -2,6 +2,9 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { chunkIds, readAllResult } from "@/lib/supabase/read-all";
+import { fetchCurrentPublishedVersions } from "@/lib/schedule-versions/current-published";
+import { useEducationSourcePublications } from "@/lib/schedule-versions/education-publication-loader";
 import { useActiveCollege } from "@/hooks/use-colleges";
 import { CollegeSwitcher } from "@/components/college-switcher";
 import { Card } from "@/components/ui/card";
@@ -21,6 +24,7 @@ import {
   EDUCATION_SOURCE_PUBLICATION_NOTICE_AR,
   isEducationSourcePublication,
 } from "@/lib/schedule-versions/education-publication";
+import { formatDateTime } from "@/lib/format";
 
 export const Route = createFileRoute("/_authenticated/published-schedules")({
   head: () => ({ meta: [{ title: "الجداول المنشورة" }] }),
@@ -29,6 +33,8 @@ export const Route = createFileRoute("/_authenticated/published-schedules")({
 
 function PublishedSchedulesPage() {
   const { active } = useActiveCollege();
+  // Sealed education publication markers (data, M-11) re-render notices once loaded.
+  useEducationSourcePublications();
   const [fTerm, setFTerm] = useState<string>("all");
   const [fDept, setFDept] = useState<string>("all");
   const [fProg, setFProg] = useState<string>("all");
@@ -37,11 +43,12 @@ function PublishedSchedulesPage() {
     queryKey: ["pub-terms", active?.id],
     enabled: !!active,
     queryFn: async () => {
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from("academic_terms")
         .select("id, name, academic_year")
         .eq("college_id", active!.id)
         .order("start_date", { ascending: false });
+      if (error) throw error;
       return data ?? [];
     },
   });
@@ -50,10 +57,11 @@ function PublishedSchedulesPage() {
     queryKey: ["pub-depts", active?.id],
     enabled: !!active,
     queryFn: async () => {
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from("departments")
         .select("id, name")
         .eq("college_id", active!.id);
+      if (error) throw error;
       return data ?? [];
     },
   });
@@ -67,7 +75,8 @@ function PublishedSchedulesPage() {
         .select("id, name, department_id")
         .eq("college_id", active!.id);
       if (fDept !== "all") q = q.eq("department_id", fDept);
-      const { data } = await q;
+      const { data, error } = await q;
+      if (error) throw error;
       return data ?? [];
     },
   });
@@ -81,10 +90,20 @@ function PublishedSchedulesPage() {
         .select("id, name, academic_term_id, notes, created_at, updated_at")
         .eq("college_id", active!.id)
         .eq("status", "published")
-        .order("updated_at", { ascending: false });
+        .order("created_at", { ascending: false });
       if (fTerm !== "all") q = q.eq("academic_term_id", fTerm);
-      const { data } = await q;
-      return data ?? [];
+      const { data, error } = await q;
+      if (error) throw error;
+      const rows = data ?? [];
+      // M-9: the server decides which publication is current for each term; any other
+      // still-published row is legacy data awaiting archive and is labelled as such.
+      const current = await fetchCurrentPublishedVersions(
+        active!.id,
+        rows.map((v) => v.academic_term_id),
+      );
+      return rows
+        .map((v) => ({ ...v, isCurrent: current.get(v.academic_term_id) === v.id }))
+        .sort((a, b) => Number(b.isCurrent) - Number(a.isCurrent));
     },
   });
 
@@ -94,35 +113,59 @@ function PublishedSchedulesPage() {
     enabled: !!active && (versions?.length ?? 0) > 0,
     queryFn: async () => {
       const ids = (versions ?? []).map((v) => v.id);
-      const { data: sessionRows, error: sessionError } = await supabase
-        .from("schedule_sessions")
-        .select("schedule_version_id, course_offering_id")
-        .in("schedule_version_id", ids);
+      const { data: sessionRows, error: sessionError } = await readAllResult<{
+        schedule_version_id: string;
+        course_offering_id: string | null;
+      }>((from, to) =>
+        supabase
+          .from("schedule_sessions")
+          .select("schedule_version_id, course_offering_id")
+          .in("schedule_version_id", ids)
+          .order("id")
+          .range(from, to),
+      );
       if (sessionError) throw sessionError;
 
       const offeringIds = Array.from(
         new Set((sessionRows ?? []).map((row) => row.course_offering_id).filter(Boolean)),
       );
-      const { data: offeringRows, error: offeringError } = offeringIds.length
-        ? await supabase
-            .from("course_offerings")
-            .select("id, program_id, course_id")
-            .eq("college_id", active!.id)
-            .in("id", offeringIds)
-        : { data: [], error: null };
-      if (offeringError) throw offeringError;
+      // H-10: id lists are chunked (URL length) and each chunk is read in full.
+      const readByIds = async <T,>(
+        table: "course_offerings" | "courses",
+        columns: string,
+        ids: string[],
+      ) => {
+        const out: T[] = [];
+        for (const chunk of chunkIds(ids)) {
+          const res = await readAllResult<T>(
+            (from, to) =>
+              supabase
+                .from(table)
+                .select(columns)
+                .eq("college_id", active!.id)
+                .in("id", chunk)
+                .order("id")
+                .range(from, to) as unknown as PromiseLike<{ data: T[] | null; error: unknown }>,
+          );
+          if (res.error) throw res.error;
+          out.push(...(res.data ?? []));
+        }
+        return out;
+      };
+      const offeringRows = await readByIds<{
+        id: string;
+        program_id: string | null;
+        course_id: string | null;
+      }>("course_offerings", "id, program_id, course_id", offeringIds as string[]);
 
       const courseIds = Array.from(
         new Set((offeringRows ?? []).map((row) => row.course_id).filter(Boolean)),
       );
-      const { data: courseRows, error: courseError } = courseIds.length
-        ? await supabase
-            .from("courses")
-            .select("id, department_id")
-            .eq("college_id", active!.id)
-            .in("id", courseIds)
-        : { data: [], error: null };
-      if (courseError) throw courseError;
+      const courseRows = await readByIds<{ id: string; department_id: string | null }>(
+        "courses",
+        "id, department_id",
+        courseIds as string[],
+      );
 
       const offeringsById = new Map((offeringRows ?? []).map((row) => [row.id, row]));
       const departmentsByCourseId = new Map(
@@ -255,7 +298,13 @@ function PublishedSchedulesPage() {
               <Card key={v.id} className="p-4 space-y-2">
                 <div className="flex items-center justify-between">
                   <span className="font-semibold">{v.name}</span>
-                  <Badge>منشور</Badge>
+                  {v.isCurrent ? (
+                    <Badge>منشور — الحالي</Badge>
+                  ) : (
+                    <span className="rounded-full bg-destructive px-2 py-0.5 text-xs text-destructive-foreground">
+                      نسخة منشورة سابقة تحتاج أرشفة
+                    </span>
+                  )}
                 </div>
                 <DeliveryDemoWarningBanner name={v.name} notes={v.notes} />
                 {isEducationSourcePublication(v.id, v.academic_term_id) && (
@@ -271,12 +320,12 @@ function PublishedSchedulesPage() {
                 </div>
                 {v.notes && <div className="text-xs">{v.notes}</div>}
                 <div className="text-[10px] text-muted-foreground">
-                  {new Date(v.updated_at).toLocaleString("ar")}
+                  {formatDateTime(v.updated_at)}
                 </div>
                 <div className="flex w-full min-w-0 flex-col gap-2 sm:flex-row">
                   <Button variant="outline" size="sm" asChild className="w-full sm:flex-1">
                     <Link to="/timetable/$versionId" params={{ versionId: v.id }}>
-                      <ExternalLink className="h-4 w-4 ml-1" /> عرض (للقراءة فقط)
+                      <ExternalLink className="h-4 w-4 me-1" /> عرض (للقراءة فقط)
                     </Link>
                   </Button>
                   {/*
@@ -291,7 +340,7 @@ function PublishedSchedulesPage() {
                     data-testid="published-print-link"
                   >
                     <Link to="/timetable/$versionId/print" params={{ versionId: v.id }}>
-                      <Printer className="h-4 w-4 ml-1" /> طباعة وتصدير
+                      <Printer className="h-4 w-4 me-1" /> طباعة وتصدير
                     </Link>
                   </Button>
                 </div>

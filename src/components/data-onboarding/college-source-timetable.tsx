@@ -4,6 +4,9 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import type { Tables } from "@/integrations/supabase/types";
 import { supabase } from "@/integrations/supabase/client";
+import { readAllResult } from "@/lib/supabase/read-all";
+import { educationSourceVersionFor } from "@/lib/schedule-versions/education-publication";
+import { useEducationSourcePublications } from "@/lib/schedule-versions/education-publication-loader";
 
 type Source = Tables<"existing_schedule_source_rows">;
 
@@ -108,19 +111,38 @@ export function CollegeSourceTimetable({
 }) {
   const [selected, setSelected] = useState<string>(DEPARTMENTS[0].file);
   const [level, setLevel] = useState<number | "all">("all");
+  // The sealed source version of these rows' college and term is data (M-11).
+  const publications = useEducationSourcePublications();
+  const source = publications.data
+    ? educationSourceVersionFor(rows[0]?.college_id, rows[0]?.term_id)
+    : null;
   const operational = useQuery({
-    queryKey: ["education-source-operational-slots", "7430bad7-2de7-5c90-9368-b214a199d6c3"],
-    enabled: rows.length > 0,
+    queryKey: ["education-source-operational-slots", source?.version_id ?? null],
+    enabled: rows.length > 0 && !!source,
     queryFn: async () => {
       const [sessions, rooms] = await Promise.all([
-        supabase
-          .from("schedule_sessions")
-          .select("id,day_of_week,start_time,end_time,room_id")
-          .eq("schedule_version_id", "7430bad7-2de7-5c90-9368-b214a199d6c3"),
-        supabase
-          .from("rooms")
-          .select("id,name")
-          .eq("college_id", "1ee291b2-bec9-43d3-b42b-5a4f46946399"),
+        readAllResult<{
+          id: string;
+          day_of_week: number;
+          start_time: string;
+          end_time: string;
+          room_id: string | null;
+        }>((from, to) =>
+          supabase
+            .from("schedule_sessions")
+            .select("id,day_of_week,start_time,end_time,room_id")
+            .eq("schedule_version_id", source!.version_id)
+            .order("id")
+            .range(from, to),
+        ),
+        readAllResult<{ id: string; name: string }>((from, to) =>
+          supabase
+            .from("rooms")
+            .select("id,name")
+            .eq("college_id", source!.college_id)
+            .order("id")
+            .range(from, to),
+        ),
       ]);
       if (sessions.error) throw sessions.error;
       if (rooms.error) throw rooms.error;
@@ -189,10 +211,10 @@ export function CollegeSourceTimetable({
         </p>
         <div className="overflow-x-auto">
           <table
-            className="w-full min-w-[760px] border-collapse text-right text-sm"
+            className="w-full min-w-[760px] border-collapse text-start text-sm"
             aria-label="ملخص ساعات أقسام كلية التربية والعلوم"
           >
-            <caption className="py-2 text-right font-semibold">
+            <caption className="py-2 text-start font-semibold">
               إجمالي ساعات الأقسام والمستويات بحسب حصر الكلية
             </caption>
             <thead>
@@ -309,7 +331,7 @@ export function CollegeSourceTimetable({
         </div>
         <div className="overflow-x-auto">
           <table
-            className="w-full border-collapse text-right text-sm"
+            className="w-full border-collapse text-start text-sm"
             aria-label={`جدول ${selectedDepartment.name} من ملف القسم`}
           >
             <thead>

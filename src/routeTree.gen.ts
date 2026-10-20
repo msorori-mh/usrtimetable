@@ -61,7 +61,6 @@ import { Route as AuthenticatedTermsRouteImport } from './routes/_authenticated/
 import { Route as AuthenticatedTimeSlotTemplatesRouteImport } from './routes/_authenticated/time-slot-templates'
 import { Route as AuthenticatedTimeSlotsRouteImport } from './routes/_authenticated/time-slots'
 import { Route as AuthenticatedUniversitiesRouteImport } from './routes/_authenticated/universities'
-import { Route as AuthenticatedUnresolvedSuggestionsRouteImport } from './routes/_authenticated/unresolved-suggestions'
 import { Route as AuthenticatedUsersRouteImport } from './routes/_authenticated/users'
 import { Route as AuthenticatedReportsIndexRouteImport } from './routes/_authenticated/reports.index'
 import { Route as AuthenticatedReportsAcademicAffairsRouteImport } from './routes/_authenticated/reports.academic-affairs'
@@ -379,12 +378,6 @@ const AuthenticatedUniversitiesRoute =
     path: '/universities',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
-const AuthenticatedUnresolvedSuggestionsRoute =
-  AuthenticatedUnresolvedSuggestionsRouteImport.update({
-    id: '/unresolved-suggestions',
-    path: '/unresolved-suggestions',
-    getParentRoute: () => AuthenticatedRouteRoute,
-  } as any)
 const AuthenticatedUsersRoute = AuthenticatedUsersRouteImport.update({
   id: '/users',
   path: '/users',
@@ -587,7 +580,6 @@ export interface FileRoutesByFullPath {
   '/time-slot-templates': typeof AuthenticatedTimeSlotTemplatesRoute
   '/time-slots': typeof AuthenticatedTimeSlotsRoute
   '/universities': typeof AuthenticatedUniversitiesRoute
-  '/unresolved-suggestions': typeof AuthenticatedUnresolvedSuggestionsRoute
   '/users': typeof AuthenticatedUsersRoute
   '/reports/academic-affairs': typeof AuthenticatedReportsAcademicAffairsRoute
   '/reports/conflicts': typeof AuthenticatedReportsConflictsRoute
@@ -665,7 +657,6 @@ export interface FileRoutesByTo {
   '/time-slot-templates': typeof AuthenticatedTimeSlotTemplatesRoute
   '/time-slots': typeof AuthenticatedTimeSlotsRoute
   '/universities': typeof AuthenticatedUniversitiesRoute
-  '/unresolved-suggestions': typeof AuthenticatedUnresolvedSuggestionsRoute
   '/users': typeof AuthenticatedUsersRoute
   '/reports/academic-affairs': typeof AuthenticatedReportsAcademicAffairsRoute
   '/reports/conflicts': typeof AuthenticatedReportsConflictsRoute
@@ -746,7 +737,6 @@ export interface FileRoutesById {
   '/_authenticated/time-slot-templates': typeof AuthenticatedTimeSlotTemplatesRoute
   '/_authenticated/time-slots': typeof AuthenticatedTimeSlotsRoute
   '/_authenticated/universities': typeof AuthenticatedUniversitiesRoute
-  '/_authenticated/unresolved-suggestions': typeof AuthenticatedUnresolvedSuggestionsRoute
   '/_authenticated/users': typeof AuthenticatedUsersRoute
   '/_authenticated/reports/academic-affairs': typeof AuthenticatedReportsAcademicAffairsRoute
   '/_authenticated/reports/conflicts': typeof AuthenticatedReportsConflictsRoute
@@ -827,7 +817,6 @@ export interface FileRouteTypes {
     | '/time-slot-templates'
     | '/time-slots'
     | '/universities'
-    | '/unresolved-suggestions'
     | '/users'
     | '/reports/academic-affairs'
     | '/reports/conflicts'
@@ -905,7 +894,6 @@ export interface FileRouteTypes {
     | '/time-slot-templates'
     | '/time-slots'
     | '/universities'
-    | '/unresolved-suggestions'
     | '/users'
     | '/reports/academic-affairs'
     | '/reports/conflicts'
@@ -985,7 +973,6 @@ export interface FileRouteTypes {
     | '/_authenticated/time-slot-templates'
     | '/_authenticated/time-slots'
     | '/_authenticated/universities'
-    | '/_authenticated/unresolved-suggestions'
     | '/_authenticated/users'
     | '/_authenticated/reports/academic-affairs'
     | '/_authenticated/reports/conflicts'
@@ -1387,13 +1374,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedUniversitiesRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
-    '/_authenticated/unresolved-suggestions': {
-      id: '/_authenticated/unresolved-suggestions'
-      path: '/unresolved-suggestions'
-      fullPath: '/unresolved-suggestions'
-      preLoaderRoute: typeof AuthenticatedUnresolvedSuggestionsRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
     '/_authenticated/users': {
       id: '/_authenticated/users'
       path: '/users'
@@ -1689,7 +1669,6 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedTimeSlotTemplatesRoute: typeof AuthenticatedTimeSlotTemplatesRoute
   AuthenticatedTimeSlotsRoute: typeof AuthenticatedTimeSlotsRoute
   AuthenticatedUniversitiesRoute: typeof AuthenticatedUniversitiesRoute
-  AuthenticatedUnresolvedSuggestionsRoute: typeof AuthenticatedUnresolvedSuggestionsRoute
   AuthenticatedUsersRoute: typeof AuthenticatedUsersRoute
   AuthenticatedTimetableVersionIdRoute: typeof AuthenticatedTimetableVersionIdRoute
   AuthenticatedTimetableVersionIdPrintRoute: typeof AuthenticatedTimetableVersionIdPrintRoute
@@ -1744,8 +1723,6 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedTimeSlotTemplatesRoute: AuthenticatedTimeSlotTemplatesRoute,
   AuthenticatedTimeSlotsRoute: AuthenticatedTimeSlotsRoute,
   AuthenticatedUniversitiesRoute: AuthenticatedUniversitiesRoute,
-  AuthenticatedUnresolvedSuggestionsRoute:
-    AuthenticatedUnresolvedSuggestionsRoute,
   AuthenticatedUsersRoute: AuthenticatedUsersRoute,
   AuthenticatedTimetableVersionIdRoute: AuthenticatedTimetableVersionIdRoute,
   AuthenticatedTimetableVersionIdPrintRoute:

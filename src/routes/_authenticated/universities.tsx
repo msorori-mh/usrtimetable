@@ -11,6 +11,10 @@ import { toast } from "sonner";
 import { logAudit } from "@/lib/audit";
 import { Building2, Pencil, Trash2 } from "lucide-react";
 import { READ_ONLY_VIEW_BADGE_AR, isInstitutionalReadOnlyViewer } from "@/lib/unauthorized-access";
+import { userErrorMessage } from "@/lib/user-error";
+import { formatDate } from "@/lib/format";
+import { confirmAction } from "@/components/confirm-dialog";
+import { QueryErrorNotice } from "@/components/app-states/query-error-notice";
 
 export const Route = createFileRoute("/_authenticated/universities")({
   head: () => ({ meta: [{ title: "إدارة الجامعة" }] }),
@@ -24,9 +28,16 @@ function UniversitiesPage() {
   const [code, setCode] = useState("");
   const [editingId, setEditingId] = useState<string | null>(null);
 
-  const { data: list, isLoading } = useQuery({
+  const {
+    data: list,
+    isLoading,
+    isError,
+    error: listError,
+    refetch,
+  } = useQuery({
     queryKey: ["universities"],
     queryFn: async () => {
+      // read-all-ok: one row per university (a handful at most)
       const { data, error } = await supabase.from("universities").select("*").order("created_at");
       if (error) throw error;
       return data;
@@ -36,21 +47,40 @@ function UniversitiesPage() {
   const upsert = useMutation({
     mutationFn: async () => {
       if (editingId) {
-        const { error } = await supabase.from("universities").update({ name, code: code || null }).eq("id", editingId);
+        const { error } = await supabase
+          .from("universities")
+          .update({ name, code: code || null })
+          .eq("id", editingId);
         if (error) throw error;
-        await logAudit({ action: "update", entity: "university", entityId: editingId, details: { name, code } });
+        await logAudit({
+          action: "update",
+          entity: "university",
+          entityId: editingId,
+          details: { name, code },
+        });
       } else {
-        const { data, error } = await supabase.from("universities").insert({ name, code: code || null }).select().single();
+        const { data, error } = await supabase
+          .from("universities")
+          .insert({ name, code: code || null })
+          .select()
+          .single();
         if (error) throw error;
-        await logAudit({ action: "create", entity: "university", entityId: data.id, details: { name, code } });
+        await logAudit({
+          action: "create",
+          entity: "university",
+          entityId: data.id,
+          details: { name, code },
+        });
       }
     },
     onSuccess: () => {
       toast.success(editingId ? "تم التحديث" : "تم الإنشاء");
-      setName(""); setCode(""); setEditingId(null);
+      setName("");
+      setCode("");
+      setEditingId(null);
       qc.invalidateQueries({ queryKey: ["universities"] });
     },
-    onError: (e: Error) => toast.error(e.message),
+    onError: (e: Error) => toast.error(userErrorMessage(e)),
   });
 
   const remove = useMutation({
@@ -59,8 +89,11 @@ function UniversitiesPage() {
       if (error) throw error;
       await logAudit({ action: "delete", entity: "university", entityId: id });
     },
-    onSuccess: () => { toast.success("تم الحذف"); qc.invalidateQueries({ queryKey: ["universities"] }); },
-    onError: (e: Error) => toast.error(e.message),
+    onSuccess: () => {
+      toast.success("تم الحذف");
+      qc.invalidateQueries({ queryKey: ["universities"] });
+    },
+    onError: (e: Error) => toast.error(userErrorMessage(e)),
   });
 
   if (user && !user.isSuperAdmin && !user.isInstitutionalViewer) {
@@ -88,62 +121,133 @@ function UniversitiesPage() {
       )}
 
       {canEdit && (
-      <Card className="mb-8 p-6">
-        <h2 className="mb-4 font-semibold">{editingId ? "تعديل جامعة" : "إضافة جامعة"}</h2>
-        <form
-          onSubmit={(e) => { e.preventDefault(); if (!name.trim()) return; upsert.mutate(); }}
-          className="grid gap-4 md:grid-cols-[2fr_1fr_auto] md:items-end"
-        >
-          <div className="space-y-2">
-            <Label htmlFor="u-name">اسم الجامعة</Label>
-            <Input id="u-name" value={name} onChange={(e) => setName(e.target.value)} placeholder="جامعة كذا" required />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="u-code">الرمز (اختياري)</Label>
-            <Input id="u-code" value={code} onChange={(e) => setCode(e.target.value)} placeholder="U01" dir="ltr" />
-          </div>
-          <div className="flex gap-2">
-            <Button type="submit" disabled={upsert.isPending}>{editingId ? "حفظ" : "إضافة"}</Button>
-            {editingId && (
-              <Button type="button" variant="outline" onClick={() => { setEditingId(null); setName(""); setCode(""); }}>
-                إلغاء
+        <Card className="mb-8 p-6">
+          <h2 className="mb-4 font-semibold">{editingId ? "تعديل جامعة" : "إضافة جامعة"}</h2>
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              if (!name.trim()) return;
+              upsert.mutate();
+            }}
+            className="grid gap-4 md:grid-cols-[2fr_1fr_auto] md:items-end"
+          >
+            <div className="space-y-2">
+              <Label htmlFor="u-name">اسم الجامعة</Label>
+              <Input
+                id="u-name"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="جامعة كذا"
+                required
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="u-code">الرمز (اختياري)</Label>
+              <Input
+                id="u-code"
+                value={code}
+                onChange={(e) => setCode(e.target.value)}
+                placeholder="U01"
+                dir="ltr"
+              />
+            </div>
+            <div className="flex gap-2">
+              <Button type="submit" disabled={upsert.isPending}>
+                {editingId ? "حفظ" : "إضافة"}
               </Button>
-            )}
-          </div>
-        </form>
-      </Card>
+              {editingId && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => {
+                    setEditingId(null);
+                    setName("");
+                    setCode("");
+                  }}
+                >
+                  إلغاء
+                </Button>
+              )}
+            </div>
+          </form>
+        </Card>
       )}
 
       <Card className="overflow-hidden">
         <table className="w-full">
-          <thead className="bg-muted/40 text-right text-xs uppercase text-muted-foreground">
+          <thead className="bg-muted/40 text-start text-xs uppercase text-muted-foreground">
             <tr>
               <th className="px-4 py-3">الاسم</th>
               <th className="px-4 py-3">الرمز</th>
               <th className="px-4 py-3">تاريخ الإنشاء</th>
-              <th className="px-4 py-3 text-left">إجراءات</th>
+              <th className="px-4 py-3 text-end">إجراءات</th>
             </tr>
           </thead>
           <tbody>
-            {isLoading && <tr><td colSpan={4} className="p-6 text-center text-muted-foreground">جارٍ التحميل...</td></tr>}
-            {list?.length === 0 && <tr><td colSpan={4} className="p-6 text-center text-muted-foreground">لا توجد جامعات بعد.</td></tr>}
+            {isLoading && (
+              <tr>
+                <td colSpan={4} className="p-6 text-center text-muted-foreground">
+                  جارٍ التحميل...
+                </td>
+              </tr>
+            )}
+            {isError && (
+              <tr>
+                <td colSpan={4} className="p-4">
+                  <QueryErrorNotice error={listError} onRetry={() => void refetch()} />
+                </td>
+              </tr>
+            )}
+            {list?.length === 0 && (
+              <tr>
+                <td colSpan={4} className="p-6 text-center text-muted-foreground">
+                  لا توجد جامعات بعد.
+                </td>
+              </tr>
+            )}
             {list?.map((u) => (
               <tr key={u.id} className="border-t border-border">
                 <td className="px-4 py-3 font-medium">{u.name}</td>
-                <td className="px-4 py-3 text-sm text-muted-foreground" dir="ltr">{u.code ?? "—"}</td>
-                <td className="px-4 py-3 text-sm text-muted-foreground">
-                  {new Date(u.created_at).toLocaleDateString("ar-EG")}
+                <td className="px-4 py-3 text-sm text-muted-foreground" dir="ltr">
+                  {u.code ?? "—"}
                 </td>
-                <td className="px-4 py-3 text-left">
+                <td className="px-4 py-3 text-sm text-muted-foreground">
+                  {formatDate(u.created_at)}
+                </td>
+                <td className="px-4 py-3 text-end">
                   {canEdit ? (
-                  <div className="inline-flex gap-1">
-                    <Button size="sm" variant="ghost" onClick={() => { setEditingId(u.id); setName(u.name); setCode(u.code ?? ""); }}>
-                      <Pencil className="h-3.5 w-3.5" />
-                    </Button>
-                    <Button size="sm" variant="ghost" onClick={() => { if (confirm("حذف هذه الجامعة وكل كلّياتها؟")) remove.mutate(u.id); }}>
-                      <Trash2 className="h-3.5 w-3.5 text-destructive" />
-                    </Button>
-                  </div>
+                    <div className="inline-flex gap-1">
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        aria-label={`تعديل ${u.name}`}
+                        onClick={() => {
+                          setEditingId(u.id);
+                          setName(u.name);
+                          setCode(u.code ?? "");
+                        }}
+                      >
+                        <Pencil className="h-3.5 w-3.5" />
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        aria-label={`حذف ${u.name}`}
+                        onClick={async () => {
+                          const ok = await confirmAction({
+                            title: `حذف جامعة «${u.name}» وكل كلّياتها؟`,
+                            description:
+                              "سيُحذف كل ما يتبع الجامعة من كليات وبيانات. لا يمكن التراجع عن هذا الإجراء.",
+                            confirmLabel: "حذف نهائي",
+                            destructive: true,
+                            typedConfirmation: u.name,
+                          });
+                          if (ok) remove.mutate(u.id);
+                        }}
+                      >
+                        <Trash2 className="h-3.5 w-3.5 text-destructive" />
+                      </Button>
+                    </div>
                   ) : (
                     <span className="text-xs text-muted-foreground">—</span>
                   )}

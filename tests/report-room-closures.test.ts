@@ -4,7 +4,14 @@ import {
   roomUtilizationMetrics,
   type ReportRoomClosure,
 } from "../src/lib/reports/presentation-metrics";
-import { physicalSeatSummary, QARDAI_ROOM_IDS } from "../src/lib/reports/physical-rooms";
+import { physicalSeatSummary, setPhysicalRoomGroups } from "../src/lib/reports/physical-rooms";
+
+// Fixture: three room rows aliasing one hall (production keys live in rooms.physical_group_key).
+const QARDAI_ROOM_IDS = ["hall-alias-a", "hall-alias-b", "hall-alias-c"] as const;
+setPhysicalRoomGroups(
+  QARDAI_ROOM_IDS.map((id) => ({ id, physical_group_key: "shared:qardai" })),
+  [{ group_key: "shared:qardai", room_count: 3 }],
+);
 
 const base = {
   settings: { working_days: [0, 1], day_start_time: "08:00", day_end_time: "14:00" },

@@ -143,7 +143,16 @@ describe("LAUNCH-CLOSURE-01 gap 1 — bulk plan is all-or-nothing", () => {
 
 describe("LAUNCH-CLOSURE-01 gap 1 — write path keeps tenant scope and honest results", () => {
   const api = read("src/lib/availability/bulk-api.ts");
-  const ui = read("src/routes/_authenticated/availability.tsx");
+  // L-14: the availability page was split into the route + src/components/availability/*.
+  const ui = [
+    "src/routes/_authenticated/availability.tsx",
+    "src/components/availability/availability-shared.tsx",
+    "src/components/availability/instructor-unavailability.tsx",
+    "src/components/availability/instructor-requests.tsx",
+    "src/components/availability/room-unavailability.tsx",
+  ]
+    .map(read)
+    .join("\n");
 
   test("RPC stays the primary path and the fallback runs only for a missing function", () => {
     expect(api).toContain("upsert_instructor_unavailability_for_active_days");
@@ -181,8 +190,13 @@ describe("LAUNCH-CLOSURE-01 gap 1 — write path keeps tenant scope and honest r
   });
 
   test("a failed save refetches instead of leaving stale UI", () => {
-    expect(ui).toContain('qc.invalidateQueries({ queryKey: ["iu", active?.id, instructorId] })');
-    expect(ui).toContain('qc.invalidateQueries({ queryKey: ["ru", active?.id, roomId] })');
+    // L-10: the cryptic "iu"/"ru" keys were renamed to descriptive ones.
+    expect(ui).toMatch(
+      /qc\.invalidateQueries\(\{\s*queryKey: \["instructor-availability-windows", active\?\.id, instructorId\],?\s*\}\)/,
+    );
+    expect(ui).toContain(
+      'qc.invalidateQueries({ queryKey: ["room-unavailability", active?.id, roomId] })',
+    );
   });
 });
 
@@ -206,9 +220,17 @@ describe("LAUNCH-CLOSURE-01 gap 2 — hydration-safe authenticated gate", () => 
     expect(gate).not.toContain("typeof window");
   });
 
+  // The check moved out of route.tsx into src/lib/auth/session-service.ts (wiring) and
+  // src/lib/auth/check-session.ts (pure, bounded, error-mapping logic). Follow it there.
   test("the session check still uses getUser, so the guard is not weakened", () => {
-    expect(gate).toContain(".getUser()");
-    expect(gate).toContain("if (error || !data.user)");
+    expect(gate).toContain('from "@/lib/auth/session-service"');
+    expect(gate).toContain("checkCurrentSession(");
+    const service = read("src/lib/auth/session-service.ts");
+    expect(service).toContain("supabase.auth.getUser()");
+    expect(service).not.toContain("getSession(");
+    const check = read("src/lib/auth/check-session.ts");
+    expect(check).toContain("if (user.error)");
+    expect(check).toContain('if (!user.data.user) return { kind: "signed-out" };');
   });
 });
 

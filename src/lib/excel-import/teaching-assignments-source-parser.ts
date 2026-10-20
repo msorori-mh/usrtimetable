@@ -1,6 +1,7 @@
 /**
  * Parser for academic source teaching-assignment workbooks (all sheets, carry-forward).
  */
+import { readGuardedWorkbook } from "./file-guard";
 import {
   SOURCE_COLUMN_KEYS,
   SOURCE_WORKBOOK_SKIP_SHEETS,
@@ -218,9 +219,10 @@ export function parseSourceWorkbookFromSheets(
 }
 
 export async function parseSourceWorkbookFile(file: File): Promise<ParsedSourceWorkbook> {
-  const XLSX = await import("xlsx");
-  const buf = await file.arrayBuffer();
-  const wb = XLSX.read(buf, { type: "array" });
+  // L-4: size / signature / macro / range guard before any parsing.
+  const { XLSX, workbook: wb } = await readGuardedWorkbook<typeof import("xlsx")>(file, {
+    skipSheets: SOURCE_WORKBOOK_SKIP_SHEETS,
+  });
   const sheetInputs: { name: string; matrix: SheetMatrix }[] = [];
   for (const name of wb.SheetNames) {
     if (SOURCE_WORKBOOK_SKIP_SHEETS.has(name)) continue;
@@ -236,9 +238,10 @@ export async function parseSourceWorkbookFile(file: File): Promise<ParsedSourceW
 }
 
 export async function readWorkbookSheetHeaders(file: File): Promise<string[][]> {
-  const XLSX = await import("xlsx");
-  const buf = await file.arrayBuffer();
-  const wb = XLSX.read(buf, { type: "array" });
+  // L-4: size / signature / macro / range guard before any parsing.
+  const { XLSX, workbook: wb } = await readGuardedWorkbook<typeof import("xlsx")>(file, {
+    skipSheets: SOURCE_WORKBOOK_SKIP_SHEETS,
+  });
   const out: string[][] = [];
   for (const name of wb.SheetNames) {
     if (SOURCE_WORKBOOK_SKIP_SHEETS.has(name)) continue;

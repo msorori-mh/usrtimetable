@@ -15,6 +15,7 @@ import {
 import { toast } from "sonner";
 import { checkCurrentSession } from "@/lib/auth/session-service";
 import { boundedSessionRequest, SessionCheckError } from "@/lib/auth/check-session";
+import { translateAuthError } from "@/lib/auth-error-message";
 
 export const Route = createFileRoute("/auth")({
   head: () => ({ meta: [{ title: `تسجيل الدخول — ${USR_PLATFORM_NAME_AR}` }] }),
@@ -163,11 +164,11 @@ function AuthPage() {
             </div>
           </div>
           <div>
-            <h2 className="text-2xl font-bold leading-tight border-r-4 border-[var(--usr-gold)] pr-4">
+            <h2 className="text-2xl font-bold leading-tight border-s-4 border-[var(--usr-gold)] ps-4">
               {USR_PLATFORM_NAME_AR}
             </h2>
             <p className="mt-4 max-w-md text-white/90 leading-relaxed">{USR_PLATFORM_DESC_AR}</p>
-            <p className="usr-access-notice usr-access-notice--on-dark mt-5 max-w-md text-right">
+            <p className="usr-access-notice usr-access-notice--on-dark mt-5 max-w-md text-start">
               {USR_AUTH_NOTICE_AR}
             </p>
           </div>
@@ -193,14 +194,14 @@ function AuthPage() {
               أدخل بيانات حسابك المصرّح به للوصول إلى المنصّة.
             </p>
 
-            <div className="usr-access-notice mb-6 text-right">{USR_AUTH_NOTICE_AR}</div>
+            <div className="usr-access-notice mb-6 text-start">{USR_AUTH_NOTICE_AR}</div>
 
             {forgotMode ? (
               resetSent ? (
                 <div className="space-y-4" data-testid="auth-reset-sent">
                   <p className="text-sm text-muted-foreground">
-                    إذا كان البريد مسجّلًا لدينا فقد أرسلنا إليه رابط استعادة كلمة المرور.
-                    تحقق من بريدك الوارد ومجلد الرسائل غير المرغوبة.
+                    إذا كان البريد مسجّلًا لدينا فقد أرسلنا إليه رابط استعادة كلمة المرور. تحقق من
+                    بريدك الوارد ومجلد الرسائل غير المرغوبة.
                   </p>
                   <Button
                     type="button"
@@ -310,10 +311,4 @@ function AuthPage() {
       </div>
     </div>
   );
-}
-
-function translateAuthError(msg: string): string {
-  if (msg.includes("Invalid login")) return "بيانات الدخول غير صحيحة أو الحساب غير مخوّل";
-  if (msg.includes("Password should")) return "كلمة المرور لا تستوفي متطلبات الحساب.";
-  return msg;
 }

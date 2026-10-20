@@ -112,19 +112,19 @@ describe("RTL select primitives", () => {
       select.indexOf("SelectScrollUpButton"),
     );
     expect(trigger).toContain('dir="rtl"');
-    expect(trigger).toContain("text-right");
+    expect(trigger).toContain("text-start");
   });
 
   test("content is rtl and right aligned", () => {
     const content = select.slice(select.indexOf("SelectContent"), select.indexOf("SelectLabel"));
     expect(content).toContain('dir="rtl"');
-    expect(content).toContain("text-right");
+    expect(content).toContain("text-start");
   });
 
   test("item is rtl with logical spacing and end-positioned check", () => {
     const item = select.slice(select.indexOf("SelectItem"));
     expect(item).toContain('dir="rtl"');
-    expect(item).toContain("text-right");
+    expect(item).toContain("text-start");
     expect(item).toContain("ps-2");
     expect(item).toContain("pe-8");
     expect(item).toContain("end-2");

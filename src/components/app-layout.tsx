@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useCurrentUser } from "@/hooks/use-current-user";
+import { useOwnFeatureFlags } from "@/hooks/use-feature-flags";
 import { useActiveCollege } from "@/hooks/use-colleges";
 import { toast } from "sonner";
 import { UsrBrandMark } from "@/components/branding/usr-brand-mark";
@@ -40,6 +41,7 @@ import {
   INSTITUTIONAL_VIEWER_ROLE_LABEL_AR,
   READ_ONLY_ROLE_LABEL_AR,
   buildAccountGreeting,
+  OMIT_LEADERSHIP_TITLE_FLAG,
   executiveDashboardTitle,
   isAcademicAffairsRole,
   isLeadershipOnlyRole,
@@ -103,7 +105,7 @@ function CorePathNav({
             )}
           >
             {active && (
-              <span className="absolute inset-y-2 right-0 w-[3px] rounded-full bg-[var(--usr-gold)]" />
+              <span className="absolute inset-y-2 start-0 w-[3px] rounded-full bg-[var(--usr-gold)]" />
             )}
             <span
               className={cn(
@@ -165,7 +167,7 @@ function AllToolsNav({
   return (
     <div className="space-y-2">
       <div className="relative">
-        <Search className="pointer-events-none absolute right-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+        <Search className="pointer-events-none absolute start-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
         <Input
           value={query}
           onChange={(e) => setQuery(e.target.value)}
@@ -173,7 +175,7 @@ function AllToolsNav({
           aria-label="بحث فوري عن صفحة"
           data-testid="nav-page-search"
           className={cn(
-            "h-8 pr-8 text-xs",
+            "h-8 ps-8 text-xs",
             tone === "sidebar" &&
               "border-sidebar-border/60 bg-white/5 text-sidebar-foreground placeholder:text-sidebar-foreground/40",
           )}
@@ -267,7 +269,7 @@ function AllToolsNav({
                       )}
                     >
                       {active && (
-                        <span className="absolute inset-y-1.5 right-0 w-0.5 rounded-full bg-[var(--usr-gold)]" />
+                        <span className="absolute inset-y-1.5 start-0 w-0.5 rounded-full bg-[var(--usr-gold)]" />
                       )}
                       <Icon className="h-4 w-4 shrink-0 opacity-80" />
                       <span className="truncate">{item.label}</span>
@@ -285,6 +287,7 @@ function AllToolsNav({
 
 export function AppLayout({ children }: { children: React.ReactNode }) {
   const { data: user, isLoading } = useCurrentUser();
+  const { data: featureFlags } = useOwnFeatureFlags(user?.id);
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const pathname = useRouterState({
@@ -371,7 +374,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
     <button
       type="button"
       onClick={() => setNavMode(mode === "core" ? "all" : "core")}
-      className="flex w-full items-center justify-between gap-3 rounded-lg border border-sidebar-border/60 bg-white/5 px-3 py-2 text-right text-xs transition hover:bg-white/10"
+      className="flex w-full items-center justify-between gap-3 rounded-lg border border-sidebar-border/60 bg-white/5 px-3 py-2 text-start text-xs transition hover:bg-white/10"
       data-testid="navigation-mode-toggle"
     >
       <span>
@@ -440,7 +443,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="flex min-h-screen flex-col bg-background md:flex-row" data-app-shell="root">
-      <aside className="sticky top-0 hidden h-screen w-64 shrink-0 flex-col border-l border-sidebar-border bg-sidebar text-sidebar-foreground md:flex">
+      <aside className="sticky top-0 hidden h-screen w-64 shrink-0 flex-col border-e border-sidebar-border bg-sidebar text-sidebar-foreground md:flex">
         <div className="usr-gold-rule shrink-0" />
         <div className="flex items-center gap-3 border-b border-sidebar-border px-5 py-4">
           <UsrBrandMark size="sm" className="ring-white/25" />
@@ -520,7 +523,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
             className={cn(
               "report-no-print mb-5 rounded-xl border px-4 py-3 sm:px-5",
               universityLeadershipOnly
-                ? "border-primary/40 border-r-4 border-r-[var(--usr-gold)] bg-primary/10 shadow-sm ring-1 ring-primary/10 sm:px-6 sm:py-4"
+                ? "border-primary/40 border-s-4 border-s-[var(--usr-gold)] bg-primary/10 shadow-sm ring-1 ring-primary/10 sm:px-6 sm:py-4"
                 : "border-primary/20 bg-primary/5",
             )}
             data-app-chrome="welcome"
@@ -545,6 +548,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
                 collegeName: activeCollege?.name ?? null,
                 isCollegeDeanOnly: collegeDeanOnly,
                 isUniversityLeadershipOnly: universityLeadershipOnly,
+                omitLeadershipTitle: featureFlags?.has(OMIT_LEADERSHIP_TITLE_FLAG) ?? false,
               })}
             </p>
             {!user.isSuperAdmin &&

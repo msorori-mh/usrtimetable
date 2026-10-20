@@ -22,6 +22,7 @@ import { downloadCSV, downloadXLSX, type Row } from "@/lib/reports/export";
 import { printPageStyleCss } from "@/lib/print-center";
 import { toast } from "sonner";
 import type { ReportContext } from "@/lib/reports/types";
+import { userErrorMessage } from "@/lib/user-error";
 
 interface Props {
   title: string;
@@ -138,7 +139,7 @@ export function ReportShell({
       prepared = preparePrintContent ? await preparePrintContent() : printContent;
     } catch (error) {
       cancel();
-      toast.error(error instanceof Error ? error.message : "تعذّر تجهيز التقرير للطباعة.");
+      toast.error(userErrorMessage(error, "تعذّر تجهيز التقرير للطباعة."));
       return;
     }
     if (cancelled) return;
@@ -275,7 +276,7 @@ export function ReportShell({
       >
         <Button asChild variant="ghost" size="sm" className="justify-self-start">
           <Link to="/reports" aria-label="العودة إلى فهرس التقارير">
-            <ArrowRight className="ml-1 h-4 w-4" /> العودة
+            <ArrowRight className="me-1 h-4 w-4" /> العودة
           </Link>
         </Button>
         <div className="flex min-w-0 flex-wrap items-center justify-end gap-2">
@@ -285,7 +286,7 @@ export function ReportShell({
             aria-label="طباعة التقرير"
             disabled={exportsDisabled}
           >
-            <Printer className="ml-1 h-4 w-4" /> طباعة
+            <Printer className="me-1 h-4 w-4" /> طباعة
           </Button>
           <Button
             variant="ghost"
@@ -294,7 +295,7 @@ export function ReportShell({
             disabled={exportsDisabled}
             onClick={() => downloadXLSX(rows, headers, filename)}
           >
-            <FileSpreadsheet className="ml-1 h-4 w-4" /> Excel
+            <FileSpreadsheet className="me-1 h-4 w-4" /> Excel
           </Button>
           <Button
             variant="ghost"
@@ -303,7 +304,7 @@ export function ReportShell({
             disabled={exportsDisabled}
             onClick={() => downloadCSV(rows, headers, filename)}
           >
-            <Download className="ml-1 h-4 w-4" /> CSV
+            <Download className="me-1 h-4 w-4" /> CSV
           </Button>
         </div>
       </div>

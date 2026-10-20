@@ -29,6 +29,7 @@ import {
   type CoreWorkflowStageState,
 } from "@/lib/core-workflow";
 import { cn } from "@/lib/utils";
+import { formatNumber } from "@/lib/format";
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
   head: () => ({ meta: [{ title: "الرئيسية — إدارة الجدول" }] }),
@@ -47,7 +48,7 @@ function Dashboard() {
   const { active } = useActiveCollege();
   const canManage = useCanManageActiveCollege();
 
-  const { data: organizationStats } = useQuery({
+  const { data: organizationStats, isError: organizationStatsFailed } = useQuery({
     queryKey: ["dashboard-organization-stats"],
     enabled: !!user?.isSuperAdmin,
     queryFn: async () => {
@@ -56,6 +57,7 @@ function Dashboard() {
         supabase.from("colleges").select("id", { count: "exact", head: true }),
         supabase.from("profiles").select("id", { count: "exact", head: true }),
       ]);
+      for (const r of [universities, colleges, profiles]) if (r.error) throw r.error;
       return {
         universities: universities.count ?? 0,
         colleges: colleges.count ?? 0,
@@ -74,16 +76,21 @@ function Dashboard() {
     queryKey: ["dashboard-schedule-summary", active?.id],
     enabled: !!active,
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("schedule_versions")
-        .select("id, status")
-        .eq("college_id", active!.id);
-      if (error) throw error;
-      const versions = data ?? [];
-      return {
-        total: versions.length,
-        published: versions.filter((version) => version.status === "published").length,
-      };
+      // H-10: exact server-side counts — never derived from a capped row list.
+      const [all, published] = await Promise.all([
+        supabase
+          .from("schedule_versions")
+          .select("id", { count: "exact", head: true })
+          .eq("college_id", active!.id),
+        supabase
+          .from("schedule_versions")
+          .select("id", { count: "exact", head: true })
+          .eq("college_id", active!.id)
+          .eq("status", "published"),
+      ]);
+      if (all.error) throw all.error;
+      if (published.error) throw published.error;
+      return { total: all.count ?? 0, published: published.count ?? 0 };
     },
   });
 
@@ -125,7 +132,9 @@ function Dashboard() {
               <div className="mt-4 max-w-lg space-y-2">
                 <div className="flex items-center justify-between text-xs">
                   <span>جاهزية البيانات</span>
-                  <span className="font-semibold">{readiness.data.percentComplete}%</span>
+                  <span className="font-semibold">
+                    {formatNumber(readiness.data.percentComplete)}%
+                  </span>
                 </div>
                 <Progress value={readiness.data.percentComplete} className="h-2" />
               </div>
@@ -136,9 +145,9 @@ function Dashboard() {
               <Link to={workflow.nextStage.href}>
                 {canManage ? "متابعة العمل" : "عرض الحالة"}
                 {canManage ? (
-                  <ArrowLeft className="mr-2 h-4 w-4" />
+                  <ArrowLeft className="ms-2 h-4 w-4" />
                 ) : (
-                  <Eye className="mr-2 h-4 w-4" />
+                  <Eye className="ms-2 h-4 w-4" />
                 )}
               </Link>
             </Button>
@@ -160,7 +169,7 @@ function Dashboard() {
           </div>
           <Button asChild variant="outline" size="sm">
             <Link to="/reports">
-              <FileBarChart2 className="ml-2 h-4 w-4" /> التقارير
+              <FileBarChart2 className="me-2 h-4 w-4" /> التقارير
             </Link>
           </Button>
         </div>
@@ -171,11 +180,11 @@ function Dashboard() {
         </div>
       </section>
 
-      {readiness.isError || scheduleSummary.isError ? (
+      {readiness.isError || scheduleSummary.isError || organizationStatsFailed ? (
         <Card className="border-amber-500/30 bg-amber-500/5 p-4 text-sm">
           تعذر تحديث بعض المؤشرات الآن. يمكنك متابعة العمل، لكن راجع صفحة تجهيز البيانات للحصول على
           الفحص التفصيلي.
-          <Link to="/data-onboarding" className="mr-2 font-semibold text-primary hover:underline">
+          <Link to="/data-onboarding" className="ms-2 font-semibold text-primary hover:underline">
             فتح الفحص
           </Link>
         </Card>
@@ -271,7 +280,7 @@ function AdminLink({
       <span className="flex items-center gap-2 text-sm font-medium">
         {icon} {title}
       </span>
-      <span className="text-sm font-bold">{value ?? "—"}</span>
+      <span className="text-sm font-bold">{formatNumber(value)}</span>
     </Link>
   );
 }

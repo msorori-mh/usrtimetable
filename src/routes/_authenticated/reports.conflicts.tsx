@@ -14,6 +14,7 @@ import { Info, ShieldAlert } from "lucide-react";
 import { fetchConflictReportRows } from "@/lib/reports/queries/operational-queries";
 import { useReportContext } from "@/hooks/reports/useReportContext";
 import { filterRowsBySearch } from "@/lib/reports/search";
+import { formatDateTime } from "@/lib/format";
 
 export const Route = createFileRoute("/_authenticated/reports/conflicts")({
   head: () => ({ meta: [{ title: "تقرير التعارضات" }] }),
@@ -174,7 +175,7 @@ function Page() {
   const [search, setSearch] = useState("");
 
   const { data, isLoading, error, refetch } = useQuery({
-    queryKey: ["rep-conflicts", ctx.collegeId, ctx.versionId, ctx.studySystem],
+    queryKey: ["reports-conflicts", ctx.collegeId, ctx.versionId, ctx.studySystem],
     enabled: !!ctx.collegeId && !!ctx.versionId,
     queryFn: () =>
       fetchConflictReportRows({
@@ -203,7 +204,7 @@ function Page() {
       title="تقرير التعارضات"
       description={
         check
-          ? `آخر فحص: ${new Date(check.created_at).toLocaleString("ar")} · ${check.total_conflicts} تعارض · ${check.check_type}`
+          ? `آخر فحص: ${formatDateTime(check.created_at)} · ${check.total_conflicts} تعارض · ${check.check_type}`
           : "يعرض نتائج آخر فحص تعارضات محفوظ — دون تشغيل المحرك."
       }
       filterSummary={ctx.filterSummary}

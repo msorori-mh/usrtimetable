@@ -1,6 +1,6 @@
 import { LeadershipTeachingHours } from "@/components/reports/leadership-teaching-hours";
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useState, type ReactNode } from "react";
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { BookOpen, Clock3, FlaskConical, RefreshCw, Users } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
@@ -78,8 +78,16 @@ import {
   educationSourceTimetableApprovalPercent,
   isEducationSourcePublication,
 } from "@/lib/schedule-versions/education-publication";
+import { useEducationSourcePublications } from "@/lib/schedule-versions/education-publication-loader";
 import { ReportScopeError } from "@/lib/reports/preferences";
+import {
+  CountList,
+  FacultyBreakdownPanel,
+  MetricCard,
+  MetricLink,
+} from "@/components/reports/leadership-dashboard-parts";
 import "@/components/reports/leadership-dashboard.css";
+import { formatDateTime } from "@/lib/format";
 
 const LEADERSHIP_OVERVIEW_TIMEOUT_MS = 15_000;
 
@@ -125,166 +133,6 @@ const text = (value: unknown) =>
   value === null || value === undefined || value === "" ? "غير محسوب" : String(value);
 const hours = (value: number | null | undefined) => formatLeadershipAmount(value, "ساعة");
 const ALL_COLLEGES = "all";
-function MetricCard({
-  label,
-  value,
-  detail,
-  icon,
-  tone = "normal",
-  definition,
-  onOpen,
-}: {
-  label: string;
-  value: ReactNode;
-  detail: ReactNode;
-  icon: ReactNode;
-  tone?: "normal" | "warning" | "critical";
-  definition?: string;
-  onOpen?: () => void;
-}) {
-  const valueClass =
-    tone === "critical"
-      ? "mt-1 text-xl font-bold text-destructive"
-      : tone === "warning"
-        ? "mt-1 text-xl font-bold text-[color:var(--usr-gold-dark)]"
-        : "mt-1 text-xl font-bold text-foreground";
-  return (
-    <Card className="min-w-0 p-4">
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0">
-          <p className="text-xs font-medium text-muted-foreground">{label}</p>
-          {onOpen ? (
-            <button
-              type="button"
-              onClick={onOpen}
-              className={`${valueClass} cursor-pointer text-start underline decoration-dotted underline-offset-4`}
-              aria-label={`فتح سجلات ${label}`}
-            >
-              {value}
-            </button>
-          ) : (
-            <div className={valueClass}>{value}</div>
-          )}
-        </div>
-        <span className="rounded border bg-muted p-2 text-muted-foreground" aria-hidden>
-          {icon}
-        </span>
-      </div>
-      {definition && (
-        <details className="mt-2 text-xs text-muted-foreground">
-          <summary className="cursor-pointer">كيف حُسب؟</summary>
-          <p className="mt-2 leading-6">{definition}</p>
-        </details>
-      )}
-      <div className="mt-3 border-t pt-2 text-xs leading-6 text-muted-foreground">{detail}</div>
-    </Card>
-  );
-}
-
-/** رقم فرعي قابل للفتح إلى سجلاته مع تعريفه المركزي. */
-function MetricLink({
-  metric,
-  value,
-  onOpen,
-}: {
-  metric: LeadershipMetricKey;
-  value: ReactNode;
-  onOpen: (metric: LeadershipMetricKey) => void;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={() => onOpen(metric)}
-      title={LEADERSHIP_METRICS[metric].definition}
-      className="cursor-pointer underline decoration-dotted underline-offset-4"
-      aria-label={`فتح سجلات ${LEADERSHIP_METRICS[metric].label}`}
-    >
-      {value}
-    </button>
-  );
-}
-
-type FacultyBreakdownTone = "availability" | "rank";
-
-const FACULTY_BREAKDOWN_STYLES: Record<
-  FacultyBreakdownTone,
-  { panel: string; heading: string; item: string; value: string; total: string }
-> = {
-  availability: {
-    panel: "border-emerald-200 bg-emerald-50/70 dark:border-emerald-900 dark:bg-emerald-950/25",
-    heading: "border-emerald-200/80 dark:border-emerald-900",
-    item: "border-emerald-100 bg-white/90 dark:border-emerald-900/70 dark:bg-background/75",
-    value: "bg-emerald-600 text-white shadow-sm dark:bg-emerald-500 dark:text-emerald-950",
-    total: "bg-emerald-100 text-emerald-800 dark:bg-emerald-900 dark:text-emerald-100",
-  },
-  rank: {
-    panel: "border-indigo-200 bg-indigo-50/70 dark:border-indigo-900 dark:bg-indigo-950/25",
-    heading: "border-indigo-200/80 dark:border-indigo-900",
-    item: "border-indigo-100 bg-white/90 dark:border-indigo-900/70 dark:bg-background/75",
-    value: "bg-indigo-600 text-white shadow-sm dark:bg-indigo-500 dark:text-indigo-950",
-    total: "bg-indigo-100 text-indigo-800 dark:bg-indigo-900 dark:text-indigo-100",
-  },
-};
-
-function CountList({
-  entries,
-  tone,
-}: {
-  entries: Array<[string, number]>;
-  tone: FacultyBreakdownTone;
-}) {
-  const styles = FACULTY_BREAKDOWN_STYLES[tone];
-  return (
-    <dl className="grid gap-2 sm:grid-cols-2 lg:grid-cols-1">
-      {entries.map(([label, value]) => (
-        <div
-          key={label}
-          className={`grid min-h-12 grid-cols-[minmax(0,1fr)_auto] items-center gap-3 rounded-lg border px-3 py-2 ${styles.item}`}
-        >
-          <dt className="min-w-0 text-sm font-medium leading-5 text-foreground">{label}</dt>
-          <dd
-            className={`min-w-12 rounded-md px-2.5 py-1 text-center text-base font-extrabold tabular-nums ${styles.value}`}
-          >
-            {value.toLocaleString("ar")}
-          </dd>
-        </div>
-      ))}
-    </dl>
-  );
-}
-
-function FacultyBreakdownPanel({
-  title,
-  entries,
-  testId,
-  tone,
-}: {
-  title: string;
-  entries: Array<[string, number]>;
-  testId: string;
-  tone: FacultyBreakdownTone;
-}) {
-  const total = entries.reduce((sum, [, value]) => sum + value, 0);
-  const styles = FACULTY_BREAKDOWN_STYLES[tone];
-  return (
-    <section
-      className={`rounded-xl border p-3.5 shadow-sm ${styles.panel}`}
-      aria-label={title}
-      data-testid={testId}
-    >
-      <div
-        className={`mb-3 flex items-center justify-between gap-3 border-b pb-2.5 ${styles.heading}`}
-      >
-        <h3 className="text-sm font-bold text-foreground">{title}</h3>
-        <span className={`rounded-full px-2.5 py-1 text-xs font-bold tabular-nums ${styles.total}`}>
-          المجموع {total.toLocaleString("ar")}
-        </span>
-      </div>
-      <CountList entries={entries} tone={tone} />
-    </section>
-  );
-}
-
 function StatusBadge({ row }: { row: LeadershipCollege }) {
   if (row.term_state !== "ready") return <Badge variant="outline">الفترة غير مكتملة</Badge>;
   return row.version_id ? (
@@ -295,6 +143,8 @@ function StatusBadge({ row }: { row: LeadershipCollege }) {
 }
 
 function LeadershipDashboard({ viewerKey }: { viewerKey: string }) {
+  // Sealed education publication markers are data (M-11); re-render once loaded.
+  useEducationSourcePublications();
   const { data: me } = useCurrentUser();
   const collegeDean = !!me?.isCollegeDean && !me.isSuperAdmin && !me.isUniversityLeadership;
   const [period, setPeriod] = useState<{ year: string; type: string } | null>(null);
@@ -486,9 +336,7 @@ function LeadershipDashboard({ viewerKey }: { viewerKey: string }) {
   const periodLabel = data?.year
     ? `${data.year} · ${termTypeLabel(data.term_type ?? "")}`
     : "لم تُحدد فترة أكاديمية";
-  const generatedAt = data?.generated_at
-    ? new Date(data.generated_at).toLocaleString("ar")
-    : "غير متاح";
+  const generatedAt = data?.generated_at ? formatDateTime(data.generated_at) : "غير متاح";
   const selectedValue = data?.year ? JSON.stringify({ year: data.year, type: data.term_type }) : "";
   const rows = colleges.map((college) => ({
     ...college,
@@ -600,7 +448,7 @@ function LeadershipDashboard({ viewerKey }: { viewerKey: string }) {
               onClick={() => void query.refetch()}
               disabled={query.isFetching}
             >
-              <RefreshCw className={`ml-1 h-4 w-4 ${query.isFetching ? "animate-spin" : ""}`} />
+              <RefreshCw className={`me-1 h-4 w-4 ${query.isFetching ? "animate-spin" : ""}`} />
               {query.isFetching ? "جارٍ التحديث" : "تحديث"}
             </Button>
           </div>

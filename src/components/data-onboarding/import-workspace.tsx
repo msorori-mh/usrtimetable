@@ -40,6 +40,11 @@ import { READ_ONLY_VIEW_BADGE_AR, isInstitutionalReadOnlyViewer } from "@/lib/un
 import { preparationLabel } from "@/lib/data-onboarding/preparation";
 import { instructorStatusLabel } from "@/lib/excel-import/instructor-sheet";
 import { HeadcountImportWorkspace } from "./headcount-import-workspace";
+import { userErrorMessage } from "@/lib/user-error";
+import { confirmAction } from "@/components/confirm-dialog";
+import { formatNumber } from "@/lib/format";
+import { withStableKeys } from "@/hooks/stable-keys";
+import { QueryErrorNotice } from "@/components/app-states/query-error-notice";
 
 const ENTITIES = listImportUiEntities().map((m) => ({
   value: m.entity,
@@ -119,10 +124,11 @@ function ImportForm({ entities, onCommitted, onEntityChange }: ImportWorkspacePr
     teachingHoursContractBlockers?: number;
   } | null>(null);
 
-  const { data: collegeTerms = [] } = useQuery({
+  const { data: collegeTerms = [], error: collegeTermsError } = useQuery({
     queryKey: ["import-academic-terms", active?.id],
     enabled: !!active && entity === "teaching_assignments_v2",
     queryFn: async () => {
+      // read-all-ok: active terms of one college (a handful)
       const { data, error } = await supabase
         .from("academic_terms")
         .select("id, code, name, term_type")
@@ -136,7 +142,7 @@ function ImportForm({ entities, onCommitted, onEntityChange }: ImportWorkspacePr
 
   // Programs can only resolve a department of the same college — block the upload
   // with a clear reason until at least one department exists.
-  const { data: departmentCount } = useQuery({
+  const { data: departmentCount, error: departmentCountError } = useQuery({
     queryKey: ["import-department-count", active?.id],
     enabled: !!active && entity === "academic_programs",
     queryFn: async () => {
@@ -163,7 +169,7 @@ function ImportForm({ entities, onCommitted, onEntityChange }: ImportWorkspacePr
       a.click();
       URL.revokeObjectURL(url);
     } catch (e) {
-      toast.error((e as Error).message);
+      toast.error(userErrorMessage(e));
     }
   };
 
@@ -183,7 +189,7 @@ function ImportForm({ entities, onCommitted, onEntityChange }: ImportWorkspacePr
       setMode("update_existing");
       toast.success("عُدّل وضع الاستيراد إلى تحديث الموجود فقط. أكمل الكشف ثم ارفعه هنا.");
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "تعذر تنزيل الكشف");
+      toast.error(userErrorMessage(error, "تعذر تنزيل الكشف"));
     } finally {
       setDownloadingCurrent(false);
     }
@@ -265,7 +271,7 @@ function ImportForm({ entities, onCommitted, onEntityChange }: ImportWorkspacePr
       setPreview(r);
       toast.success(`تم تحليل ${r.total} صف`);
     },
-    onError: (e: Error) => toast.error(e.message),
+    onError: (e: Error) => toast.error(userErrorMessage(e)),
   });
 
   const commitMut = useMutation({
@@ -296,7 +302,7 @@ function ImportForm({ entities, onCommitted, onEntityChange }: ImportWorkspacePr
       void qc.invalidateQueries({ predicate: (query) => query.queryKey.includes(active?.id) });
       onCommitted?.();
     },
-    onError: (e: Error) => toast.error(e.message),
+    onError: (e: Error) => toast.error(userErrorMessage(e)),
   });
 
   const reset = () => {
@@ -362,8 +368,8 @@ function ImportForm({ entities, onCommitted, onEntityChange }: ImportWorkspacePr
             {result.failed > 0 ? "اكتمل الاستيراد مع ملاحظات" : "تم حفظ البيانات"}
           </p>
           <p className="mt-1 text-sm">
-            أُضيف {result.inserted} · حُدّث {result.updated} · تُرك دون تغيير {result.skipped} ·
-            تعذر {result.failed}
+            أُضيف {formatNumber(result.inserted)} · حُدّث {formatNumber(result.updated)} · تُرك دون
+            تغيير {formatNumber(result.skipped)} · تعذر {formatNumber(result.failed)}
           </p>
           <p className="mt-2 text-sm text-muted-foreground">
             تُحدّث جاهزية هذه الخطوة الآن. راجع حالتها قبل الانتقال للخطوة التالية.
@@ -445,7 +451,7 @@ function ImportForm({ entities, onCommitted, onEntityChange }: ImportWorkspacePr
             )}
             <div className="flex items-end">
               <Button variant="outline" className="w-full" onClick={downloadTemplate}>
-                <Download className="ml-2 h-4 w-4" /> تنزيل قالب للإضافة
+                <Download className="me-2 h-4 w-4" /> تنزيل قالب للإضافة
               </Button>
             </div>
           </div>
@@ -502,6 +508,12 @@ function ImportForm({ entities, onCommitted, onEntityChange }: ImportWorkspacePr
             </label>
           </div>
 
+          {(collegeTermsError ?? departmentCountError) && (
+            <QueryErrorNotice
+              title="تعذّر تحميل الفصول أو الأقسام اللازمة للاستيراد."
+              error={collegeTermsError ?? departmentCountError}
+            />
+          )}
           {entity === "teaching_assignments_v2" &&
             file &&
             workbookMode === "academic_source_workbook" &&
@@ -537,7 +549,7 @@ function ImportForm({ entities, onCommitted, onEntityChange }: ImportWorkspacePr
                 (isSourceMode && !allSheetTermsSelected)
               }
             >
-              {previewMut.isPending ? <Loader2 className="ml-2 h-4 w-4 animate-spin" /> : null}
+              {previewMut.isPending ? <Loader2 className="me-2 h-4 w-4 animate-spin" /> : null}
               فحص الملف ومعاينة البيانات
             </Button>
             {file && (
@@ -603,7 +615,7 @@ function ImportForm({ entities, onCommitted, onEntityChange }: ImportWorkspacePr
                 اسمه برقم الموظف الحالي. راجع الأرقام والتخصص والنصاب والحالة قبل التأكيد.
               </p>
               <div className="max-h-80 overflow-auto rounded border">
-                <table className="w-full text-right text-sm">
+                <table className="w-full text-start text-sm">
                   <thead className="bg-muted">
                     <tr>
                       {[
@@ -708,14 +720,17 @@ function ImportForm({ entities, onCommitted, onEntityChange }: ImportWorkspacePr
                 <table className="w-full text-sm">
                   <thead className="bg-muted text-xs">
                     <tr>
-                      <th className="p-2 text-right">الصف</th>
-                      <th className="p-2 text-right">العمود</th>
-                      <th className="p-2 text-right">الخطأ</th>
+                      <th className="p-2 text-start">الصف</th>
+                      <th className="p-2 text-start">العمود</th>
+                      <th className="p-2 text-start">الخطأ</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {preview.errors.slice(0, 50).map((e, i) => (
-                      <tr key={i} className="border-t border-border">
+                    {withStableKeys<RowError>(
+                      preview.errors.slice(0, 50),
+                      (e) => `${e.rowNumber}:${e.columnName ?? ""}:${e.errorCode}:${e.message}`,
+                    ).map(({ key, item: e }) => (
+                      <tr key={key} className="border-t border-border">
                         <td className="p-2">{e.rowNumber}</td>
                         <td className="p-2">{e.columnName ?? "—"}</td>
                         <td className="p-2 text-destructive">{preparationLabel(e.message)}</td>
@@ -734,15 +749,15 @@ function ImportForm({ entities, onCommitted, onEntityChange }: ImportWorkspacePr
                 <table className="w-full text-sm">
                   <thead className="bg-muted text-xs">
                     <tr>
-                      <th className="p-2 text-right">الورقة</th>
-                      <th className="p-2 text-right">الصف</th>
-                      <th className="p-2 text-right">النظام</th>
-                      <th className="p-2 text-right">المحاضرة</th>
-                      <th className="p-2 text-right">إجمالي ساعات المحاضرة</th>
-                      <th className="p-2 text-right">الساعات المسندة للمدرس</th>
-                      <th className="p-2 text-right">عدد المدرسين المشتركين</th>
-                      <th className="p-2 text-right">إجمالي الساعات الموزعة</th>
-                      <th className="p-2 text-right">نتيجة الفحص</th>
+                      <th className="p-2 text-start">الورقة</th>
+                      <th className="p-2 text-start">الصف</th>
+                      <th className="p-2 text-start">النظام</th>
+                      <th className="p-2 text-start">المحاضرة</th>
+                      <th className="p-2 text-start">إجمالي ساعات المحاضرة</th>
+                      <th className="p-2 text-start">الساعات المسندة للمدرس</th>
+                      <th className="p-2 text-start">عدد المدرسين المشتركين</th>
+                      <th className="p-2 text-start">إجمالي الساعات الموزعة</th>
+                      <th className="p-2 text-start">نتيجة الفحص</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -777,9 +792,9 @@ function ImportForm({ entities, onCommitted, onEntityChange }: ImportWorkspacePr
                 <table className="w-full text-sm">
                   <thead className="bg-muted text-xs">
                     <tr>
-                      <th className="p-2 text-right">#</th>
+                      <th className="p-2 text-start">#</th>
                       {tpl.columns.slice(0, 6).map((c) => (
-                        <th key={c.key} className="p-2 text-right">
+                        <th key={c.key} className="p-2 text-start">
                           {c.header}
                         </th>
                       ))}
@@ -821,7 +836,17 @@ function ImportForm({ entities, onCommitted, onEntityChange }: ImportWorkspacePr
               إلغاء
             </Button>
             <Button
-              onClick={() => commitMut.mutate()}
+              onClick={async () => {
+                const ok = await confirmAction({
+                  title: `استيراد ${formatNumber(preview.valid.length)} صفًا صالحًا؟`,
+                  description:
+                    preview.errors.length > 0
+                      ? `سيُحفظ الصالح فقط ويُترك ${formatNumber(preview.errors.length)} خطأ دون استيراد. لا يمكن التراجع تلقائيًا عن الاستيراد.`
+                      : "تُحفظ الصفوف في بيانات الكلية مباشرة. لا يمكن التراجع تلقائيًا عن الاستيراد.",
+                  confirmLabel: "استيراد",
+                });
+                if (ok) commitMut.mutate();
+              }}
               disabled={
                 preview.valid.length === 0 ||
                 commitMut.isPending ||
@@ -829,8 +854,8 @@ function ImportForm({ entities, onCommitted, onEntityChange }: ImportWorkspacePr
                 (preview.teachingHoursContractBlockers ?? 0) > 0
               }
             >
-              {commitMut.isPending ? <Loader2 className="ml-2 h-4 w-4 animate-spin" /> : null}
-              تأكيد استيراد الصفوف الصالحة ({preview.valid.length})
+              {commitMut.isPending ? <Loader2 className="me-2 h-4 w-4 animate-spin" /> : null}
+              تأكيد استيراد الصفوف الصالحة ({formatNumber(preview.valid.length)})
             </Button>
           </div>
         </Card>
@@ -879,6 +904,7 @@ function SourceSheetTermPicker({
         <div key={name} className="grid gap-2 md:grid-cols-2 items-center">
           <span className="text-sm text-muted-foreground">{name}</span>
           <select
+            aria-label={`الفصل الأكاديمي لورقة ${name}`}
             className="h-9 rounded-md border border-input bg-background px-2 text-sm"
             value={sheetTermMap[name] ?? ""}
             onChange={(e) => onChange({ ...sheetTermMap, [name]: e.target.value })}
@@ -903,7 +929,7 @@ function Stat({ label, value, tone }: { label: string; value: number; tone?: "ok
       className={`rounded-lg border p-3 ${tone === "ok" ? "border-emerald-500/30 bg-emerald-500/5" : tone === "err" ? "border-destructive/30 bg-destructive/5" : "border-border"}`}
     >
       <p className="text-xs text-muted-foreground">{label}</p>
-      <p className="text-2xl font-bold">{value.toLocaleString("ar-EG")}</p>
+      <p className="text-2xl font-bold">{formatNumber(value)}</p>
     </div>
   );
 }

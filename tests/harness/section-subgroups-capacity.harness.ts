@@ -258,7 +258,15 @@ function run() {
   assert(grid[0]?.badge?.includes(UNVERIFIED_ENROLLMENT_BADGE_AR), "grid badge unverified");
 
   // 12–14. RPC save wiring + gates + no PGRST200 embeds
-  const page = readSrc("src/routes/_authenticated/schedule-builder.tsx");
+  // L-14: the builder page was split into the route + hooks/use-schedule-builder-workspace.ts + builder components.
+  const page = [
+    "src/routes/_authenticated/schedule-builder.tsx",
+    "src/hooks/use-schedule-builder-workspace.ts",
+    "src/components/schedule-builder/builder-context-bar.tsx",
+    "src/components/schedule-builder/builder-ui.tsx",
+  ]
+    .map((file) => readSrc(file))
+    .join("\n");
   assert(page.includes("validateScheduleSessionMove"), "validate rpc");
   assert(page.includes("moveOrRescheduleScheduleSession"), "save rpc");
   assert(

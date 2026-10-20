@@ -70,6 +70,7 @@ function harness({ fonts = Promise.resolve(), printThrows = false } = {}) {
   for (const [name, path] of [
     ["@/lib/reports/schedule-filename", "src/lib/reports/schedule-filename.ts"],
     ["@/hooks/use-report-document-title", "src/hooks/use-report-document-title.ts"],
+    ["@/lib/user-error", "src/lib/user-error.ts"],
   ]) {
     const dependency = { exports: {} };
     vm.runInNewContext(
@@ -385,7 +386,9 @@ test("a page-rendering failure prints nothing and a subsequent retry can succeed
     },
   });
   assert.equal(app.prints(), 0);
-  assert.deepEqual(app.errors, ["page overflow"]);
+  // L-5: a raw (non-Arabic) error is never shown; the report-specific fallback is.
+  assert.equal(app.errors.length, 1);
+  assert.match(app.errors[0], /^تعذّر تجهيز التقرير للطباعة\.( \(مرجع [0-9a-f]+\))?$/);
   await clickPrint(app, { preparePrintContent: async () => ({ type: "img", props: {} }) });
   assert.equal(app.prints(), 1);
   app.afterPrint();

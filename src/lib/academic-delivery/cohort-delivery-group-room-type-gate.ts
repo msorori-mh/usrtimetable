@@ -51,6 +51,7 @@ export async function checkCohortDeliveryGroupRoomTypes(
     return { ok: true };
   }
 
+  // read-all-ok: components of one cohort curriculum (a few per plan course)
   const { data: components, error: compError } = await supabase
 
     .from("plan_course_components")

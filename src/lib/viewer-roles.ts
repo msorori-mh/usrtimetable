@@ -58,22 +58,26 @@ export function isLeadershipOnlyRole(me: RoleFlags | null | undefined): boolean 
  * (RLS scoped), never from user metadata. Missing assignment fails safe: the
  * greeting degrades to the name only and never names another college.
  */
-const UNIVERSITY_LEADERSHIP_TITLE_EXCLUDED_EMAILS = new Set(["ahaider@usr.edu.ye"]);
+/**
+ * L-7: the per-account exception to the president title is data-driven
+ * (public.user_feature_flags flag `omit_leadership_title`, read by the caller
+ * for its own account under RLS) instead of a hard-coded e-mail address.
+ */
+export const OMIT_LEADERSHIP_TITLE_FLAG = "omit_leadership_title" as const;
 
 export function buildAccountGreeting(input: {
   fullName?: string | null;
+  /** @deprecated no longer consulted; kept for call-site compatibility. */
   email?: string | null;
   collegeName?: string | null;
   isCollegeDeanOnly: boolean;
   isUniversityLeadershipOnly?: boolean;
+  /** From user_feature_flags (`omit_leadership_title`). */
+  omitLeadershipTitle?: boolean;
 }): string {
   const name = input.fullName?.trim();
   const base = name ? `مرحبًا، ${name}` : "مرحبًا بك";
-  const email = input.email?.trim().toLowerCase();
-  if (
-    input.isUniversityLeadershipOnly &&
-    !UNIVERSITY_LEADERSHIP_TITLE_EXCLUDED_EMAILS.has(email ?? "")
-  )
+  if (input.isUniversityLeadershipOnly && !input.omitLeadershipTitle)
     return `${base} — رئيس الجامعة`;
   const college = input.collegeName?.trim();
   if (!input.isCollegeDeanOnly || !college) return base;

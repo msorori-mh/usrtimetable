@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useCurrentUser } from "@/hooks/use-current-user";
 import { Card } from "@/components/ui/card";
 import { School, ShieldCheck } from "lucide-react";
+import { QueryErrorNotice } from "@/components/app-states/query-error-notice";
 
 export const Route = createFileRoute("/_authenticated/my-college")({
   head: () => ({ meta: [{ title: "كلّيتي" }] }),
@@ -13,11 +14,18 @@ export const Route = createFileRoute("/_authenticated/my-college")({
 function MyCollegePage() {
   const { data: user } = useCurrentUser();
 
-  const { data: colleges, isLoading } = useQuery({
+  const {
+    data: colleges,
+    isLoading,
+    isError,
+    error,
+    refetch,
+  } = useQuery({
     queryKey: ["my-colleges", user?.collegeIds],
     enabled: !!user,
     queryFn: async () => {
       if (!user || user.collegeIds.length === 0) return [];
+      // read-all-ok: bounded by the user's own (few) college ids
       const { data, error } = await supabase
         .from("colleges")
         .select("id, name, code, universities(name)")
@@ -41,7 +49,11 @@ function MyCollegePage() {
 
       {isLoading && <p className="text-muted-foreground">جارٍ التحميل...</p>}
 
-      {!isLoading && (!colleges || colleges.length === 0) && (
+      {isError && (
+        <QueryErrorNotice className="mb-4" error={error} onRetry={() => void refetch()} />
+      )}
+
+      {!isLoading && !isError && (!colleges || colleges.length === 0) && (
         <Card className="border-warning/40 bg-warning/10 p-6 text-center">
           <ShieldCheck className="mx-auto mb-2 h-6 w-6 text-warning-foreground" />
           <p className="font-medium">لم يتم إسنادك إلى أي كلّية بعد</p>

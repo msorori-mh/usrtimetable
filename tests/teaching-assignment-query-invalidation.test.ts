@@ -131,7 +131,7 @@ describe("teaching assignment read-model invalidation", () => {
       ["teaching-assignment-workspace-v2", { collegeId: "a", programId: "p2" }],
       ["teaching-assignment-workspace-v2", { collegeId: "b", scheduleVersionId: "draft" }],
       ["instructor-teaching-colleges", "user", true, "college", "lecturer"],
-      ["rep-iw-sess", "college", "draft"],
+      ["reports-instructor-workload-sessions", "college", "draft"],
       ["plt-version-sessions", "college", "draft", "all"],
       ["current-timetable-print", "college", "draft", "all"],
       ["current-timetable-coverage", "college", "draft"],

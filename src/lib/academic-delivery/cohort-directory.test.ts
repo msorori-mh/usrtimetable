@@ -6,6 +6,7 @@ import {
   EMPTY_COHORT_FILTERS,
   type CohortListRow,
 } from "./cohort-directory";
+import { formatNumber } from "../format";
 
 const base: CohortListRow = {
   id: "a",
@@ -29,9 +30,10 @@ describe("formatCohortCount", () => {
     expect(formatCohortCount(null)).toBe("بانتظار الاستكمال");
     expect(formatCohortCount(undefined)).toBe("بانتظار الاستكمال");
   });
-  it("keeps Arabic locale formatting for real numbers", () => {
-    expect(formatCohortCount(1200)).toBe((1200).toLocaleString("ar"));
-    expect(formatCohortCount(0)).toBe((0).toLocaleString("ar"));
+  it("uses the platform number format (Latin digits) for real numbers", () => {
+    expect(formatCohortCount(1200)).toBe(formatNumber(1200));
+    expect(formatCohortCount(1200)).toMatch(/^[0-9٬,]+$/);
+    expect(formatCohortCount(0)).toBe("0");
   });
 });
 
@@ -60,8 +62,8 @@ describe("filterCohortDirectory with null fields", () => {
     const rows: CohortListRow[] = [
       { ...base, id: "null-row", entry_year: null, expected_students: null },
     ];
-    expect(
-      filterCohortDirectory(rows, { ...EMPTY_COHORT_FILTERS, search: "برنامج" }),
-    ).toHaveLength(1);
+    expect(filterCohortDirectory(rows, { ...EMPTY_COHORT_FILTERS, search: "برنامج" })).toHaveLength(
+      1,
+    );
   });
 });

@@ -15,7 +15,7 @@ const bundled = await build({
         b.onResolve(
           {
             filter:
-              /^(@tanstack\/react-start|@\/integrations\/supabase\/(auth-middleware|client.server)|@\/lib\/(viewer-roles|password-policy))$/,
+              /^(@tanstack\/react-start|@\/integrations\/supabase\/(secure-admin-middleware|client.server)|@\/lib\/(viewer-roles|password-policy|user-membership-rules))$/,
           },
           (a) => ({ path: a.path, namespace: "mock" }),
         );
@@ -23,13 +23,15 @@ const bundled = await build({
           contents:
             a.path === "@tanstack/react-start"
               ? `export function createServerFn(){let schema; const c={middleware(){return c},inputValidator(s){schema=s;return c},handler(fn){return async a=>fn({...a,data:schema?schema.parse(a.data):a.data})}};return c}`
-              : a.path.endsWith("auth-middleware")
-                ? "export const requireSupabaseAuth={};"
+              : a.path.endsWith("secure-admin-middleware")
+                ? "export const requireSecureAdmin={};"
                 : a.path.endsWith("client.server")
                   ? "export const supabaseAdmin=new Proxy({}, {get:(_,p)=>globalThis.__resetAdmin[p]});"
                   : a.path.endsWith("viewer-roles")
                     ? "export const assignsAllColleges=()=>false, requiresCollegeAssignment=()=>false, requiresExactlyOneCollege=()=>false;"
-                    : "export const requiresInitialPassword=()=>true;",
+                    : a.path.endsWith("user-membership-rules")
+                      ? "export const planCollegeChange=()=>({ok:true,add:[],remove:[]}), validateRoleChange=()=>null;"
+                      : "export const requiresInitialPassword=()=>true, PASSWORD_MAX_BYTES=72, passwordPolicyIssues=()=>[], describePasswordIssues=()=>'';",
           loader: "js",
         }));
       },
@@ -49,7 +51,8 @@ const input = {
 function setup(options = {}) {
   const updates = [],
     audits = [],
-    links = [];
+    links = [],
+    recoveryEmails = [];
   let targetReads = 0;
   globalThis.__resetAdmin = {
     from(table) {
@@ -88,6 +91,13 @@ function setup(options = {}) {
       error: options.rateError ? { message: "injected" } : null,
     }),
     auth: {
+      resetPasswordForEmail: async (email, options) => {
+        recoveryEmails.push({ email, options });
+        return {
+          data: {},
+          error: options?.failEmail || globalThis.__failEmail ? { message: "x" } : null,
+        };
+      },
       admin: {
         getUserById: async (id) => {
           assert.equal(id, targetId);
@@ -109,6 +119,7 @@ function setup(options = {}) {
           return { error: options.updateError ? { message: "injected" } : null };
         },
         generateLink: async (value) => {
+          // L-1: must never be called — a live link must not reach the browser.
           links.push(value);
           return {
             data: {
@@ -122,7 +133,7 @@ function setup(options = {}) {
       },
     },
   };
-  return { updates, audits, links, reads: () => targetReads };
+  return { updates, audits, links, recoveryEmails, reads: () => targetReads };
 }
 
 test("temporary password is saved before being returned, with mandatory change and safe audit", async () => {
@@ -143,8 +154,9 @@ test("temporary password is saved before being returned, with mandatory change a
   assert.notEqual((await reset(input)).temporary_password, result.temporary_password);
 });
 
-test("authorization and rate-limit failures deny reset before reading or writing the target", async () => {
-  for (const options of [{ denied: true }, { rateLimited: true }, { rateError: true }]) {
+test("rate-limit failures deny reset before reading or writing the target", async () => {
+  // H-11: caller authorization is proven by requireSecureAdmin (see admin-access tests).
+  for (const options of [{ rateLimited: true }, { rateError: true }]) {
     const f = setup(options);
     await assert.rejects(() => reset(input));
     assert.equal(f.reads(), 0);
@@ -173,13 +185,20 @@ test("failed password update never returns a credential or records completion", 
   assert.equal(f.audits.length, 0);
 });
 
-test("super admins retain explicit recovery without a forced-change dead end", async () => {
+test("L-1: super-admin targets get an e-mailed recovery link; nothing usable is returned", async () => {
   const f = setup({ adminTarget: true });
   const result = await reset(input);
   assert.equal(result.temporary_password, null);
-  assert.equal(result.action_link, "https://example.invalid/recovery");
+  assert.equal(result.action_link, null);
+  assert.equal(result.sent, true);
   assert.equal(f.updates.length, 0);
-  assert.deepEqual(f.links, [{ type: "recovery", email: "test@example.invalid" }]);
-  setup({ adminTarget: true, noLink: true });
-  await assert.rejects(() => reset(input), /تعذر إنشاء/);
+  assert.equal(f.links.length, 0, "generateLink must not be used");
+  assert.equal(f.recoveryEmails.length, 1);
+  assert.equal(f.recoveryEmails[0].email, "test@example.invalid");
+  assert.doesNotMatch(JSON.stringify(result), /https?:\/\//);
+  assert.equal(f.audits[0].action, "password_reset_requested");
+  globalThis.__failEmail = true;
+  setup({ adminTarget: true });
+  await assert.rejects(() => reset(input), /تعذر إرسال رابط الاستعادة/);
+  delete globalThis.__failEmail;
 });

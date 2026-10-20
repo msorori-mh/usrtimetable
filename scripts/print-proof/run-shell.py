@@ -35,7 +35,10 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 DIST = ROOT / "dist-print-proof"
-OUT = ROOT / "docs" / "print-proof" / "full-shell"
+# Generated PDFs/PNGs/XLSX are large binaries: by default they go to the git-ignored
+# proof-output/ folder. To re-record the committed evidence set
+# PRINT_PROOF_OUT=docs/print-proof (M-26; see docs/print-proof/README.md).
+OUT = (ROOT / os.environ.get("PRINT_PROOF_OUT", "proof-output/print-proof")) / "full-shell"
 PORT = 8793
 
 PLATFORM_NAME = "منصة إدارة الجداول الجامعية"

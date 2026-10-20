@@ -1,3 +1,4 @@
+import { userErrorMessage } from "@/lib/user-error";
 /**
  * Pure helpers for the data-cleanup bulk dialog (selection + confirm contract).
  * Kept framework-free so the behaviour can be tested without a DOM.
@@ -37,8 +38,7 @@ export async function runBulkConfirm(
   try {
     return (await onConfirm(ids)) === true;
   } catch (e) {
-    const msg = e instanceof Error && e.message ? e.message : String(e);
-    onError(`تعذّر تنفيذ العملية: ${msg}`);
+    onError(userErrorMessage(e, "تعذّر تنفيذ العملية."));
     return false;
   }
 }
@@ -54,5 +54,5 @@ export function firstQueryError(
 ): string | null {
   const failed = results.filter((r) => r.error);
   if (failed.length === 0) return null;
-  return `تعذّر تحميل البيانات (${failed.map((f) => f.label).join("، ")}): ${failed[0].error?.message ?? "خطأ غير معروف"}`;
+  return `تعذّر تحميل البيانات (${failed.map((f) => f.label).join("، ")}): ${userErrorMessage(failed[0].error, "خطأ غير معروف")}`;
 }

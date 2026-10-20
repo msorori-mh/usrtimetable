@@ -5,7 +5,16 @@ import { resolve } from "node:path";
 const root = resolve(import.meta.dirname, "../..");
 const read = (path: string) => readFileSync(resolve(root, path), "utf8");
 
-const builder = read("src/routes/_authenticated/schedule-builder.tsx");
+// L-14: the builder page was split into the route + hooks/use-schedule-builder-workspace.ts + builder components.
+
+const builder = [
+  "src/routes/_authenticated/schedule-builder.tsx",
+  "src/hooks/use-schedule-builder-workspace.ts",
+  "src/components/schedule-builder/builder-context-bar.tsx",
+  "src/components/schedule-builder/builder-ui.tsx",
+]
+  .map((file) => read(file))
+  .join("\n");
 const workItems = read("src/components/schedule-builder/v2-work-items-panel.tsx");
 const editSheet = read("src/components/schedule-builder/session-edit-sheet.tsx");
 

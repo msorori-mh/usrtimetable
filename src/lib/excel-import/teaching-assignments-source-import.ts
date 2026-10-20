@@ -2,6 +2,7 @@
  * Runtime orchestration: load resolver context + preview source workbook import.
  */
 import { supabase } from "@/integrations/supabase/client";
+import { readAllRows } from "@/lib/supabase/read-all";
 import { requireImportManager } from "./safety";
 import type { ParsedRow, RowError } from "./types";
 import {
@@ -37,13 +38,15 @@ async function fetchAll<T extends Record<string, unknown>>(
   cols: string,
   collegeId: string,
 ): Promise<T[]> {
-  /* eslint-disable @typescript-eslint/no-explicit-any */
-  const { data, error } = await (supabase.from(table as never) as any)
-    .select(cols)
-    .eq("college_id", collegeId);
-  /* eslint-enable @typescript-eslint/no-explicit-any */
-  if (error) throw error;
-  return (data ?? []) as T[];
+  // H-10: paginate — resolver catalogs (instructors, plan courses, groups) exceed 1000 rows.
+  return readAllRows<T>((from, to) =>
+    /* eslint-disable-next-line @typescript-eslint/no-explicit-any */
+    (supabase.from(table as never) as any)
+      .select(cols)
+      .eq("college_id", collegeId)
+      .order("id")
+      .range(from, to),
+  );
 }
 
 export async function loadSourceResolverContext(collegeId: string): Promise<SourceResolverContext> {

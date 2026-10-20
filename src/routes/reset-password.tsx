@@ -6,7 +6,11 @@ import { PasswordInput } from "@/components/ui/password-input";
 import { Label } from "@/components/ui/label";
 import { UsrBrandMark } from "@/components/branding/usr-brand-mark";
 import { USR_PLATFORM_NAME_AR, USR_UNIVERSITY_NAME_AR } from "@/lib/branding/usr";
-import { PASSWORD_POLICY_AR, validPersonalPassword } from "@/lib/password-policy";
+import {
+  PASSWORD_POLICY_AR,
+  describePasswordIssues,
+  passwordPolicyIssues,
+} from "@/lib/password-policy";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/reset-password")({
@@ -44,8 +48,14 @@ function ResetPasswordPage() {
 
   const handle = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!validPersonalPassword(password)) {
-      toast.error(PASSWORD_POLICY_AR);
+    // M-3: new-password policy, including the recovering account's e-mail.
+    const { data: sessionData } = await supabase.auth.getSession();
+    const issues = passwordPolicyIssues(password, {
+      email: sessionData.session?.user.email ?? null,
+      name: (sessionData.session?.user.user_metadata?.full_name as string | undefined) ?? null,
+    });
+    if (issues.length > 0) {
+      toast.error(describePasswordIssues(issues));
       return;
     }
     if (password !== confirm) {
@@ -61,7 +71,12 @@ function ResetPasswordPage() {
       navigate({ to: "/auth", replace: true });
     } catch (err) {
       const msg = err instanceof Error ? err.message : "حدث خطأ";
-      toast.error(msg.includes("Password should") ? PASSWORD_POLICY_AR : msg);
+      console.error("[reset-password] updateUser failed", err);
+      toast.error(
+        /password should|weak|pwned/i.test(msg)
+          ? PASSWORD_POLICY_AR
+          : "تعذّر تحديث كلمة المرور. اطلب رابط استعادة جديدًا ثم أعد المحاولة.",
+      );
     } finally {
       setLoading(false);
     }
@@ -88,8 +103,7 @@ function ResetPasswordPage() {
           {invalid && !ready ? (
             <div className="space-y-4">
               <p className="text-sm text-muted-foreground">
-                رابط الاستعادة غير صالح أو منتهي الصلاحية. اطلب رابطًا جديدًا من صفحة تسجيل
-                الدخول.
+                رابط الاستعادة غير صالح أو منتهي الصلاحية. اطلب رابطًا جديدًا من صفحة تسجيل الدخول.
               </p>
               <Button asChild className="w-full rounded-lg" size="lg">
                 <Link to="/auth">العودة لتسجيل الدخول</Link>

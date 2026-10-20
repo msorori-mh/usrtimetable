@@ -19,10 +19,10 @@ import {
   exportAdminDataset,
   type AdminExportFormat,
 } from "@/lib/admin-export/download";
+import { userErrorMessage } from "@/lib/user-error";
 
 export type AdminExportDatasetProvider = () =>
-  | AdminExportDataset<never>
-  | Promise<AdminExportDataset<never>>;
+  AdminExportDataset<never> | Promise<AdminExportDataset<never>>;
 
 export function AdminExportMenu({
   dataset,
@@ -45,10 +45,10 @@ export function AdminExportMenu({
     setBusy(true);
     try {
       const ds = await dataset();
-      const result = exportAdminDataset(ds, format);
+      const result = await exportAdminDataset(ds, format);
       toast.success(`تم تصدير ${result.rowCount} سجلًا إلى ${result.filename}`);
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "تعذر إنشاء ملف التصدير.");
+      toast.error(userErrorMessage(error, "تعذر إنشاء ملف التصدير."));
     } finally {
       setBusy(false);
     }

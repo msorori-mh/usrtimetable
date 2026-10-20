@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { USR_UNIVERSITY_LOGO_SRC, USR_UNIVERSITY_NAME_AR } from "@/lib/branding/usr";
 import { REPORT_KIND_LABELS, UUID_PATTERN } from "@/lib/reports/verification-link";
 import { resolveReportVerification, type ReportVerification } from "@/lib/reports/verification-api";
+import { formatDateTime } from "@/lib/format";
 
 /** Public metadata only; deliberately no AppLayout, account menu or internal links. */
 export function PublicReportVerification({ receiptId }: { receiptId: string | null }) {
@@ -32,8 +33,7 @@ export function PublicReportVerification({ receiptId }: { receiptId: string | nu
       cancelled = true;
     };
   }, [receiptId, attempt]);
-  const date = (value?: string) =>
-    value ? new Date(value).toLocaleString("ar-YE", { timeZone: "Asia/Aden" }) : "—";
+  const date = (value?: string) => (value ? formatDateTime(value) : "—");
   const fields = result?.available
     ? [
         ["الجامعة", USR_UNIVERSITY_NAME_AR],

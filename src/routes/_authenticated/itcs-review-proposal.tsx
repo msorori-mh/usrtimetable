@@ -7,6 +7,9 @@ import { Badge } from "@/components/ui/badge";
 import { useCurrentUser } from "@/hooks/use-current-user";
 import { supabase } from "@/integrations/supabase/client";
 import { invalidateTeachingAssignmentReadModels } from "@/lib/teaching-assignments/query-invalidation";
+import { userErrorMessage } from "@/lib/user-error";
+import { confirmAction } from "@/components/confirm-dialog";
+import { formatDateTime, formatDecimal, formatNumber } from "@/lib/format";
 
 export const Route = createFileRoute("/_authenticated/itcs-review-proposal")({
   head: () => ({ meta: [{ title: "مسودة مقترح الحاسوب 30/9 — مراجعة قبل النشر" }] }),
@@ -178,12 +181,12 @@ function ReviewProposalPage() {
         p_manifest_sha: nativeQuery.data.manifest_sha,
         p_expected_published_snapshot: proposal.source_snapshot,
       });
-      if (r.error) throw new Error(r.error.message);
+      if (r.error) throw r.error;
       setChecked(stage === "review_check");
       if (stage === "review_save") await invalidateTeachingAssignmentReadModels(queryClient);
       await Promise.all([query.refetch(), nativeQuery.refetch()]);
     } catch (e) {
-      setError((e as Error).message);
+      setError(userErrorMessage(e));
     } finally {
       setSaving(false);
     }
@@ -191,7 +194,7 @@ function ReviewProposalPage() {
   if (query.isError)
     return (
       <Card dir="rtl" className="p-6">
-        <p role="alert">تعذر فتح مسودة المقترح: {query.error.message}</p>
+        <p role="alert">تعذر فتح مسودة المقترح: {userErrorMessage(query.error)}</p>
         <Button onClick={() => void query.refetch()}>إعادة المحاولة</Button>
       </Card>
     );
@@ -220,9 +223,7 @@ function ReviewProposalPage() {
             مع الحفاظ على سجل الجدول المنشور.
           </p>
           {proposal.saved_at && (
-            <p className="text-sm">
-              حُفظت بتاريخ {new Date(proposal.saved_at).toLocaleString("ar-YE")}
-            </p>
+            <p className="text-sm">حُفظت بتاريخ {formatDateTime(proposal.saved_at)}</p>
           )}
         </div>
         <div className="flex flex-wrap gap-2 print:hidden">
@@ -235,7 +236,17 @@ function ReviewProposalPage() {
               >
                 {saving ? "جارٍ التحقق…" : "فحص الحفظ دون تثبيت"}
               </Button>
-              <Button disabled={saving || !checked} onClick={() => void save("review_save")}>
+              <Button
+                disabled={saving || !checked}
+                onClick={async () => {
+                  const ok = await confirmAction({
+                    title: "حفظ المقترح كنسخة جدولة مسودة؟",
+                    description: "تُنشأ نسخة جدولة مستقلة على الخادم مع الحفاظ على الجدول المنشور.",
+                    confirmLabel: "حفظ المسودة",
+                  });
+                  if (ok) void save("review_save");
+                }}
+              >
                 {saving ? "جارٍ الحفظ…" : "حفظ نسخة جدولة مسودة"}
               </Button>
             </>
@@ -262,7 +273,8 @@ function ReviewProposalPage() {
       )}
       {(error || nativeQuery.error) && (
         <p role="alert" className="rounded border border-destructive p-3 text-destructive">
-          لم يكتمل الإجراء: {error || nativeQuery.error?.message}
+          لم يكتمل الإجراء:{" "}
+          {error || (nativeQuery.error ? userErrorMessage(nativeQuery.error) : null)}
         </p>
       )}
       <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
@@ -273,7 +285,7 @@ function ReviewProposalPage() {
           [3, "أيام للقاعة الكبرى"],
         ].map(([n, label]) => (
           <Card className="p-4" key={label}>
-            <p className="text-3xl font-bold">{n}</p>
+            <p className="text-3xl font-bold">{typeof n === "number" ? formatDecimal(n) : n}</p>
             <p className="text-sm text-muted-foreground">{label}</p>
           </Card>
         ))}
@@ -283,14 +295,14 @@ function ReviewProposalPage() {
         <p className="text-sm">
           {checks.external_conflict_sessions === 0
             ? "لا توجد محاضرات متداخلة مع التزامات الكليات الأخرى في المطابقة الحالية. النسخة للمراجعة قبل النشر."
-            : `${checks.external_conflict_sessions} محاضرات تتداخل مع التزامات مسجلة في كليات أخرى وتحتاج المعالجة قبل حفظ الجدول.`}
+            : `${formatNumber(checks.external_conflict_sessions)} محاضرات تتداخل مع التزامات مسجلة في كليات أخرى وتحتاج المعالجة قبل حفظ الجدول.`}
         </p>
         <p className="text-xs text-muted-foreground">
-          آخر مطابقة مع المنصة: {new Date(checks.checked_at).toLocaleString("ar-YE")}. يشمل الفحص
-          الحسابات المرتبطة للمحاضر نفسه.
+          آخر مطابقة مع المنصة: {formatDateTime(checks.checked_at)}. يشمل الفحص الحسابات المرتبطة
+          للمحاضر نفسه.
         </p>
         <div className="overflow-x-auto">
-          <table className="w-full text-right text-sm">
+          <table className="w-full text-start text-sm">
             <thead>
               <tr className="border-b">
                 <th className="p-2">المحاضر والمقرر</th>
@@ -317,7 +329,7 @@ function ReviewProposalPage() {
                   </td>
                   <td className="p-2">
                     {c.external_slots.map((x) => (
-                      <p key={x.start + x.end} dir="ltr" className="text-right">
+                      <p key={x.start + x.end} dir="ltr" className="text-end">
                         {clock(x.start)}–{clock(x.end)}
                       </p>
                     ))}
@@ -335,7 +347,7 @@ function ReviewProposalPage() {
             .filter((t) => proposal.payload.focus_instructor_ids.includes(t.id))
             .map((t) => (
               <button
-                className="rounded border p-3 text-right hover:bg-muted"
+                className="rounded border p-3 text-start hover:bg-muted"
                 key={t.id}
                 onClick={() => {
                   setInstructor(t.id);
@@ -355,7 +367,7 @@ function ReviewProposalPage() {
       <details className="rounded-lg border p-4">
         <summary className="cursor-pointer font-bold">إسناد كل محاضر — {teachers.length}</summary>
         <div className="mt-3 overflow-x-auto">
-          <table className="w-full text-right text-sm">
+          <table className="w-full text-start text-sm">
             <thead>
               <tr>
                 <th className="p-2">المحاضر</th>
@@ -395,7 +407,8 @@ function ReviewProposalPage() {
       </details>
       <Card className="space-y-4 p-4">
         <h2 className="font-bold">
-          المحاضرات المقترحة — {visible.length} من {report.sessions.length}
+          المحاضرات المقترحة — {formatNumber(visible.length)} من{" "}
+          {formatNumber(report.sessions.length)}
         </h2>
         <div className="grid gap-3 sm:grid-cols-3 print:hidden">
           <label className="text-sm">
@@ -460,7 +473,7 @@ function ReviewProposalPage() {
           </Button>
         )}
         <div className="overflow-x-auto">
-          <table className="w-full text-right text-sm">
+          <table className="w-full text-start text-sm">
             <thead>
               <tr className="border-b">
                 <th className="p-2">اليوم والوقت</th>
@@ -498,7 +511,7 @@ function ReviewProposalPage() {
                     <p>
                       {s[9] === "parallel" ? "موازي" : "عام"} · المستوى {s[10]} · {s[6]}
                     </p>
-                    <p dir="ltr" className="text-right text-xs text-muted-foreground">
+                    <p dir="ltr" className="text-end text-xs text-muted-foreground">
                       {s[8]}
                     </p>
                   </td>
@@ -515,7 +528,7 @@ function ReviewProposalPage() {
       </Card>
       <details className="rounded-lg border p-4">
         <summary className="cursor-pointer font-bold">
-          فحوص الملف الأصلي — {proposal.payload.requirements.checks.length} بندًا
+          فحوص الملف الأصلي — {formatNumber(proposal.payload.requirements.checks.length)} بندًا
         </summary>
         <p className="my-3 text-sm text-muted-foreground">
           تخص هذه النتائج الملف المقترح وقيوده الداخلية. التداخلات الخارجية الحالية موضحة أعلى
@@ -524,7 +537,8 @@ function ReviewProposalPage() {
         <ul className="grid gap-2 text-sm md:grid-cols-2">
           {proposal.payload.requirements.checks.map((c) => (
             <li key={c.name}>
-              {c.passed ? "✓" : "—"} {c.name}
+              <span aria-hidden="true">{c.passed ? "✓" : "—"}</span>
+              <span className="sr-only">{c.passed ? "ناجح:" : "غير ناجح:"}</span> {c.name}
             </li>
           ))}
         </ul>

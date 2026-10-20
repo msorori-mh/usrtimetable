@@ -44,3 +44,18 @@ test("runtime values come only from the staging environment and browser proof is
   assert.match(workflow, /Authenticated read-only staging smoke test/);
   assert.match(workflow, /tests\/cohort-component-single-instructor-db\.test\.mjs/);
 });
+
+test("GitHub expressions are not escaped (M-23): no value starts with a literal backslash", () => {
+  // An escaped "\${{ … }}" is passed through verbatim, so every env value, ref and secret
+  // would begin with "\" and the deployment could never target the right SHA or project.
+  assert.doesNotMatch(workflow, /\\\$\{\{/);
+  const expressions = workflow.match(/\$\{\{[^}]*\}\}/g) ?? [];
+  assert.ok(
+    expressions.length >= 20,
+    `expected the workflow to use expressions, got ${expressions.length}`,
+  );
+  for (const line of workflow.split("\n")) {
+    const value = line.match(/^\s*[A-Za-z_][\w-]*:\s+(.*)$/)?.[1];
+    if (value) assert.ok(!value.startsWith("\\"), `value starts with a backslash: ${line.trim()}`);
+  }
+});

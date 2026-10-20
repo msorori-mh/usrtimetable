@@ -10,20 +10,17 @@ export const SCHEDULE_BUILDER_COLLEGE_MISMATCH_AR =
 
 export const SCHEDULE_BUILDER_NO_COLLEGE_AR = "اختر كلية نشطة لعرض محرر الجدول.";
 
-export const SCHEDULE_BUILDER_WORKSPACE_NO_COLLEGE_AR =
-  "اختر كلية نشطة لعرض مساحة بناء الجدول.";
+export const SCHEDULE_BUILDER_WORKSPACE_NO_COLLEGE_AR = "اختر كلية نشطة لعرض مساحة بناء الجدول.";
 
 export const SCHEDULE_BUILDER_WORKSPACE_NO_TERM_AR =
   "لا توجد فصول دراسية لهذه الكلية. أضف فصلًا دراسيًا أولًا.";
 
-export const SCHEDULE_BUILDER_WORKSPACE_NO_VERSIONS_AR =
-  "لا توجد نسخ جدول للفصل المختار.";
+export const SCHEDULE_BUILDER_WORKSPACE_NO_VERSIONS_AR = "لا توجد نسخ جدول للفصل المختار.";
 
 export const SCHEDULE_BUILDER_WORKSPACE_NO_SESSIONS_AR =
   "النسخة المختارة لا تحتوي على جلسات مجدولة.";
 
-export const SCHEDULE_BUILDER_WORKSPACE_FILTER_EMPTY_AR =
-  "لا توجد جلسات تطابق المرشحات الحالية.";
+export const SCHEDULE_BUILDER_WORKSPACE_FILTER_EMPTY_AR = "لا توجد جلسات تطابق المرشحات الحالية.";
 
 /** Terms / versions / sessions load only after an active college is set. */
 export function shouldLoadWorkspaceCollegeScoped(hasActiveCollege: boolean): boolean {
@@ -51,12 +48,7 @@ export const SCHEDULE_BUILDER_DEFAULT_START_HOUR = 8;
 export const SCHEDULE_BUILDER_DEFAULT_END_HOUR = 14;
 
 export type ScheduleVersionStatus =
-  | "draft"
-  | "review"
-  | "approved"
-  | "published"
-  | "archived"
-  | string;
+  "draft" | "review" | "approved" | "published" | "archived" | string;
 
 /** True when the schedule version belongs to the currently active college. */
 export function isScheduleVersionInActiveCollege(
@@ -79,14 +71,19 @@ export function shouldLoadScheduleBuilderData(opts: {
   return opts.hasActiveCollege && opts.versionLoaded && opts.collegeMatches;
 }
 
-/** Published / archived versions are view-only regardless of role. */
-export function isScheduleVersionWriteLocked(status: ScheduleVersionStatus | null | undefined): boolean {
-  return status === "published" || status === "archived";
+/**
+ * Approved / published / archived versions are view-only regardless of role (H-8; the
+ * database trigger enforce_schedule_session_lock enforces the same set).
+ */
+export function isScheduleVersionWriteLocked(
+  status: ScheduleVersionStatus | null | undefined,
+): boolean {
+  return status === "approved" || status === "published" || status === "archived";
 }
 
 /**
  * Session dialog is read-only when the user cannot manage the college,
- * or the version is published/archived. Draft (and review/approved) stay editable
+ * or the version is approved/published/archived. Draft and review stay editable
  * for authorized managers.
  */
 export function isSessionDialogReadOnly(opts: {

@@ -6,11 +6,16 @@ const users = readFileSync("src/lib/users.functions.ts", "utf8");
 const rollback = readFileSync("supabase/rollbacks/20260922_account_provisioning_grant.sql", "utf8");
 
 test("super-admin proof and rate limit precede grant issuance and user creation", () => {
-  const adminCheck = users.indexOf("await assertInstitutionAdmin(context.userId)");
+  // H-11: the secure middleware (caller session + aal2 + caller-RLS role) runs before the handler.
+  const createFn = users.slice(users.indexOf("export const adminCreateUser"));
+  assert.match(
+    createFn,
+    /^export const adminCreateUser = createServerFn\(\{ method: "POST" \}\)\s*\.middleware\(\[requireSecureAdmin\]\)/,
+  );
   const limit = users.indexOf('assertRateLimit(context.userId, "user_create")');
   const issue = users.indexOf('"issue_account_provisioning_grant"');
   const create = users.indexOf("supabaseAdmin.auth.admin.createUser");
-  assert.ok(adminCheck >= 0 && adminCheck < limit);
+  assert.ok(limit >= 0);
   assert.ok(limit < issue, "grant must be issued after the rate limit");
   assert.ok(issue < create, "grant must exist before the auth insert");
 });
@@ -24,13 +29,18 @@ test("grant is bound to normalized email, role and creator", () => {
   assert.match(users, /email: normalizedEmail,/);
 });
 
-test("nonce and role reach the guard through both metadata channels", () => {
-  assert.match(users, /provisioning_role: provisioningRole,\s*provisioning_nonce: grant\.nonce,/);
-  assert.match(users, /must_change_password: requiresInitialPassword\(data\.role\)/);
+test("H-2: nonce and role reach the guard through app_metadata only", () => {
+  assert.match(
+    users,
+    /app_metadata: \{\s*provisioning_role: provisioningRole,\s*provisioning_nonce: grant\.nonce,\s*must_change_password: requiresInitialPassword\(data\.role\)/,
+  );
+  const userMeta = users.match(/user_metadata: \{([\s\S]*?)\}/)[1];
+  assert.doesNotMatch(userMeta, /provisioning/);
+  assert.match(userMeta, /full_name: data\.full_name/);
 });
 
 test("issuance failure fails closed and createUser failure revokes the grant", () => {
-  assert.match(users, /if \(grantErr \|\| !grant\) \{\s*throw new Error/);
+  assert.match(users, /if \(grantErr \|\| !grant\) \{\s*throw serverFailure\(/);
   const failure = users.slice(
     users.indexOf("if (createErr || !created.user) {"),
     users.indexOf("const newId = created.user.id"),

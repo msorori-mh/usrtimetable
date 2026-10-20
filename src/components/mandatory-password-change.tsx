@@ -3,10 +3,15 @@ import { useServerFn } from "@tanstack/react-start";
 import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { completeInitialPasswordChange } from "@/lib/password-change.functions";
-import { PASSWORD_POLICY_AR, validPersonalPassword } from "@/lib/password-policy";
+import {
+  PASSWORD_POLICY_AR,
+  describePasswordIssues,
+  passwordPolicyIssues,
+} from "@/lib/password-policy";
 import { Button } from "@/components/ui/button";
 import { PasswordInput } from "@/components/ui/password-input";
 import { Label } from "@/components/ui/label";
+import { userErrorMessage } from "@/lib/user-error";
 
 export function MandatoryPasswordChange({ onComplete }: { onComplete: () => void }) {
   const changePassword = useServerFn(completeInitialPasswordChange);
@@ -23,8 +28,10 @@ export function MandatoryPasswordChange({ onComplete }: { onComplete: () => void
         onSubmit={async (event) => {
           event.preventDefault();
           setError("");
-          if (!validPersonalPassword(newPassword)) {
-            setError(PASSWORD_POLICY_AR);
+          // The server re-checks with the account's e-mail and name.
+          const issues = passwordPolicyIssues(newPassword);
+          if (issues.length > 0) {
+            setError(describePasswordIssues(issues));
             return;
           }
           if (newPassword !== confirmation) {
@@ -45,7 +52,7 @@ export function MandatoryPasswordChange({ onComplete }: { onComplete: () => void
             await supabase.auth.refreshSession();
             onComplete();
           } catch (e) {
-            setError(e instanceof Error ? e.message : "تعذر تغيير كلمة المرور. أعد المحاولة.");
+            setError(userErrorMessage(e, "تعذر تغيير كلمة المرور. أعد المحاولة."));
           } finally {
             setBusy(false);
           }

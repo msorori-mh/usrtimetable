@@ -151,19 +151,19 @@ export function TimetableGridReport({
             } as CSSProperties
           }
         >
-          <div className="bg-muted/40 border-b border-l p-2 text-xs font-medium sticky top-0 z-10">
+          <div className="bg-muted/40 border-b border-e p-2 text-xs font-medium sticky top-0 z-10">
             الوقت
           </div>
           {workingDays.map((d) => (
             <div
               key={d}
-              className="bg-muted/40 border-b border-l p-2 text-xs font-medium text-center sticky top-0 z-10"
+              className="bg-muted/40 border-b border-e p-2 text-xs font-medium text-center sticky top-0 z-10"
             >
               {WEEK_DAY_LABELS_AR[d] ?? String(d)}
             </div>
           ))}
 
-          <div className="border-l" style={{ height: totalHeight }}>
+          <div className="border-e" style={{ height: totalHeight }}>
             {slots.map((s) => (
               <div
                 key={s.mins}
@@ -178,7 +178,7 @@ export function TimetableGridReport({
           {workingDays.map((d) => {
             const placed = placedByDay.get(d) ?? [];
             return (
-              <div key={d} className="relative border-l" style={{ height: totalHeight }}>
+              <div key={d} className="relative border-e" style={{ height: totalHeight }}>
                 {slots.map((s) => (
                   <div
                     key={s.mins}
@@ -198,7 +198,7 @@ export function TimetableGridReport({
                       onClick={() => setSelected(sess)}
                       key={sess.id}
                       className={cn(
-                        "absolute rounded border text-right p-1.5 text-xs overflow-hidden",
+                        "absolute rounded border text-start p-1.5 text-xs overflow-hidden",
                         colorByType(sess.session_type),
                       )}
                       style={{

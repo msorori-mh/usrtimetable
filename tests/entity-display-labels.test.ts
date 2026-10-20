@@ -56,8 +56,9 @@ describe("human-readable entity labels", () => {
       availability: [],
     });
     expect(rows[0]?.room_name).toBe("القاعة الكبرى");
-    expect(read("src/lib/print-center/rooms-report.ts")).not.toContain(
-      '{ key: "room_code", label: "الرمز" }',
-    );
+    // Product decision (2026-10-18): the rooms summary shows the room name only, no code column.
+    const src = read("src/lib/print-center/rooms-report.ts");
+    expect(src).not.toContain('{ key: "room_code", label: "الرمز" }');
+    expect(src).toContain('{ key: "room_name", label: "القاعة" }');
   });
 });

@@ -1,5 +1,6 @@
 import { supabase } from "@/integrations/supabase/client";
 import { readAllReportRows } from "./read-all";
+import { loadPhysicalRoomGroups } from "./physical-rooms-loader";
 import {
   buildLeadershipRoomCapacity,
   type CapacityCollege,
@@ -12,6 +13,8 @@ export async function fetchLeadershipRoomCapacity(
   scope: "halls" | "all" = "halls",
 ) {
   if (!colleges.length) return [];
+  // Physical hall aliases (rooms.physical_group_key) must be known before rooms are grouped.
+  await loadPhysicalRoomGroups();
   const collegeIds = colleges.map((c) => c.college_id);
   const versionIds = colleges.flatMap((c) => (c.version_id ? [c.version_id] : []));
   const [rooms, settings, availability, unavailability, sessions, roomTypes] = await Promise.all([

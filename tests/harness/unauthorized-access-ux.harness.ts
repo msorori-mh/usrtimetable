@@ -172,9 +172,14 @@ function run() {
     usersFn.includes('eq("role", "super_admin")'),
     "server assertInstitutionAdmin still super_admin only",
   );
+  // H-11: the super_admin check moved into requireSecureAdmin (session, MFA, aal2 and role
+  // verified with the caller's RLS client); every admin server function must use it.
+  const adminAccess = readSrc("src/lib/admin-access.ts");
   assert(
-    usersFn.includes("Forbidden: institution admin only"),
-    "server forbidden message retained",
+    usersFn.includes("requireSecureAdmin") &&
+      /SUPER_ADMIN_POLICY[^=]*=\s*\{\s*role:\s*"super_admin"/.test(adminAccess) &&
+      adminAccess.includes('reason: "forbidden"'),
+    "server admin gate still denies non-super_admin callers",
   );
 
   console.log("unauthorized-access-ux harness: PASS");

@@ -26,6 +26,7 @@ import {
   summarizeDemandCapacity,
   summarizeUniversityCapacity,
 } from "@/lib/reports/teaching-demand-capacity";
+import { formatDecimal } from "@/lib/format";
 
 export const Route = createFileRoute("/_authenticated/reports/teaching-demand-capacity")({
   head: () => ({
@@ -45,7 +46,7 @@ export const Route = createFileRoute("/_authenticated/reports/teaching-demand-ca
 });
 
 const display = (n: number | null | undefined) =>
-  n == null ? "غير محسوب" : `${n.toLocaleString("ar", { maximumFractionDigits: 2 })} ساعة`;
+  n == null ? "غير محسوب" : `${formatDecimal(n, 2)} ساعة`;
 const statusText = (status: string) =>
   status === "calculable"
     ? "محسوب من بيانات المنصة"

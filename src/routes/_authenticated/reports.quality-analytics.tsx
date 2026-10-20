@@ -2,6 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { readAllRows } from "@/lib/supabase/read-all";
 import { fetchVersionStudentMemberships } from "@/lib/academic-delivery/version-student-memberships";
 import { useActiveCollege } from "@/hooks/use-colleges";
 import { ReportShell } from "@/components/reports/report-shell";
@@ -45,8 +46,12 @@ function QualityAnalyticsPage() {
   const { active } = useActiveCollege();
   const [versionId, setVersionId] = useState<string>("");
 
-  const { data: versions } = useQuery({
-    queryKey: ["qa-versions", active?.id],
+  const {
+    data: versions,
+    error: versionsError,
+    refetch: refetchVersions,
+  } = useQuery({
+    queryKey: ["reports-quality-analytics-versions", active?.id],
     enabled: !!active,
     queryFn: async () =>
       (
@@ -62,22 +67,27 @@ function QualityAnalyticsPage() {
   const effectiveVersion =
     versionId || versions?.find((v) => v.status === "published")?.id || versions?.[0]?.id || "";
 
-  const { data: sessions, isLoading } = useQuery({
-    queryKey: ["qa-sessions", active?.id, effectiveVersion],
+  const {
+    data: sessions,
+    isLoading,
+    error: sessionsError,
+    refetch: refetchSessions,
+  } = useQuery({
+    queryKey: ["reports-quality-analytics-sessions", active?.id, effectiveVersion],
     enabled: !!active && !!effectiveVersion,
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("schedule_sessions")
-        .select(
-          "id, college_id, schedule_version_id, instructor_id, room_id, cohort_id, delivery_group_id, course_offering_id, study_system, day_of_week, start_time, end_time, expected_students, session_type",
-        )
-        .eq("college_id", active!.id)
-        .eq("schedule_version_id", effectiveVersion)
-        .order("id")
-        .throwOnError();
-      if (error) throw error;
-      return (data ?? []) as AnalyticsSession[];
-    },
+    // H-10: analyse the whole version, never the first PostgREST page only.
+    queryFn: () =>
+      readAllRows<AnalyticsSession>((from, to) =>
+        supabase
+          .from("schedule_sessions")
+          .select(
+            "id, college_id, schedule_version_id, instructor_id, room_id, cohort_id, delivery_group_id, course_offering_id, study_system, day_of_week, start_time, end_time, expected_students, session_type",
+          )
+          .eq("college_id", active!.id)
+          .eq("schedule_version_id", effectiveVersion)
+          .order("id")
+          .range(from, to),
+      ),
   });
 
   const groupIds = useMemo(
@@ -95,13 +105,24 @@ function QualityAnalyticsPage() {
     isLoading: membershipLoading,
     refetch: refetchMemberships,
   } = useQuery({
-    queryKey: ["qa-student-memberships", active?.id, effectiveVersion, groupIds],
+    queryKey: [
+      "reports",
+      "quality-analytics",
+      "student-memberships",
+      active?.id,
+      effectiveVersion,
+      groupIds,
+    ],
     enabled: !!active && !!effectiveVersion && !!sessions,
     queryFn: () => fetchVersionStudentMemberships(effectiveVersion, groupIds),
   });
 
-  const { data: rooms } = useQuery({
-    queryKey: ["qa-rooms", active?.id],
+  const {
+    data: rooms,
+    error: roomsError,
+    refetch: refetchRooms,
+  } = useQuery({
+    queryKey: ["reports", "quality-analytics", "rooms", active?.id],
     enabled: !!active,
     queryFn: async () =>
       (
@@ -113,8 +134,12 @@ function QualityAnalyticsPage() {
       ).data ?? [],
   });
 
-  const { data: latestStored } = useQuery({
-    queryKey: ["qa-baseline-run", active?.id, effectiveVersion],
+  const {
+    data: latestStored,
+    error: baselineError,
+    refetch: refetchBaseline,
+  } = useQuery({
+    queryKey: ["reports", "quality-analytics", "baseline-run", active?.id, effectiveVersion],
     enabled: !!active && !!effectiveVersion,
     queryFn: async () => {
       const { data } = await supabase
@@ -180,8 +205,12 @@ function QualityAnalyticsPage() {
         rows={exportRows}
         headers={headers}
         isLoading={isLoading || membershipLoading}
-        error={membershipError}
+        error={versionsError ?? sessionsError ?? roomsError ?? baselineError ?? membershipError}
         onRetry={() => {
+          void refetchVersions();
+          void refetchSessions();
+          void refetchRooms();
+          void refetchBaseline();
           void refetchMemberships();
         }}
         emptyMessage="لا توجد جلسات في هذه النسخة لتحليلها."

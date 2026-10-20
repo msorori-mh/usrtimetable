@@ -63,6 +63,12 @@ import { AdminExportMenu } from "@/components/admin-export-menu";
 import { planContentsExportDataset } from "@/lib/admin-export/datasets";
 import { buildPlanContentRows } from "@/lib/admin-export/plan-content-rows";
 import { entityDisplayName } from "@/lib/entity-display";
+import { userErrorMessage } from "@/lib/user-error";
+import { confirmAction } from "@/components/confirm-dialog";
+import { QueryErrorNotice } from "@/components/app-states/query-error-notice";
+import { chunkIds, readAllRows } from "@/lib/supabase/read-all";
+import { formatDecimal, formatNumber } from "@/lib/format";
+import { PlanComponentFormFields } from "@/components/study-plans/plan-component-form-fields";
 
 interface PlanComponentRow {
   id: string;
@@ -126,24 +132,28 @@ export function PlanCoursesManager({
     is_required: boolean;
   } | null>(null);
 
-  const { data: courses } = useQuery({
+  const { data: courses, error: coursesError } = useQuery({
     queryKey: ["plan-editor-courses", collegeId],
     enabled: open,
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("courses")
-        .select("id, code, name, college_id, theory_hours, practical_hours, credit_hours")
-        .eq("college_id", collegeId)
-        .order("code");
-      if (error) throw error;
-      return (data ?? []) as CourseOption[];
+      const data = await readAllRows((from, to) =>
+        supabase
+          .from("courses")
+          .select("id, code, name, college_id, theory_hours, practical_hours, credit_hours")
+          .eq("college_id", collegeId)
+          .order("code")
+          .order("id")
+          .range(from, to),
+      );
+      return data as CourseOption[];
     },
   });
 
-  const { data: levels } = useQuery({
+  const { data: levels, error: levelsError } = useQuery({
     queryKey: ["plan-editor-levels", collegeId, programId],
     enabled: open,
     queryFn: async () => {
+      // read-all-ok: levels of one program (≤ program duration)
       const { data, error } = await supabase
         .from("academic_levels")
         .select("id, name, level_number, program_id, college_id")
@@ -155,10 +165,11 @@ export function PlanCoursesManager({
     },
   });
 
-  const { data: roomTypes } = useQuery({
+  const { data: roomTypes, error: roomTypesError } = useQuery({
     queryKey: ["plan-editor-room-types", collegeId],
     enabled: open,
     queryFn: async () => {
+      // read-all-ok: room types per college are a handful
       const { data, error } = await supabase
         .from("room_types")
         .select("id, name_ar, code, college_id, is_active, default_capacity")
@@ -169,10 +180,16 @@ export function PlanCoursesManager({
     },
   });
 
-  const { data: planCourses, isLoading } = useQuery({
+  const {
+    data: planCourses,
+    isLoading,
+    error: planCoursesError,
+    refetch: refetchPlanCourses,
+  } = useQuery({
     queryKey: ["plan-courses", collegeId, plan.id],
     enabled: open,
     queryFn: async () => {
+      // read-all-ok: courses of a single study plan (tens)
       const { data, error } = await supabase
         .from("plan_courses")
         .select(
@@ -188,19 +205,24 @@ export function PlanCoursesManager({
 
   const planCourseIds = useMemo(() => (planCourses ?? []).map((p) => p.id), [planCourses]);
 
-  const { data: components } = useQuery({
+  const { data: components, error: componentsError } = useQuery({
     queryKey: ["plan-course-components", collegeId, plan.id, planCourseIds.join(",")],
     enabled: open && planCourseIds.length > 0,
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("plan_course_components")
-        .select(
-          "id, plan_course_id, component_type, weekly_contact_hours, required_room_type_id, is_timetabled, counts_toward_regular_load, counts_toward_overtime, compensation_mode, explicit_group_size",
-        )
-        .eq("college_id", collegeId)
-        .in("plan_course_id", planCourseIds);
-      if (error) throw error;
-      return (data ?? []) as PlanComponentRow[];
+      const rows: PlanComponentRow[] = [];
+      for (const ids of chunkIds(planCourseIds)) {
+        // read-all-ok: components of ≤150 plan courses per chunk (a few per course)
+        const { data, error } = await supabase
+          .from("plan_course_components")
+          .select(
+            "id, plan_course_id, component_type, weekly_contact_hours, required_room_type_id, is_timetabled, counts_toward_regular_load, counts_toward_overtime, compensation_mode, explicit_group_size",
+          )
+          .eq("college_id", collegeId)
+          .in("plan_course_id", ids);
+        if (error) throw error;
+        rows.push(...((data ?? []) as PlanComponentRow[]));
+      }
+      return rows;
     },
   });
 
@@ -221,6 +243,7 @@ export function PlanCoursesManager({
     if (!row || !scope || "ok" in scope) {
       throw new Error("السجل لا ينتمي إلى هذه الخطة أو الكلية النشطة.");
     }
+    // read-all-ok: components of a single plan course
     const { data, error } = await supabase
       .from("plan_course_components")
       .select("component_type, weekly_contact_hours, is_timetabled")
@@ -246,7 +269,7 @@ export function PlanCoursesManager({
       invalidate();
     },
     onError: (e: Error) => {
-      toast.error(e.message);
+      toast.error(userErrorMessage(e));
       invalidate();
     },
   });
@@ -283,7 +306,7 @@ export function PlanCoursesManager({
       setLevelForm({ name: "", level_number: 1 });
       qc.invalidateQueries({ queryKey: ["plan-editor-levels", collegeId, programId] });
     },
-    onError: (e: Error) => toast.error(e.message),
+    onError: (e: Error) => toast.error(userErrorMessage(e)),
   });
 
   const addPlanCourse = useMutation({
@@ -309,7 +332,7 @@ export function PlanCoursesManager({
       setForm({ course_id: "", level_id: "", semester: 1, is_required: true });
       invalidate();
     },
-    onError: (e: Error) => toast.error(e.message),
+    onError: (e: Error) => toast.error(userErrorMessage(e)),
   });
 
   const toggleRequired = useMutation({
@@ -326,7 +349,7 @@ export function PlanCoursesManager({
       toast.success("تم التحديث");
       invalidate();
     },
-    onError: (e: Error) => toast.error(e.message),
+    onError: (e: Error) => toast.error(userErrorMessage(e)),
   });
 
   const updatePlanCourse = useMutation({
@@ -365,7 +388,7 @@ export function PlanCoursesManager({
       setEditRow(null);
       invalidate();
     },
-    onError: (e: Error) => toast.error(e.message),
+    onError: (e: Error) => toast.error(userErrorMessage(e)),
   });
 
   const deletePlanCourse = useMutation({
@@ -400,7 +423,7 @@ export function PlanCoursesManager({
       toast.success("تم الحذف");
       invalidate();
     },
-    onError: (e: Error) => toast.error(e.message),
+    onError: (e: Error) => toast.error(userErrorMessage(e)),
   });
 
   const generateComponents = useMutation({
@@ -426,7 +449,7 @@ export function PlanCoursesManager({
       toast.success("تم توليد محاضرات المقرر من ساعاته");
       invalidate();
     },
-    onError: (e: Error) => toast.error(e.message),
+    onError: (e: Error) => toast.error(userErrorMessage(e)),
   });
 
   const addComponent = useMutation({
@@ -458,7 +481,7 @@ export function PlanCoursesManager({
       setComponentTarget(null);
       invalidate();
     },
-    onError: (e: Error) => toast.error(e.message),
+    onError: (e: Error) => toast.error(userErrorMessage(e)),
   });
 
   const updateComponent = useMutation({
@@ -499,7 +522,7 @@ export function PlanCoursesManager({
       setComponentTarget(null);
       invalidate();
     },
-    onError: (e: Error) => toast.error(e.message),
+    onError: (e: Error) => toast.error(userErrorMessage(e)),
   });
 
   const deleteComponent = useMutation({
@@ -523,7 +546,7 @@ export function PlanCoursesManager({
       invalidate();
     },
     onError: (e: Error) => {
-      toast.error(e.message);
+      toast.error(userErrorMessage(e));
       invalidate();
     },
   });
@@ -589,16 +612,22 @@ export function PlanCoursesManager({
                 data-testid="plan-level-quick-add"
               >
                 <div>
-                  <Label className="text-xs">اسم المستوى</Label>
+                  <Label htmlFor="plan-courses-f1" className="text-xs">
+                    اسم المستوى
+                  </Label>
                   <Input
+                    id="plan-courses-f1"
                     value={levelForm.name}
                     onChange={(e) => setLevelForm({ ...levelForm, name: e.target.value })}
                     placeholder="المستوى الأول"
                   />
                 </div>
                 <div>
-                  <Label className="text-xs">رقم المستوى</Label>
+                  <Label htmlFor="plan-courses-f2" className="text-xs">
+                    رقم المستوى
+                  </Label>
                   <Input
+                    id="plan-courses-f2"
                     type="number"
                     min={1}
                     max={programDurationYears}
@@ -627,12 +656,14 @@ export function PlanCoursesManager({
             <p className="mb-2 text-sm font-semibold">إضافة مقرر إلى الخطة</p>
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <div className="sm:col-span-2">
-                <Label className="text-xs">المقرر</Label>
+                <Label htmlFor="plan-courses-f5" className="text-xs">
+                  المقرر
+                </Label>
                 <Select
                   value={form.course_id}
                   onValueChange={(v) => setForm({ ...form, course_id: v })}
                 >
-                  <SelectTrigger>
+                  <SelectTrigger id="plan-courses-f5">
                     <SelectValue placeholder="اختر المقرر" />
                   </SelectTrigger>
                   <SelectContent>
@@ -645,12 +676,14 @@ export function PlanCoursesManager({
                 </Select>
               </div>
               <div>
-                <Label className="text-xs">المستوى</Label>
+                <Label htmlFor="plan-courses-f6" className="text-xs">
+                  المستوى
+                </Label>
                 <Select
                   value={form.level_id}
                   onValueChange={(v) => setForm({ ...form, level_id: v })}
                 >
-                  <SelectTrigger>
+                  <SelectTrigger id="plan-courses-f6">
                     <SelectValue placeholder="اختر المستوى" />
                   </SelectTrigger>
                   <SelectContent>
@@ -663,12 +696,14 @@ export function PlanCoursesManager({
                 </Select>
               </div>
               <div>
-                <Label className="text-xs">الفصل</Label>
+                <Label htmlFor="plan-courses-f7" className="text-xs">
+                  الفصل
+                </Label>
                 <Select
                   value={String(form.semester)}
                   onValueChange={(v) => setForm({ ...form, semester: Number(v) })}
                 >
-                  <SelectTrigger>
+                  <SelectTrigger id="plan-courses-f7">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -693,9 +728,20 @@ export function PlanCoursesManager({
           </Card>
         )}
 
+        {(coursesError ?? levelsError ?? roomTypesError ?? componentsError) && (
+          <QueryErrorNotice
+            className="mt-3"
+            title="تعذّر تحميل بعض بيانات الخطة (المقررات أو المستويات أو أنواع القاعات أو المحاضرات)؛ لا تعدّل قبل إعادة التحميل."
+            error={coursesError ?? levelsError ?? roomTypesError ?? componentsError}
+            onRetry={invalidate}
+          />
+        )}
+
         <div className="mt-4 space-y-3">
           {isLoading ? (
             <p className="p-4 text-center text-sm text-muted-foreground">جارٍ التحميل…</p>
+          ) : planCoursesError ? (
+            <QueryErrorNotice error={planCoursesError} onRetry={() => void refetchPlanCourses()} />
           ) : (planCourses ?? []).length === 0 ? (
             <p className="rounded border border-dashed border-border p-4 text-center text-sm text-muted-foreground">
               لا توجد مقررات في هذه الخطة بعد.
@@ -720,8 +766,10 @@ export function PlanCoursesManager({
                         className="text-xs text-muted-foreground"
                         data-testid={`plan-course-counters-${row.id}`}
                       >
-                        محاضرات/أسبوع {row.lectures_per_week} × {row.lecture_session_duration} س ·
-                        معامل/أسبوع {row.labs_per_week} × {row.lab_session_duration} س
+                        محاضرات/أسبوع {formatNumber(row.lectures_per_week)} ×{" "}
+                        {formatDecimal(row.lecture_session_duration)} س · معامل/أسبوع{" "}
+                        {formatNumber(row.labs_per_week)} ×{" "}
+                        {formatDecimal(row.lab_session_duration)} س
                       </p>
                     </div>
                     {canManage && (
@@ -773,14 +821,16 @@ export function PlanCoursesManager({
                         <Button
                           size="sm"
                           variant="ghost"
-                          onClick={() => {
-                            if (
-                              confirm(
-                                "سيتم حذف محاضرات هذا المقرر ثم حذفه من الخطة. هل تريد المتابعة؟",
-                              )
-                            ) {
-                              deletePlanCourse.mutate(row.id);
-                            }
+                          aria-label={`حذف ${course ? entityDisplayName(course, "المقرر") : "المقرر"} من الخطة`}
+                          onClick={async () => {
+                            const ok = await confirmAction({
+                              title: `حذف ${course ? entityDisplayName(course, "المقرر") : "المقرر"} من الخطة؟`,
+                              description:
+                                "سيتم حذف محاضرات هذا المقرر ثم حذفه من الخطة. لا يمكن التراجع عن هذا الإجراء.",
+                              confirmLabel: "حذف",
+                              destructive: true,
+                            });
+                            if (ok) deletePlanCourse.mutate(row.id);
                           }}
                         >
                           <Trash2 className="h-3.5 w-3.5" />
@@ -795,12 +845,14 @@ export function PlanCoursesManager({
                       data-testid={`plan-course-edit-form-${row.id}`}
                     >
                       <div>
-                        <Label className="text-xs">المستوى</Label>
+                        <Label htmlFor="plan-courses-f8" className="text-xs">
+                          المستوى
+                        </Label>
                         <Select
                           value={editRow.level_id}
                           onValueChange={(v) => setEditRow({ ...editRow, level_id: v })}
                         >
-                          <SelectTrigger>
+                          <SelectTrigger id="plan-courses-f8">
                             <SelectValue placeholder="اختر المستوى" />
                           </SelectTrigger>
                           <SelectContent>
@@ -813,12 +865,14 @@ export function PlanCoursesManager({
                         </Select>
                       </div>
                       <div>
-                        <Label className="text-xs">الفصل</Label>
+                        <Label htmlFor="plan-courses-f9" className="text-xs">
+                          الفصل
+                        </Label>
                         <Select
                           value={String(editRow.semester)}
                           onValueChange={(v) => setEditRow({ ...editRow, semester: Number(v) })}
                         >
-                          <SelectTrigger>
+                          <SelectTrigger id="plan-courses-f9">
                             <SelectValue />
                           </SelectTrigger>
                           <SelectContent>
@@ -858,13 +912,13 @@ export function PlanCoursesManager({
                           <span>
                             {COMPONENT_TYPE_LABEL_AR[c.component_type as ComponentType] ??
                               c.component_type}{" "}
-                            · {c.weekly_contact_hours} س/أسبوع ·{" "}
+                            · {formatDecimal(c.weekly_contact_hours)} س/أسبوع ·{" "}
                             {c.is_timetabled ? "مجدول" : "غير مجدول"}
                             {c.required_room_type_id
                               ? ` · ${roomTypeMap.get(c.required_room_type_id)?.name_ar ?? "نوع قاعة"}`
                               : ""}
                             {c.explicit_group_size
-                              ? ` · حجم المجموعة ${c.explicit_group_size}`
+                              ? ` · حجم المجموعة ${formatNumber(c.explicit_group_size)}`
                               : ""}
                           </span>
                           {canManage && (
@@ -873,6 +927,7 @@ export function PlanCoursesManager({
                                 size="sm"
                                 variant="ghost"
                                 data-testid={`plan-component-edit-${c.id}`}
+                                aria-label={`تعديل ${COMPONENT_TYPE_LABEL_AR[c.component_type as ComponentType] ?? c.component_type}`}
                                 onClick={() => {
                                   setComponentForm({
                                     component_type: c.component_type,
@@ -892,12 +947,21 @@ export function PlanCoursesManager({
                               <Button
                                 size="sm"
                                 variant="ghost"
-                                onClick={() =>
-                                  deleteComponent.mutate({
-                                    componentId: c.id,
-                                    planCourseId: row.id,
-                                  })
-                                }
+                                aria-label={`حذف ${COMPONENT_TYPE_LABEL_AR[c.component_type as ComponentType] ?? c.component_type}`}
+                                onClick={async () => {
+                                  const ok = await confirmAction({
+                                    title: `حذف ${COMPONENT_TYPE_LABEL_AR[c.component_type as ComponentType] ?? c.component_type} من المقرر؟`,
+                                    description:
+                                      "تُحدَّث بيانات الجدولة للمقرر بعد الحذف. لا يمكن التراجع عن هذا الإجراء.",
+                                    confirmLabel: "حذف",
+                                    destructive: true,
+                                  });
+                                  if (ok)
+                                    deleteComponent.mutate({
+                                      componentId: c.id,
+                                      planCourseId: row.id,
+                                    });
+                                }}
                               >
                                 <Trash2 className="h-3 w-3" />
                               </Button>
@@ -918,148 +982,13 @@ export function PlanCoursesManager({
                             : `plan-component-add-form-${row.id}`
                         }
                       >
-                        <div>
-                          <Label className="text-xs">نوع المحاضرة</Label>
-                          <Select
-                            value={componentForm.component_type}
-                            onValueChange={(v) =>
-                              setComponentForm(
-                                normalizeComponentFormRoomType(
-                                  ctx,
-                                  { ...componentForm, component_type: v },
-                                  roomTypes ?? [],
-                                ),
-                              )
-                            }
-                          >
-                            <SelectTrigger>
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {PLAN_COMPONENT_TYPES.map((t) => (
-                                <SelectItem key={t} value={t}>
-                                  {COMPONENT_TYPE_LABEL_AR[t]}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </div>
-                        <div>
-                          <Label className="text-xs">الساعات الأسبوعية</Label>
-                          <Input
-                            type="number"
-                            min={0}
-                            value={componentForm.weekly_contact_hours}
-                            onChange={(e) =>
-                              setComponentForm({
-                                ...componentForm,
-                                weekly_contact_hours: Number(e.target.value),
-                              })
-                            }
-                          />
-                        </div>
-                        <div>
-                          <Label className="text-xs">نوع القاعة المطلوب</Label>
-                          <Select
-                            value={componentForm.required_room_type_id ?? NONE}
-                            disabled={tutorialRoomTypeIsLocked(componentForm.component_type)}
-                            onValueChange={(v) =>
-                              setComponentForm({
-                                ...componentForm,
-                                required_room_type_id: v === NONE ? null : v,
-                              })
-                            }
-                          >
-                            <SelectTrigger data-testid="plan-component-room-type">
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value={NONE}>بدون تحديد</SelectItem>
-                              {(tutorialRoomTypeIsLocked(componentForm.component_type)
-                                ? ((): RoomTypeOption[] => {
-                                    const lh = findTutorialRoomType(roomTypes ?? [], collegeId);
-                                    return lh ? [lh] : [];
-                                  })()
-                                : (roomTypes ?? [])
-                              ).map((r) => (
-                                <SelectItem key={r.id} value={r.id}>
-                                  {r.name_ar}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                          {tutorialRoomTypeIsLocked(componentForm.component_type) ? (
-                            <p className="mt-1 text-[11px] text-muted-foreground">
-                              محاضرة التمارين تُدرَّس دائمًا في قاعة محاضرات.
-                            </p>
-                          ) : null}
-                        </div>
-                        <div>
-                          <Label className="text-xs">طريقة الاحتساب</Label>
-                          <Select
-                            value={componentForm.compensation_mode}
-                            onValueChange={(v) =>
-                              setComponentForm({ ...componentForm, compensation_mode: v })
-                            }
-                          >
-                            <SelectTrigger>
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {COMPENSATION_MODES.map((m) => (
-                                <SelectItem key={m} value={m}>
-                                  {COMPENSATION_MODE_LABEL_AR[m]}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </div>
-                        <div>
-                          <Label className="text-xs">حجم المجموعة (اختياري)</Label>
-                          <Input
-                            type="number"
-                            min={1}
-                            value={componentForm.explicit_group_size ?? ""}
-                            onChange={(e) =>
-                              setComponentForm({
-                                ...componentForm,
-                                explicit_group_size: e.target.value ? Number(e.target.value) : null,
-                              })
-                            }
-                          />
-                        </div>
-                        <div className="flex flex-col gap-1 text-xs">
-                          <label className="flex items-center gap-2">
-                            <Checkbox
-                              checked={componentForm.is_timetabled}
-                              onCheckedChange={(v) =>
-                                setComponentForm({ ...componentForm, is_timetabled: !!v })
-                              }
-                            />
-                            مجدول في الجدول
-                          </label>
-                          <label className="flex items-center gap-2">
-                            <Checkbox
-                              checked={componentForm.counts_toward_regular_load}
-                              onCheckedChange={(v) =>
-                                setComponentForm({
-                                  ...componentForm,
-                                  counts_toward_regular_load: !!v,
-                                })
-                              }
-                            />
-                            يُحتسب في النصاب
-                          </label>
-                          <label className="flex items-center gap-2">
-                            <Checkbox
-                              checked={componentForm.counts_toward_overtime}
-                              onCheckedChange={(v) =>
-                                setComponentForm({ ...componentForm, counts_toward_overtime: !!v })
-                              }
-                            />
-                            يُحتسب في الساعات الإضافية
-                          </label>
-                        </div>
+                        <PlanComponentFormFields
+                          ctx={ctx}
+                          collegeId={collegeId}
+                          componentForm={componentForm}
+                          setComponentForm={setComponentForm}
+                          roomTypes={roomTypes}
+                        />
                         <div className="flex gap-2 sm:col-span-2 sm:justify-end">
                           <Button
                             variant="outline"

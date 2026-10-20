@@ -17,6 +17,10 @@ import {
   type CutoverManifest,
   type LiveSession,
 } from "@/lib/itcs-cutover/manifest";
+import { userErrorMessage } from "@/lib/user-error";
+import { confirmAction } from "@/components/confirm-dialog";
+import { readAllRows } from "@/lib/supabase/read-all";
+import { formatNumber } from "@/lib/format";
 
 export const Route = createFileRoute("/_authenticated/itcs-cutover")({
   head: () => ({
@@ -85,17 +89,23 @@ function ItcsCutoverPage() {
       add(`رُفض البيان: ${v.errors.length} خطأ`);
       return;
     }
-    const { data, error } = await supabase
-      .from("schedule_sessions")
-      .select(
-        "id, day_of_week, start_time, end_time, room_id, instructor_id, teaching_assignment_id, delivery_group_id, cohort_id",
-      )
-      .eq("schedule_version_id", v.manifest.draft_version_id);
-    if (error) {
-      setErrors([error.message]);
+    let data: unknown[];
+    try {
+      data = await readAllRows((from, to) =>
+        supabase
+          .from("schedule_sessions")
+          .select(
+            "id, day_of_week, start_time, end_time, room_id, instructor_id, teaching_assignment_id, delivery_group_id, cohort_id",
+          )
+          .eq("schedule_version_id", v.manifest!.draft_version_id)
+          .order("id")
+          .range(from, to),
+      );
+    } catch (error) {
+      setErrors([userErrorMessage(error)]);
       return;
     }
-    const live = (data ?? []) as (LiveSession & {
+    const live = data as (LiveSession & {
       delivery_group_id: string | null;
       cohort_id: string | null;
     })[];
@@ -110,7 +120,7 @@ function ItcsCutoverPage() {
       ),
     ]);
     if (members.error || preview.error) {
-      setErrors([(members.error ?? preview.error)!.message]);
+      setErrors([userErrorMessage(members.error ?? preview.error)]);
       return;
     }
     const units = new Map<string, string[]>();
@@ -158,6 +168,14 @@ function ItcsCutoverPage() {
 
   async function runStage(stage: Stage) {
     if (!manifest || !server) return;
+    const ok = await confirmAction({
+      title: STAGE_CONFIRM_TITLES[stage] ?? `تنفيذ المرحلة ${stage}؟`,
+      description: "تُنفَّذ المرحلة كاملة على الخادم أو تُلغى كاملة، وتُسجَّل في سجل العمليات.",
+      confirmLabel: "تنفيذ",
+      destructive: stage === "publish",
+      typedConfirmation: stage === "publish" ? "نشر" : undefined,
+    });
+    if (!ok) return;
     const targetVersion =
       typeof server["relayout_version_id"] === "string"
         ? server["relayout_version_id"]
@@ -365,11 +383,21 @@ function ItcsCutoverPage() {
   );
 }
 
+const STAGE_CONFIRM_TITLES: Partial<Record<Stage, string>> = {
+  requests: "إرسال طلبات التكليف إلى الكليات الأصلية؟",
+  approve: "تطبيق التوزيع المدقق بعد موافقة الكليات؟",
+  apply: "تطبيق التوزيع المدقق على المسودة؟",
+  rooms: "اعتماد تصحيح القاعات في المسودة؟",
+  publish: "تشغيل فحص الجودة ونشر الجدول؟ اكتب «نشر» للتأكيد.",
+};
+
 function Stat({ label, v }: { label: string; v: number | string }) {
   return (
     <div className="flex items-center justify-between rounded border p-2">
       <span>{label}</span>
-      <Badge variant={v === 0 ? "secondary" : "destructive"}>{v}</Badge>
+      <Badge variant={v === 0 ? "secondary" : "destructive"}>
+        {typeof v === "number" ? formatNumber(v) : v}
+      </Badge>
     </div>
   );
 }

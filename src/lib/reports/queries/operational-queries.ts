@@ -1,3 +1,4 @@
+import { readAllRows } from "@/lib/supabase/read-all";
 import { supabase } from "@/integrations/supabase/client";
 import { applyStudySystemFilter, assertSingleVersion } from "@/lib/reports/filters";
 import { DAY_NAMES_AR, fmtTime } from "@/lib/reports/formatters";
@@ -275,15 +276,19 @@ export async function fetchUnscheduledSessionCounts(params: {
   studySystem: ReportStudySystem;
 }): Promise<UnscheduledSessionCount[]> {
   assertSingleVersion(params.versionId);
-  let q = supabase
-    .from("schedule_sessions")
-    .select("course_offering_id, session_type, study_system")
-    .eq("college_id", params.collegeId)
-    .eq("schedule_version_id", params.versionId);
-  q = applyStudySystemFilter(q, params.studySystem);
-  const { data, error } = await q;
-  if (error) throw error;
-  return data ?? [];
+  const rows = await readAllRows<UnscheduledSessionCount & { id: string }>((from, to) =>
+    applyStudySystemFilter(
+      supabase
+        .from("schedule_sessions")
+        .select("id, course_offering_id, session_type, study_system")
+        .eq("college_id", params.collegeId)
+        .eq("schedule_version_id", params.versionId!),
+      params.studySystem,
+    )
+      .order("id")
+      .range(from, to),
+  );
+  return rows.map(({ course_offering_id, session_type }) => ({ course_offering_id, session_type }));
 }
 
 /** Latest auto_schedule run unplaced data (read-only — does not run scheduler). */

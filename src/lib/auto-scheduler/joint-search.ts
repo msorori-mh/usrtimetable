@@ -1,6 +1,6 @@
 import { extendedResourceConflict } from "./extended-resource-capacity.ts";
 import type { Highs } from "highs";
-import { buildJointModel, validateJointPlan } from "./joint-model.ts";
+import { buildJointModel, JointModelTimeoutError, validateJointPlan } from "./joint-model.ts";
 import {
   searchAttendance,
   resourceConflictResult,
@@ -115,7 +115,17 @@ export async function searchJointAttendance(
       });
       return finish("unknown", null);
     }
-    const built = buildJointModel(snapshot, days, purpose !== "generation");
+    // M-14: model building honours the same budget as the solver.
+    let built: ReturnType<typeof buildJointModel>;
+    try {
+      built = buildJointModel(snapshot, days, purpose !== "generation", {
+        deadline: started + budgetMs,
+      });
+    } catch (error) {
+      if (!(error instanceof JointModelTimeoutError)) throw error;
+      attempts.push({ days, status: "unknown", reason: "budget", evaluated: 0 });
+      return finish("unknown", null);
+    }
     // Generation needs a complete valid timetable before quality optimization.
     // Keep instructor day targets while omitting span/idle-time costs in generation.
     const model = highs.createModel(

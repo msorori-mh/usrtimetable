@@ -98,7 +98,15 @@ function forbidWritePatterns(src: string, label: string, opts?: { allowSessionMo
 }
 
 function run() {
-  const page = readSrc("src/routes/_authenticated/schedule-builder.tsx");
+  // L-14: the builder page was split into the route + hooks/use-schedule-builder-workspace.ts + builder components.
+  const page = [
+    "src/routes/_authenticated/schedule-builder.tsx",
+    "src/hooks/use-schedule-builder-workspace.ts",
+    "src/components/schedule-builder/builder-context-bar.tsx",
+    "src/components/schedule-builder/builder-ui.tsx",
+  ]
+    .map((file) => readSrc(file))
+    .join("\n");
   const editAccess = readSrc("src/lib/schedule-builder/edit-access.ts");
   const pendingSrc = readSrc("src/lib/schedule-builder/pending-change.ts");
   const editSheet = readSrc("src/components/schedule-builder/session-edit-sheet.tsx");
@@ -159,8 +167,9 @@ function run() {
       hasActiveCollege: true,
       versionId: "v1",
       versionStatus: "approved",
-    }) === true,
-    "manager + approved can enter",
+    }) === false,
+    // H-8 (decision 2026-10-15): an approved version is locked; changes go to a new draft.
+    "manager + approved is locked",
   );
 
   // 4–5. published / archived not editable

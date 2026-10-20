@@ -34,7 +34,7 @@ function Page() {
   const [search, setSearch] = useState("");
 
   const { data, isLoading, error, refetch } = useQuery({
-    queryKey: ["rep-readiness", ctx.collegeId],
+    queryKey: ["reports-data-readiness", ctx.collegeId],
     enabled: !!ctx.collegeId,
     queryFn: () => fetchCollegeReadiness(ctx.collegeId!),
   });

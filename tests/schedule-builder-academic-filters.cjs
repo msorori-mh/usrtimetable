@@ -3,6 +3,9 @@ const fs = require("fs"),
   assert = require("assert/strict");
 const ts = require("typescript");
 for (const p of [
+  // L-14: the builder page logic moved to this hook; syntax-checked too (listed first so the
+  // endsWith("workspace.ts") evaluation below still loads lib/schedule-builder/workspace.ts).
+  "src/hooks/use-schedule-builder-workspace.ts",
   "src/lib/schedule-builder/workspace.ts",
   "src/lib/schedule-builder/queries.ts",
   "src/routes/_authenticated/schedule-builder.tsx",

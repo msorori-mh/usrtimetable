@@ -35,7 +35,15 @@ describe("academic affairs route scope", () => {
 });
 
 describe("instructor edit wiring", () => {
-  const src = readFileSync("src/routes/_authenticated/instructors.tsx", "utf8");
+  // L-14: the instructors page was split into the route + hook + form/search components.
+  const src = [
+    "src/routes/_authenticated/instructors.tsx",
+    "src/hooks/use-instructor-directory.ts",
+    "src/components/instructors/instructor-form-fields.tsx",
+    "src/components/instructors/university-instructor-search.tsx",
+  ]
+    .map((file) => readFileSync(file, "utf8"))
+    .join("\n");
   const migration = readFileSync(
     "supabase/migrations/20260915034500_academic_affairs_instructor_basic_edit.sql",
     "utf8",
@@ -50,7 +58,8 @@ describe("instructor edit wiring", () => {
   it("keeps create/delete admin-only", () => {
     expect(src).toContain("صلاحيتك تسمح بتعديل المحاضرين الحاليين فقط");
     expect(src).toContain("{canManage && (");
-    expect(src).toContain("حذف المحاضر؟");
+    expect(src).toContain("title: `حذف المحاضر «${i.full_name}»؟`");
+    expect(src).toContain("typedConfirmation: i.full_name");
   });
 
   it("migration whitelists the academic-affairs role without widening can_manage_college", () => {

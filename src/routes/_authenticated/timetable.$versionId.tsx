@@ -1,5 +1,4 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-/* eslint-disable react-hooks/exhaustive-deps */
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -47,8 +46,9 @@ import {
   isEducationSourcePublication,
 } from "@/lib/schedule-versions/education-publication";
 import { scoreScheduleVersion, type QualityResult } from "@/lib/conflict-engine/scorer";
-import { validateProposed } from "@/lib/conflict-engine/validator";
-import { logAudit } from "@/lib/audit";
+import { moveOrRescheduleScheduleSession } from "@/lib/schedule-builder/session-move-rpc";
+import { invalidateSessionReadModels } from "@/lib/schedule-versions/session-writes";
+import { useEducationSourcePublications } from "@/lib/schedule-versions/education-publication-loader";
 import { toast } from "sonner";
 import {
   SCHEDULE_BUILDER_COLLEGE_MISMATCH_AR,
@@ -68,6 +68,7 @@ import {
   sessionMatchesTimetableAcademicFilters,
 } from "@/lib/schedule-builder/timetable-editor-filters";
 import { entityDisplayName } from "@/lib/entity-display";
+import { chunkIds, readAllResult } from "@/lib/supabase/read-all";
 
 export const Route = createFileRoute("/_authenticated/timetable/$versionId")({
   head: () => ({ meta: [{ title: "بناء الجدول" }] }),
@@ -87,6 +88,8 @@ const addMin = (s: string, add: number) => {
 
 function TimetablePage() {
   const { versionId } = Route.useParams();
+  // Sealed education publication markers (data, M-11) re-render the notice once loaded.
+  useEducationSourcePublications();
   const { active } = useActiveCollege();
   const canManageRole = useCanManageActiveCollege();
   const currentUser = useCurrentUser();
@@ -174,18 +177,41 @@ function TimetablePage() {
           .from("academic_levels")
           .select("id, name, program_id, level_number")
           .eq("college_id", active!.id),
-        supabase.from("instructors").select("id, full_name").eq("college_id", active!.id),
+        readAllResult<{ id: string; full_name: string }>((from, to) =>
+          supabase
+            .from("instructors")
+            .select("id, full_name")
+            .eq("college_id", active!.id)
+            .order("id")
+            .range(from, to),
+        ),
         supabase.from("rooms").select("id, code, name, room_type_id").eq("college_id", active!.id),
         // Flat offerings only — no nested courses() embed (PGRST200).
-        supabase
-          .from("course_offerings")
-          .select("id, course_id, program_id, level_id, expected_students, plan_course_id")
-          .eq("college_id", active!.id)
-          .eq("term_id", version?.academic_term_id ?? ""),
-        supabase
-          .from("teaching_assignments")
-          .select("id, course_offering_id, instructor_id")
-          .eq("college_id", active!.id),
+        readAllResult<{
+          id: string;
+          course_id: string;
+          program_id: string | null;
+          level_id: string | null;
+          expected_students: number | null;
+          plan_course_id: string | null;
+        }>((from, to) =>
+          supabase
+            .from("course_offerings")
+            .select("id, course_id, program_id, level_id, expected_students, plan_course_id")
+            .eq("college_id", active!.id)
+            .eq("term_id", version?.academic_term_id ?? "")
+            .order("id")
+            .range(from, to),
+        ),
+        readAllResult<{ id: string; course_offering_id: string; instructor_id: string }>(
+          (from, to) =>
+            supabase
+              .from("teaching_assignments")
+              .select("id, course_offering_id, instructor_id")
+              .eq("college_id", active!.id)
+              .order("id")
+              .range(from, to),
+        ),
         supabase
           .from("time_slot_templates")
           .select("*")
@@ -194,6 +220,21 @@ function TimetablePage() {
         supabase.from("scheduling_settings").select("*").eq("college_id", active!.id).maybeSingle(),
         supabase.from("room_types").select("id, name_ar").eq("college_id", active!.id),
       ]);
+      // Every lookup must load completely: an ignored error would silently hide filters,
+      // rooms or templates and mislead the editor (M-20).
+      const failed = [
+        depts,
+        progs,
+        levels,
+        instrs,
+        rooms,
+        offeringsRes,
+        tas,
+        templates,
+        settings,
+        roomTypes,
+      ].find((r) => r.error);
+      if (failed?.error) throw failed.error;
 
       const offeringsFlat = offeringsRes.data ?? [];
       const courseIds = [
@@ -201,16 +242,20 @@ function TimetablePage() {
           offeringsFlat.map((o) => o.course_id as string | null).filter((id): id is string => !!id),
         ),
       ];
-      const { data: courseRows } = courseIds.length
-        ? await supabase.from("courses").select("id, code, name, department_id").in("id", courseIds)
-        : {
-            data: [] as Array<{
-              id: string;
-              code: string | null;
-              name: string | null;
-              department_id: string | null;
-            }>,
-          };
+      const courseRows: Array<{
+        id: string;
+        code: string | null;
+        name: string | null;
+        department_id: string | null;
+      }> = [];
+      for (const ids of chunkIds(courseIds)) {
+        const { data, error } = await supabase
+          .from("courses")
+          .select("id, code, name, department_id")
+          .in("id", ids);
+        if (error) throw error;
+        courseRows.push(...(data ?? []));
+      }
       const courseById = new Map((courseRows ?? []).map((c) => [c.id, c]));
       const offerings = offeringsFlat.map((o) => {
         const course = courseById.get(o.course_id);
@@ -247,7 +292,10 @@ function TimetablePage() {
     queryFn: async () => listScheduleBuilderV2WorkItems({ scheduleVersionId: versionId }),
   });
 
-  const workingDays = lookups?.settings?.working_days ?? [6, 0, 1, 2, 3, 4];
+  const workingDays = useMemo(
+    () => lookups?.settings?.working_days ?? [6, 0, 1, 2, 3, 4],
+    [lookups?.settings?.working_days],
+  );
   const { startHour, endHour } = useMemo(
     () =>
       resolveTimetableGridHours({
@@ -429,62 +477,37 @@ function TimetablePage() {
     }
     const duration = toMin(existing.end_time) - toMin(existing.start_time);
     const newEnd = addMin(startTime, duration);
-    const validation = await validateProposed({
-      collegeId: active.id,
-      scheduleVersionId: versionId,
-      sessions: [
-        {
-          id: existing.id,
-          course_offering_id: existing.course_offering_id ?? "",
-          teaching_assignment_id: existing.teaching_assignment_id ?? null,
-          instructor_id: existing.instructor_id ?? "",
-          room_id: existing.room_id,
-          section_id: existing.section_id,
-          section_group_id: existing.section_group_id,
-          study_system: existing.study_system as any,
-          day_of_week: day,
-          start_time: startTime,
-          end_time: newEnd,
-          session_type: existing.session_type ?? "lecture",
-          expected_students: existing.expected_students ?? undefined,
-        },
-      ],
-      excludeExistingSessionIds: [existing.id],
-    });
-    if (validation.unapprovedHardConflicts > 0) {
-      toast.error(
-        `⚠️ نقل مرفوض — ${validation.unapprovedHardConflicts} تعارض (${validation.conflicts[0].message_ar})`,
-      );
-      await logAudit({
-        action: "blocked_conflict",
-        entity: "schedule_sessions",
-        entityId: existing.id,
-        collegeId: active.id,
-        details: { codes: validation.conflicts.map((c) => c.code) },
-      });
-      return;
-    }
-    const { error } = await supabase
-      .from("schedule_sessions")
-      .update({
+    // H-6: the move is validated and written by the server (authoritative collector,
+    // optimistic concurrency on updated_at, audit row) — never by a direct table update.
+    const res = await moveOrRescheduleScheduleSession({
+      sessionId: existing.id,
+      expectedUpdatedAt: existing.updated_at ?? null,
+      original: {
+        day_of_week: existing.day_of_week,
+        start_time: existing.start_time,
+        end_time: existing.end_time,
+        room_id: existing.room_id ?? null,
+      },
+      proposed: {
         day_of_week: day,
         start_time: startTime,
         end_time: newEnd,
-      })
-      .eq("id", existing.id);
-    if (error) {
-      toast.error(error.message);
+        room_id: existing.room_id ?? null,
+      },
+      changeReason: "نقل بالسحب في محرر الجدول",
+    });
+    if (!res.ok) {
+      const first = res.blocking_conflicts[0] ?? res.warnings[0];
+      toast.error(
+        res.stale
+          ? "تغيرت المحاضرة منذ تحميلها — أُعيد تحميل الجدول، حاول مجدداً."
+          : `⚠️ نقل مرفوض${first?.message_ar ? ` — ${first.message_ar}` : res.message_ar ? ` — ${res.message_ar}` : ""}`,
+      );
+      if (res.stale) await invalidateSessionReadModels(qc);
       return;
     }
-    await logAudit({
-      action: "drag_move",
-      entity: "schedule_sessions",
-      entityId: existing.id,
-      collegeId: active.id,
-      details: { day, start_time: startTime },
-    });
     toast.success("تم نقل المحاضرة");
-    qc.invalidateQueries({ queryKey: ["sessions-for-version", versionId] });
+    await invalidateSessionReadModels(qc);
   };
 
   if (!active) {
@@ -495,7 +518,7 @@ function TimetablePage() {
         </p>
         <Button variant="outline" asChild>
           <Link to="/schedule-versions">
-            <ArrowRight className="h-4 w-4 ml-1" /> عودة للنسخ
+            <ArrowRight className="h-4 w-4 me-1" /> عودة للنسخ
           </Link>
         </Button>
       </div>
@@ -518,7 +541,7 @@ function TimetablePage() {
         </p>
         <Button variant="outline" asChild>
           <Link to="/schedule-versions">
-            <ArrowRight className="h-4 w-4 ml-1" /> عودة للنسخ
+            <ArrowRight className="h-4 w-4 me-1" /> عودة للنسخ
           </Link>
         </Button>
       </div>
@@ -530,7 +553,7 @@ function TimetablePage() {
       <div className="space-y-4" dir="rtl">
         <Button variant="ghost" size="sm" asChild>
           <Link to="/schedule-versions">
-            <ArrowRight className="h-4 w-4 ml-1" /> عودة للنسخ
+            <ArrowRight className="h-4 w-4 me-1" /> عودة للنسخ
           </Link>
         </Button>
         <div className="rounded-md border border-amber-300 bg-amber-50 dark:bg-amber-950/30 p-4 text-sm">
@@ -540,7 +563,10 @@ function TimetablePage() {
     );
   }
 
-  const isLocked = version.status === "published" || version.status === "archived";
+  const isLocked =
+    version.status === "approved" ||
+    version.status === "published" ||
+    version.status === "archived";
 
   return (
     <div className="space-y-4" dir="rtl">
@@ -558,7 +584,7 @@ function TimetablePage() {
         <div>
           <Button variant="ghost" size="sm" asChild>
             <Link to="/schedule-versions">
-              <ArrowRight className="h-4 w-4 ml-1" /> عودة للنسخ
+              <ArrowRight className="h-4 w-4 me-1" /> عودة للنسخ
             </Link>
           </Button>
           <h1 className="text-2xl font-bold mt-1">
@@ -582,12 +608,12 @@ function TimetablePage() {
           {canPrintTimetableVersion(version.status, currentUser.data) && (
             <Button variant="outline" asChild>
               <Link to="/timetable/$versionId/print" params={{ versionId }}>
-                <Printer className="h-4 w-4 ml-1" /> طباعة وتصدير الجدول
+                <Printer className="h-4 w-4 me-1" /> طباعة وتصدير الجدول
               </Link>
             </Button>
           )}
           <Button variant="outline" onClick={runQuality} disabled={scoring}>
-            <Gauge className="h-4 w-4 ml-1" /> {scoring ? "..." : "احتساب الجودة"}
+            <Gauge className="h-4 w-4 me-1" /> {scoring ? "..." : "احتساب الجودة"}
           </Button>
           <Button
             disabled={!canManage}
@@ -597,15 +623,24 @@ function TimetablePage() {
               setDialogOpen(true);
             }}
           >
-            <Plus className="h-4 w-4 ml-1" /> محاضرة جديدة
+            <Plus className="h-4 w-4 me-1" /> محاضرة جديدة
           </Button>
         </div>
       </div>
 
       {isLocked && (
         <div className="rounded-md border border-emerald-300 bg-emerald-50 dark:bg-emerald-950/30 p-3 text-sm">
-          🔒 هذه النسخة <strong>{version.status === "published" ? "منشورة" : "مؤرشفة"}</strong> —
-          العرض للقراءة فقط. لا يمكن إضافة أو تعديل أو حذف المحاضرات.
+          🔒 هذه النسخة{" "}
+          <strong>
+            {version.status === "approved"
+              ? "معتمدة"
+              : version.status === "published"
+                ? "منشورة"
+                : "مؤرشفة"}
+          </strong>{" "}
+          — العرض للقراءة فقط. لا يمكن إضافة أو تعديل أو حذف المحاضرات.
+          {version.status !== "archived" &&
+            " لإجراء تغييرات أنشئ مسودة جديدة منها من صفحة نسخ الجدول."}
         </div>
       )}
 
@@ -756,7 +791,7 @@ function TimetablePage() {
                 <button
                   key={session.id}
                   type="button"
-                  className="flex w-full flex-wrap gap-2 rounded border p-2 text-right text-xs hover:bg-accent/30"
+                  className="flex w-full flex-wrap gap-2 rounded border p-2 text-start text-xs hover:bg-accent/30"
                   onClick={() => {
                     setEditId(session.id);
                     setPrefill(undefined);
@@ -801,7 +836,7 @@ function TimetablePage() {
                         {prog}
                       </div>
                       {Array.from(lvlMap.entries()).map(([lvl, items]) => (
-                        <div key={lvl} className="pr-2">
+                        <div key={lvl} className="ps-2">
                           <div className="text-[10px] text-muted-foreground">{lvl}</div>
                           <div className="space-y-1">
                             {items.map((item) => (
@@ -810,7 +845,7 @@ function TimetablePage() {
                                 draggable={canManage}
                                 onDragStart={(e) => {
                                   e.dataTransfer.setData(
-                                    "application/x-lovable-drop",
+                                    "application/x-usr-timetable-session",
                                     JSON.stringify({
                                       kind: "unscheduled",
                                       id: item.course_offering_id,

@@ -8,7 +8,19 @@ import {
   shortRef,
 } from "../src/lib/data-cleanup-bulk";
 
-const src = readFileSync("src/routes/_authenticated/data-cleanup.tsx", "utf8");
+// L-14: the data-cleanup page was split into the route + src/components/data-cleanup/*.
+const src = [
+  "src/routes/_authenticated/data-cleanup.tsx",
+  "src/components/data-cleanup/cleanup-data.ts",
+  "src/components/data-cleanup/cleanup-diagnostics.ts",
+  "src/components/data-cleanup/cleanup-shared.tsx",
+  "src/components/data-cleanup/courses-section.tsx",
+  "src/components/data-cleanup/instructors-section.tsx",
+  "src/components/data-cleanup/rooms-section.tsx",
+  "src/components/data-cleanup/offerings-section.tsx",
+]
+  .map((file) => readFileSync(file, "utf8"))
+  .join("\n");
 const items = [
   { id: "a", title: "CS101 · برمجة", details: "الطبيعة: غير محددة" },
   { id: "b", title: "CS102 · هياكل", details: "القسم: غير محدد" },
@@ -73,8 +85,12 @@ describe("data-cleanup BulkDialog", () => {
 
   it("surfaces query errors instead of empty lists", () => {
     expect(firstQueryError([{ label: "القاعات", error: null }])).toBeNull();
-    expect(firstQueryError([{ label: "القاعات", error: { message: "denied" } }])).toMatch(
-      /القاعات.*denied/,
+    // L-5: raw (English) database text is no longer shown; Arabic server messages pass through.
+    const raw = firstQueryError([{ label: "القاعات", error: { message: "denied" } }]);
+    expect(raw).toMatch(/القاعات/);
+    expect(raw).not.toMatch(/denied/);
+    expect(firstQueryError([{ label: "القاعات", error: { message: "لا صلاحية" } }])).toMatch(
+      /القاعات.*لا صلاحية/,
     );
     expect(src).toMatch(/if \(loadError\) throw new Error\(loadError\)/);
     expect(shortRef("12345678-aaaa")).toBe("مرجع 12345678");

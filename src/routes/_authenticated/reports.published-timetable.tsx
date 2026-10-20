@@ -2,6 +2,12 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useMemo, useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { readAllRows } from "@/lib/supabase/read-all";
+import {
+  fetchCurrentPublishedVersions,
+  onlyCurrentPublished,
+} from "@/lib/schedule-versions/current-published";
+import { useEducationSourcePublications } from "@/lib/schedule-versions/education-publication-loader";
 import { useActiveCollege } from "@/hooks/use-colleges";
 import { ReportShell } from "@/components/reports/report-shell";
 import {
@@ -35,6 +41,8 @@ export const Route = createFileRoute("/_authenticated/reports/published-timetabl
 
 function Page() {
   const { active } = useActiveCollege();
+  // Sealed education publication markers (data, M-11) re-render notices once loaded.
+  useEducationSourcePublications();
   const [termId, setTermId] = useState("all");
   const [versionId, setVersionId] = useState("");
   const [deptId, setDeptId] = useState("all");
@@ -59,7 +67,7 @@ function Page() {
       ).data ?? [],
   });
   const { data: versions, error: versionsError } = useQuery({
-    queryKey: ["pt-vers", active?.id, termId],
+    queryKey: ["reports-published-timetable-versions", active?.id, termId],
     enabled: !!active,
     queryFn: async () => {
       let q = supabase
@@ -69,11 +77,17 @@ function Page() {
         .eq("status", "published")
         .order("created_at", { ascending: false });
       if (termId !== "all") q = q.eq("academic_term_id", termId);
-      return (await q.throwOnError()).data ?? [];
+      const rows = (await q.throwOnError()).data ?? [];
+      // M-9: one timetable per term — the server's current published version.
+      const current = await fetchCurrentPublishedVersions(
+        active!.id,
+        rows.map((v) => v.academic_term_id),
+      );
+      return onlyCurrentPublished(rows, current);
     },
   });
   const { data: depts, error: deptsError } = useQuery({
-    queryKey: ["pt-d", active?.id],
+    queryKey: ["reports-published-timetable-departments", active?.id],
     enabled: !!active,
     queryFn: async () =>
       (
@@ -85,7 +99,7 @@ function Page() {
       ).data ?? [],
   });
   const { data: progs, error: progsError } = useQuery({
-    queryKey: ["pt-p", active?.id],
+    queryKey: ["reports-published-timetable-programs", active?.id],
     enabled: !!active,
     queryFn: async () =>
       (
@@ -97,7 +111,7 @@ function Page() {
       ).data ?? [],
   });
   const { data: levels, error: levelsError } = useQuery({
-    queryKey: ["pt-l", active?.id],
+    queryKey: ["reports-published-timetable-levels", active?.id],
     enabled: !!active,
     queryFn: async () =>
       (
@@ -110,45 +124,48 @@ function Page() {
   });
   // A1.5: New Flow cohort/DG filter sources replace the Legacy sections selector.
   const { data: cohorts, error: cohortsError } = useQuery({
-    queryKey: ["pt-c", active?.id],
+    queryKey: ["reports-published-timetable-cohorts", active?.id],
     enabled: !!active,
     queryFn: async () =>
-      (
-        await supabase
+      readAllRows((from, to) =>
+        supabase
           .from("academic_cohorts")
           .select("id, code, program_id, level_id, term_id")
           .eq("college_id", active!.id)
           .order("code")
-          .throwOnError()
-      ).data ?? [],
+          .order("id")
+          .range(from, to),
+      ),
   });
   const { data: deliveryGroups, error: deliveryGroupsError } = useQuery({
-    queryKey: ["pt-dg", active?.id],
+    queryKey: ["reports-published-timetable-delivery-groups", active?.id],
     enabled: !!active,
     queryFn: async () =>
-      (
-        await supabase
+      readAllRows((from, to) =>
+        supabase
           .from("delivery_groups")
           .select("id, group_code, cohort_id")
           .eq("college_id", active!.id)
           .order("group_code")
-          .throwOnError()
-      ).data ?? [],
+          .order("id")
+          .range(from, to),
+      ),
   });
   const { data: ins, error: insError } = useQuery({
-    queryKey: ["pt-i", active?.id],
+    queryKey: ["reports-published-timetable-instructors", active?.id],
     enabled: !!active,
     queryFn: async () =>
-      (
-        await supabase
+      readAllRows((from, to) =>
+        supabase
           .from("instructors")
           .select("id, full_name")
           .eq("college_id", active!.id)
-          .throwOnError()
-      ).data ?? [],
+          .order("id")
+          .range(from, to),
+      ),
   });
   const { data: rooms, error: roomsError } = useQuery({
-    queryKey: ["pt-r", active?.id],
+    queryKey: ["reports-published-timetable-rooms", active?.id],
     enabled: !!active,
     queryFn: async () =>
       (

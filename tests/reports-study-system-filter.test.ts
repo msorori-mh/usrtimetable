@@ -48,14 +48,31 @@ describe("rooms-report honours ctx.studySystem", () => {
 describe("current-timetable honours ctx.studySystem", () => {
   const src = read(`${ROUTES_DIR}/reports.current-timetable.tsx`);
 
-  test("session fetch and print grouping pass the real filter value", () => {
-    expect(src).toContain("studySystem: ctx.studySystem");
-    expect(src).not.toContain('studySystem: "all"');
+  // The page has a «print scope» switch: "college" intentionally prints every study system
+  // (the study-system control is hidden in that mode), "custom" honours ctx.studySystem.
+  // effectiveStudySystem is therefore the real filter value and must reach the fetch.
+  test("effective filter derives from ctx.studySystem outside whole-college scope", () => {
+    expect(src).toContain(
+      'const effectiveStudySystem = printScope === "college" ? "all" : ctx.studySystem;',
+    );
+    expect(src).toContain('studySystem={printScope === "custom"}');
+  });
+
+  // Since 31d0056 the version is read whole ("all") so merged lectures stored on an
+  // anchor group of another study system still reach every attending cohort; the
+  // filter is applied AFTER fetchStudentPrintMemberships expands rows to cohorts
+  // (whose study_system then is the attending cohort's). Filtering at fetch time
+  // would silently drop those merged lectures again.
+  test("session rows are filtered by the real filter value after cohort expansion", () => {
+    expect(src).toMatch(
+      /fetchStudentPrintMemberships\([\s\S]*?\)\s*\)\.filter\([\s\S]*?row\.study_system === effectiveStudySystem/,
+    );
+    expect(src).toContain("studySystem: effectiveStudySystem");
   });
 
   test("query key includes the study system", () => {
     expect(src).toContain(
-      '["current-timetable-print", ctx.collegeId, ctx.versionId, ctx.studySystem]',
+      '["current-timetable-print", ctx.collegeId, ctx.versionId, effectiveStudySystem]',
     );
   });
 
@@ -70,7 +87,12 @@ describe("audit: no report route with the study-system filter hardcodes all", ()
     const offenders: string[] = [];
     for (const path of routesWithStudySystemFilter()) {
       const src = read(path);
-      if (/studySystem:\s*"all"/.test(src)) offenders.push(path);
+      // A whole-version read is allowed only when the rows are narrowed by the active
+      // study system after merged-lecture expansion (see current-timetable above).
+      const postFiltered =
+        src.includes("fetchStudentPrintMemberships(") &&
+        /row\.study_system === (ctx\.studySystem|effectiveStudySystem)/.test(src);
+      if (/studySystem:\s*"all"/.test(src) && !postFiltered) offenders.push(path);
     }
     expect(offenders).toEqual([]);
   });

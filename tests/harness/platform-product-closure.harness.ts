@@ -17,6 +17,8 @@ const newFlowFiles = [
   "src/routes/_authenticated/teaching-assignments.tsx",
   "src/routes/_authenticated/data-readiness.tsx",
   "src/routes/_authenticated/schedule-builder.tsx",
+  "src/hooks/use-schedule-builder-workspace.ts",
+  "src/components/schedule-builder/builder-context-bar.tsx",
   "src/routes/_authenticated/auto-schedule.tsx",
   "src/lib/reports/readiness.ts",
   "src/lib/schedule-builder/v2-assignment-service.ts",

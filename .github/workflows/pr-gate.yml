@@ -1,0 +1,148 @@
+name: pr-gate
+
+# The required check for every pull request (H-13 / M-25). Mark the "pr-gate / *" jobs as
+# required in GitHub → Settings → Branches → main → "Require status checks to pass"
+# (see docs/operations/release-runbook.md). No path filters: every PR runs everything.
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pr-gate-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  BUN_VERSION: "1.4.2"
+  NODE_VERSION: "24"
+  PGLITE_VERSION: "0.3.14"
+  JSDOM_VERSION: "26.1.0"
+
+jobs:
+  static:
+    name: typecheck, lint, repository rules
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
+        with:
+          bun-version: ${{ env.BUN_VERSION }}
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+      - name: Install dependencies (frozen lockfile)
+        run: bun install --frozen-lockfile
+      - name: TypeScript
+        run: bunx tsc --noEmit
+      - name: ESLint (whole repository)
+        # Lint rules for the whole repository; formatting (prettier) is enforced on changed
+        # files by runtime-gates, so legacy files are not reformatted wholesale.
+        run: |
+          bunx eslint . --rule 'prettier/prettier: off'
+      - name: Every new migration ships a rollback (supabase/rollbacks/<name>.down.sql)
+        run: node scripts/check-rollbacks.mjs
+      - name: Logical (RTL-safe) direction classes only
+        run: node scripts/check-rtl-classes.mjs
+      - name: No unpaginated reads of large tables
+        run: node scripts/check-unbounded-selects.mjs src
+      - name: No committed build output
+        run: |
+          if git ls-files --error-unmatch dist dist-reports-proof dist-print-proof .output >/dev/null 2>&1; then
+            echo "build output is committed; remove it (see .gitignore)"; exit 1
+          fi
+      - name: Shell scripts parse
+        run: for f in scripts/db/*.sh scripts/local-db/*.sh tests/*.sh; do bash -n "$f"; done
+
+  unit:
+    name: unit tests (bun, vitest, node, scripts)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
+        with:
+          bun-version: ${{ env.BUN_VERSION }}
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+      - name: Install dependencies (frozen lockfile)
+        run: bun install --frozen-lockfile
+      - name: Test inventory
+        run: node scripts/run-all-tests.mjs --list
+      - name: bun:test files
+        run: node scripts/run-all-tests.mjs --group=bun
+      - name: vitest files (bun compat config)
+        run: node scripts/run-all-tests.mjs --group=vitest
+      - name: node:test files
+        run: node scripts/run-all-tests.mjs --group=node
+      - name: Plain assertion scripts
+        run: node scripts/run-all-tests.mjs --group=script
+      - name: Static harness suite
+        run: bun run test:harness
+
+  pglite:
+    name: PGlite database tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
+        with:
+          bun-version: ${{ env.BUN_VERSION }}
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+      - name: Install dependencies (frozen lockfile)
+        run: bun install --frozen-lockfile
+      - name: Install the pinned PGlite and jsdom test runtime
+        run: >-
+          npm install --prefix "$RUNNER_TEMP/db-test" --no-package-lock --ignore-scripts
+          "@electric-sql/pglite@${PGLITE_VERSION}" "jsdom@${JSDOM_VERSION}"
+      - name: Every PGlite database test
+        env:
+          PGLITE_MODULE: ${{ runner.temp }}/db-test/node_modules/@electric-sql/pglite/dist/index.js
+          PASSWORD_QA_MODULES: ${{ runner.temp }}/db-test/node_modules
+        run: node scripts/run-all-tests.mjs --group=pglite
+
+  db-tests:
+    name: SQL tests on the replayed schema
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: disposable_ci_only
+          POSTGRES_DB: postgres
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      PGHOST: 127.0.0.1
+      PGPORT: "5432"
+      PGUSER: postgres
+      PGPASSWORD: disposable_ci_only
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - name: PostgreSQL 16 binaries for throwaway clusters (preinstalled on ubuntu-24.04)
+        run: |
+          if [ ! -x /usr/lib/postgresql/16/bin/initdb ]; then
+            sudo apt-get update -qq && sudo apt-get install -y -qq postgresql-16
+          fi
+          echo "/usr/lib/postgresql/16/bin" >> "$GITHUB_PATH"
+      - name: Replay every migration into a Supabase-like schema
+        run: scripts/db/replay-migrations.sh sqltest_template
+      - name: SQL tests (empty clusters, runners, migrated schema)
+        env:
+          PG_BIN: /usr/lib/postgresql/16/bin
+        run: scripts/db/run-sql-tests.sh --no-replay

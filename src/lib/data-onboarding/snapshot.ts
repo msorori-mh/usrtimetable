@@ -1,4 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
+import { readAllRows } from "@/lib/supabase/read-all";
 import { fetchCollegeReadiness, type ReadinessData } from "@/lib/reports/readiness";
 import { classifyNewFlowReadinessIssues, countSeverities, newFlowBlockers } from "./classify";
 import {
@@ -78,7 +79,26 @@ export async function fetchOnboardingReadinessSnapshot(
       .eq("college_id", collegeId)
       .or("is_active.is.null,is_active.eq.true")
       .not("delivery_group_id", "is", null),
-    supabase.from("instructor_availability").select("instructor_id").eq("college_id", collegeId),
+    // H-10: availability windows easily exceed 1000 rows per college.
+    readAllRows<{ instructor_id: string }>((from, to) =>
+      supabase
+        .from("instructor_availability")
+        .select("instructor_id")
+        .eq("college_id", collegeId)
+        .order("id")
+        .range(from, to),
+    ).then(
+      (data) => ({ data, error: null as { message: string } | null }),
+      (error: unknown) => ({
+        data: null,
+        error: {
+          message:
+            error instanceof Error
+              ? error.message
+              : String((error as { message?: unknown })?.message ?? error),
+        },
+      }),
+    ),
     countExact("elective_slots", collegeId),
   ]);
 
@@ -94,9 +114,7 @@ export async function fetchOnboardingReadinessSnapshot(
     );
   }
 
-  const availIds = new Set(
-    ((availability.data ?? []) as { instructor_id: string }[]).map((r) => r.instructor_id),
-  );
+  const availIds = new Set((availability.data ?? []).map((r) => r.instructor_id));
 
   const counts: OnboardingCounts = {
     departments,

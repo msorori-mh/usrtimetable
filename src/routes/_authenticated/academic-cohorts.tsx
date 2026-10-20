@@ -3,15 +3,7 @@ import { useMemo, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import {
-  Layers3,
-  Users,
-  Search,
-  ChevronRight,
-  ChevronLeft,
-  ArrowDownLeft,
-  BookOpen,
-} from "lucide-react";
+import { Layers3, Users, Search, ChevronRight, ChevronLeft, ArrowDownLeft } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useActiveCollege } from "@/hooks/use-colleges";
 import { useCanManageActiveCollege } from "@/hooks/use-can-manage";
@@ -40,7 +32,6 @@ import {
   type CohortFilters,
   type CohortListRow,
 } from "@/lib/academic-delivery/cohort-directory";
-import { COMPONENT_TYPE_LABEL_AR } from "@/lib/academic-delivery/plan-course-editor";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -51,59 +42,23 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { userErrorMessage } from "@/lib/user-error";
+import { formatNumber } from "@/lib/format";
+import { QueryErrorNotice } from "@/components/app-states/query-error-notice";
+import { confirmAction } from "@/components/confirm-dialog";
+import { chunkIds, readAllRows } from "@/lib/supabase/read-all";
+import {
+  CohortDeliveryGroupsCard,
+  type DeliveryGroupRow,
+} from "@/components/academic-cohorts/cohort-delivery-groups-card";
+import { CohortGenerationSummaries } from "@/components/academic-cohorts/cohort-generation-summaries";
+import { useCohortDirectoryData } from "@/hooks/use-cohort-directory-data";
+import { DirectoryFilter } from "@/components/academic-cohorts/directory-filter";
 
 export const Route = createFileRoute("/_authenticated/academic-cohorts")({
   head: () => ({ meta: [{ title: "الدفعات الدراسية" }] }),
   component: AcademicCohortsPage,
 });
-
-type CohortRow = {
-  id: string;
-  code: string | null;
-  study_system: string;
-  entry_year: number | null;
-  expected_students: number | null;
-  count_status: string;
-  program_id: string;
-  level_id: string;
-  term_id: string;
-  active: boolean;
-};
-
-type ScheduleVersionChoice = {
-  id: string;
-  name: string;
-  status: string;
-  academic_term_id: string;
-};
-
-type VersionCohortFact = {
-  cohort_id: string;
-  expected_students: number;
-};
-
-type DeliveryGroupRow = {
-  id: string;
-  cohort_id: string;
-  component_id: string;
-  group_code: string;
-  group_number?: number | null;
-  expected_students: number | null;
-  capacity_limit: number | null;
-  excluded_from_standard_workload?: boolean;
-  is_obsolete?: boolean;
-  active: boolean;
-  plan_courses: { courses: { code: string; name: string } | null } | null;
-  plan_course_components: {
-    component_type: string;
-    weekly_contact_hours: number;
-  } | null;
-};
-
-function isExcludedFromWorkload(g: DeliveryGroupRow): boolean {
-  if (g.excluded_from_standard_workload != null) return g.excluded_from_standard_workload;
-  return g.plan_course_components?.component_type === "project";
-}
 
 /**
  * Phase 9.3 foundation — read-only cohort + delivery-group diagnostics.
@@ -132,121 +87,24 @@ function AcademicCohortsWorkspace() {
     (CohortCurriculumSummary & { cohortId: string }) | null
   >(null);
 
-  const { data: programs } = useQuery({
-    queryKey: ["programs-min", active?.id],
-    enabled: !!active,
-    queryFn: async () =>
-      (
-        await supabase
-          .from("academic_programs")
-          .select("id, name")
-          .eq("college_id", active!.id)
-          // ACADEMIC-ARCHIVE-UI-01: pickers exclude archived records.
-          .eq("is_archived", false)
-          .order("name")
-      ).data ?? [],
-  });
-  const { data: levels } = useQuery({
-    queryKey: ["cohort-directory-levels", active?.id],
-    enabled: !!active,
-    queryFn: async () =>
-      (
-        await supabase
-          .from("academic_levels")
-          .select("id, name, level_number, program_id")
-          .eq("college_id", active!.id)
-          .order("level_number")
-      ).data ?? [],
-  });
-  const { data: terms } = useQuery({
-    queryKey: ["terms-min", active?.id],
-    enabled: !!active,
-    queryFn: async () =>
-      (
-        await supabase
-          .from("academic_terms")
-          .select("id, name")
-          .eq("college_id", active!.id)
-          .order("start_date", { ascending: false })
-      ).data ?? [],
-  });
-
   const {
-    data: cohorts,
+    programs,
+    programsError,
+    levels,
+    levelsError,
+    terms,
+    termsError,
+    cohorts,
     isLoading,
-    error: cohortsError,
-  } = useQuery({
-    queryKey: ["academic-cohorts", active?.id],
-    enabled: !!active,
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("academic_cohorts")
-        .select(
-          "id, code, study_system, entry_year, expected_students, count_status, program_id, level_id, term_id, active",
-        )
-        .eq("college_id", active!.id)
-        .order("entry_year", { ascending: false });
-      if (error) throw error;
-      return (data ?? []) as CohortRow[];
-    },
-  });
-
-  const {
-    data: versions,
-    isLoading: versionsLoading,
-    error: versionsError,
-  } = useQuery({
-    queryKey: ["cohort-directory-versions", active?.id],
-    enabled: !!active,
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("schedule_versions")
-        .select("id, name, status, academic_term_id")
-        .eq("college_id", active!.id)
-        .in("status", ["draft", "published"])
-        .order("created_at", { ascending: false });
-      if (error) throw error;
-      return (data ?? []) as ScheduleVersionChoice[];
-    },
-  });
-  const selectedVersion =
-    versions?.find((row) => row.id === chosenVersionId) ??
-    versions?.find((row) => row.status === "draft") ??
-    versions?.[0] ??
-    null;
-  const {
-    data: versionFacts,
-    isLoading: versionFactsLoading,
-    error: versionFactsError,
-  } = useQuery({
-    queryKey: ["cohort-directory-version-facts", active?.id, selectedVersion?.id, cohorts],
-    enabled: !!selectedVersion && !!cohorts,
-    queryFn: async () => {
-      const ids = (cohorts ?? [])
-        .filter((row) => row.term_id === selectedVersion!.academic_term_id)
-        .map((row) => row.id);
-      const facts = new Map<string, number>();
-      for (let offset = 0; offset < ids.length; offset += 100) {
-        const { data, error } = await (
-          supabase as unknown as {
-            rpc(
-              name: string,
-              args: { p_version: string; p_cohorts: string[] },
-            ): Promise<{
-              data: VersionCohortFact[] | null;
-              error: { message: string } | null;
-            }>;
-          }
-        ).rpc("schedule_version_cohort_facts", {
-          p_version: selectedVersion!.id,
-          p_cohorts: ids.slice(offset, offset + 100),
-        });
-        if (error) throw error;
-        for (const row of data ?? []) facts.set(row.cohort_id, row.expected_students);
-      }
-      return facts;
-    },
-  });
+    cohortsError,
+    versions,
+    versionsLoading,
+    versionsError,
+    selectedVersion,
+    versionFacts,
+    versionFactsLoading,
+    versionFactsError,
+  } = useCohortDirectoryData(active?.id, chosenVersionId);
 
   const directoryRows = useMemo<CohortListRow[]>(() => {
     const p = new Map((programs ?? []).map((row) => [row.id, row.name]));
@@ -271,6 +129,7 @@ function AcademicCohortsWorkspace() {
     queryKey: ["cohort-elective-selections", active?.id, effectiveCohortId],
     enabled: !!active && !!effectiveCohortId,
     queryFn: async () => {
+      // read-all-ok: elective choices of a single cohort
       const { data, error } = await supabase
         .from("cohort_elective_selections")
         .select(
@@ -301,9 +160,11 @@ function AcademicCohortsWorkspace() {
     },
     onSuccess: (result) => {
       void queryClient.invalidateQueries({ queryKey: ["cohort-elective-selections", active?.id] });
-      toast.success(`تم اعتماد ${result.approved} من ${result.total} اختيارًا للدفعة.`);
+      toast.success(
+        `تم اعتماد ${formatNumber(result.approved)} من ${formatNumber(result.total)} اختيارًا للدفعة.`,
+      );
     },
-    onError: (error: Error) => toast.error(error.message),
+    onError: (error: Error) => toast.error(userErrorMessage(error)),
   });
   const hasElectivePlaceholder = electiveSelections?.some(
     (choice) =>
@@ -341,27 +202,36 @@ function AcademicCohortsWorkspace() {
     enabled: !!active && !!effectiveCohortId,
     queryFn: async () => {
       // Prefer 9.3 columns when present; fall back to 9.1 base if migration not applied yet.
-      const full = await supabase
-        .from("delivery_groups")
-        .select(
-          "id, cohort_id, component_id, group_code, group_number, expected_students, capacity_limit, active, excluded_from_standard_workload, is_obsolete, plan_course_components!dg_component_college_fkey(component_type, weekly_contact_hours), plan_courses!dg_plan_course_college_fkey(courses(code, name))",
-        )
-        .eq("college_id", active!.id)
-        .eq("cohort_id", effectiveCohortId!)
-        .order("group_code", { ascending: true });
-      if (!full.error) {
-        return (full.data ?? []) as unknown as DeliveryGroupRow[];
+      try {
+        const full = await readAllRows((from, to) =>
+          supabase
+            .from("delivery_groups")
+            .select(
+              "id, cohort_id, component_id, group_code, group_number, expected_students, capacity_limit, active, excluded_from_standard_workload, is_obsolete, plan_course_components!dg_component_college_fkey(component_type, weekly_contact_hours), plan_courses!dg_plan_course_college_fkey(courses(code, name))",
+            )
+            .eq("college_id", active!.id)
+            .eq("cohort_id", effectiveCohortId!)
+            .order("group_code", { ascending: true })
+            .order("id")
+            .range(from, to),
+        );
+        return full as unknown as DeliveryGroupRow[];
+      } catch {
+        // fall through to the 9.1 column set
       }
-      const { data, error } = await supabase
-        .from("delivery_groups")
-        .select(
-          "id, cohort_id, component_id, group_code, expected_students, capacity_limit, active, plan_course_components!dg_component_college_fkey(component_type, weekly_contact_hours), plan_courses!dg_plan_course_college_fkey(courses(code, name))",
-        )
-        .eq("college_id", active!.id)
-        .eq("cohort_id", effectiveCohortId!)
-        .order("group_code", { ascending: true });
-      if (error) throw error;
-      return (data ?? []) as unknown as DeliveryGroupRow[];
+      const data = await readAllRows((from, to) =>
+        supabase
+          .from("delivery_groups")
+          .select(
+            "id, cohort_id, component_id, group_code, expected_students, capacity_limit, active, plan_course_components!dg_component_college_fkey(component_type, weekly_contact_hours), plan_courses!dg_plan_course_college_fkey(courses(code, name))",
+          )
+          .eq("college_id", active!.id)
+          .eq("cohort_id", effectiveCohortId!)
+          .order("group_code", { ascending: true })
+          .order("id")
+          .range(from, to),
+      );
+      return data as unknown as DeliveryGroupRow[];
     },
   });
 
@@ -373,19 +243,27 @@ function AcademicCohortsWorkspace() {
 
   const roomTypeBlocker = roomTypeGate && !roomTypeGate.ok ? roomTypeGate.components : [];
 
-  const { data: assignmentCounts } = useQuery({
+  const { data: assignmentCounts, error: assignmentCountsError } = useQuery({
     queryKey: ["delivery-group-assignments", active?.id, effectiveCohortId],
     enabled: !!active && !!effectiveCohortId && (groups?.length ?? 0) > 0,
     queryFn: async () => {
       const ids = (groups ?? []).map((g) => g.id);
-      const { data, error } = await supabase
-        .from("teaching_assignments")
-        .select("delivery_group_id")
-        .eq("college_id", active!.id)
-        .in("delivery_group_id", ids);
-      if (error) throw error;
+      const data: { delivery_group_id: string | null }[] = [];
+      for (const chunk of chunkIds(ids)) {
+        const rows = await readAllRows<{ id: string; delivery_group_id: string | null }>(
+          (from, to) =>
+            supabase
+              .from("teaching_assignments")
+              .select("id, delivery_group_id")
+              .eq("college_id", active!.id)
+              .in("delivery_group_id", chunk)
+              .order("id")
+              .range(from, to),
+        );
+        data.push(...rows);
+      }
       const map = new Map<string, number>();
-      for (const row of data ?? []) {
+      for (const row of data) {
         if (!row.delivery_group_id) continue;
         map.set(row.delivery_group_id, (map.get(row.delivery_group_id) ?? 0) + 1);
       }
@@ -512,15 +390,31 @@ function AcademicCohortsWorkspace() {
       {!active ? (
         <p className="text-sm text-muted-foreground">اختر كلية لعرض الدفعات.</p>
       ) : cohortsError || versionsError || versionFactsError ? (
-        <Card className="p-5 text-destructive" role="alert">
-          تعذّر تحميل الدفعات أو أعداد النسخة المختارة. أعد تحميل الصفحة للمحاولة مجددًا.
-        </Card>
+        <QueryErrorNotice
+          title="تعذّر تحميل الدفعات أو أعداد النسخة المختارة."
+          error={cohortsError ?? versionsError ?? versionFactsError}
+          onRetry={() => {
+            void queryClient.invalidateQueries({ queryKey: ["academic-cohorts", active?.id] });
+            void queryClient.invalidateQueries({
+              queryKey: ["cohort-directory-versions", active?.id],
+            });
+            void queryClient.invalidateQueries({
+              queryKey: ["cohort-directory-version-facts", active?.id],
+            });
+          }}
+        />
       ) : isLoading || versionsLoading || (selectedVersion && versionFactsLoading) ? (
         <p className="text-sm text-muted-foreground">جاري التحميل…</p>
       ) : (cohorts ?? []).length === 0 ? (
         <p className="text-sm text-muted-foreground">لا توجد دفعات مسجّلة لهذه الكلية.</p>
       ) : (
         <>
+          {(programsError ?? levelsError ?? termsError) && (
+            <QueryErrorNotice
+              title="تعذّر تحميل أسماء البرامج أو المستويات أو الفصول؛ قد تظهر «غير محدد»."
+              error={programsError ?? levelsError ?? termsError}
+            />
+          )}
           <section aria-label="تصفية الدفعات" className="space-y-4">
             <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
               {[
@@ -541,7 +435,7 @@ function AcademicCohortsWorkspace() {
                 >
                   <span className="text-sm text-muted-foreground">{stat.label}</span>
                   <strong className="text-2xl tabular-nums text-primary">
-                    {stat.value.toLocaleString("ar")}
+                    {formatNumber(stat.value)}
                   </strong>
                 </Card>
               ))}
@@ -559,7 +453,8 @@ function AcademicCohortsWorkspace() {
                   />
                 </div>
                 <span className="text-sm text-muted-foreground" role="status">
-                  {filteredCohorts.length} من {directoryRows.length} دفعة
+                  {formatNumber(filteredCohorts.length)} من {formatNumber(directoryRows.length)}{" "}
+                  دفعة
                 </span>
                 {hasFilters && (
                   <Button
@@ -719,7 +614,8 @@ function AcademicCohortsWorkspace() {
               )}
               <div className="flex flex-wrap items-center justify-between gap-3 border-t bg-muted/20 px-4 py-3">
                 <span className="text-xs text-muted-foreground">
-                  صفحة {directoryPage.page} من {directoryPage.totalPages}
+                  صفحة {formatNumber(directoryPage.page)} من{" "}
+                  {formatNumber(directoryPage.totalPages)}
                 </span>
                 <div className="flex gap-2">
                   <Button
@@ -812,9 +708,11 @@ function AcademicCohortsWorkspace() {
                     </div>
                   </dl>
                   {electiveError ? (
-                    <p className="border-t p-4 text-sm text-destructive" role="alert">
-                      تعذر تحميل اختيارات المقررات الاختيارية.
-                    </p>
+                    <QueryErrorNotice
+                      className="m-4"
+                      title="تعذر تحميل اختيارات المقررات الاختيارية."
+                      error={electiveError}
+                    />
                   ) : (electiveSelections?.length ?? 0) > 0 ? (
                     <div className="space-y-2 border-t p-4 text-sm">
                       <p className="font-medium">اختيارات المقررات الاختيارية للدفعة</p>
@@ -843,7 +741,15 @@ function AcademicCohortsWorkspace() {
                             size="sm"
                             variant="outline"
                             disabled={approveElectives.isPending || hasElectivePlaceholder}
-                            onClick={() => approveElectives.mutate(selected.id)}
+                            onClick={async () => {
+                              const ok = await confirmAction({
+                                title: `اعتماد اختيارات المقررات الاختيارية لدفعة ${selected.programName}؟`,
+                                description:
+                                  "تُعتمد كل الاختيارات المعروضة وتُستخدم في توليد مقررات الدفعة.",
+                                confirmLabel: "اعتماد",
+                              });
+                              if (ok) approveElectives.mutate(selected.id);
+                            }}
                           >
                             اعتماد الاختيارات المعروضة
                           </Button>
@@ -866,8 +772,15 @@ function AcademicCohortsWorkspace() {
                           !selected.active ||
                           versionFacts?.has(selected.id)
                         }
-                        onClick={() => {
+                        onClick={async () => {
                           if (!effectiveCohortId) return;
+                          const ok = await confirmAction({
+                            title: `توليد مقررات دفعة ${selected.programName} — ${selected.levelName}؟`,
+                            description:
+                              "تُنشأ مقررات الفصل الناقصة من خطة المستوى المطابقة لهذه الدفعة فقط؛ الموجود لا يتغير.",
+                            confirmLabel: "توليد",
+                          });
+                          if (!ok) return;
                           generateCurriculum.mutate(effectiveCohortId, {
                             onSuccess: (summary) =>
                               setLastCurriculumSummary({ ...summary, cohortId: effectiveCohortId }),
@@ -938,180 +851,22 @@ function AcademicCohortsWorkspace() {
               ) : null}
 
               {selected && (
-                <Card className="overflow-hidden">
-                  <div className="flex items-center justify-between border-b px-4 py-3">
-                    <h3 className="text-sm font-semibold">مجموعات المحاضرات والمعامل</h3>
-                    <Badge variant="secondary">{groups?.length ?? 0}</Badge>
-                  </div>
-                  {versionFacts?.has(selected.id) && (
-                    <p className="border-b bg-muted/30 px-4 py-2 text-xs text-muted-foreground">
-                      هذه قائمة المجموعات في السجل العام. راجع جدول النسخة المختارة لأعداد مجموعاتها
-                      وتوزيع محاضراتها المعتمد.
-                    </p>
-                  )}
-                  {groupsError ? (
-                    <p className="p-4 text-sm text-destructive" role="alert">
-                      تعذّر تحميل مجموعات هذه الدفعة.
-                    </p>
-                  ) : groupsLoading ? (
-                    <p className="p-4 text-sm text-muted-foreground">جاري التحميل…</p>
-                  ) : (groups ?? []).length === 0 ? (
-                    <div className="space-y-3 px-5 py-8 text-center">
-                      <BookOpen className="mx-auto h-8 w-8 text-muted-foreground/60" />
-                      <p className="font-medium">لم تُجهّز مجموعات هذه الدفعة بعد</p>
-                      <p className="text-sm leading-relaxed text-muted-foreground">
-                        اضغط «توليد مجموعات المحاضرات والمعامل» أعلاه. سيجهّز النظام مقررات الدفعة
-                        تلقائيًا، ثم يوزّع الطلاب على المجموعات حسب السعات.
-                      </p>
-                    </div>
-                  ) : (
-                    <div className="overflow-x-auto">
-                      <table className="w-full text-sm">
-                        <thead className="bg-muted/40 text-muted-foreground">
-                          <tr>
-                            <th className="px-3 py-2 text-right font-medium">المقرر</th>
-                            <th className="px-3 py-2 text-right font-medium">المحاضرة</th>
-                            <th className="px-3 py-2 text-right font-medium">رقم المجموعة</th>
-                            <th className="px-3 py-2 text-right font-medium">طلاب متوقع</th>
-                            <th className="px-3 py-2 text-right font-medium">السعة</th>
-                            <th className="px-3 py-2 text-right font-medium">الحالة</th>
-                            <th className="px-3 py-2 text-right font-medium">الإسناد</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {(groups ?? []).map((g) => {
-                            const assigned = assignmentCounts?.get(g.id) ?? 0;
-                            const obsolete = Boolean(g.is_obsolete);
-                            return (
-                              <tr
-                                key={g.id}
-                                className={`border-t ${obsolete ? "bg-muted/30 text-muted-foreground" : ""}`}
-                              >
-                                <td className="px-3 py-2">
-                                  <span className="block font-medium">
-                                    {g.plan_courses?.courses?.name ?? "—"}
-                                  </span>
-                                  <span dir="ltr" className="text-xs text-muted-foreground">
-                                    {g.plan_courses?.courses?.code}
-                                  </span>
-                                </td>
-                                <td className="px-3 py-2">
-                                  {COMPONENT_TYPE_LABEL_AR[
-                                    g.plan_course_components
-                                      ?.component_type as keyof typeof COMPONENT_TYPE_LABEL_AR
-                                  ] ?? "—"}
-                                  {isExcludedFromWorkload(g) ? (
-                                    <span className="ms-2 text-xs text-muted-foreground">
-                                      (خارج النصاب)
-                                    </span>
-                                  ) : null}
-                                </td>
-                                <td className="px-3 py-2" dir="ltr">
-                                  {g.group_number ?? g.group_code}
-                                </td>
-                                <td className="px-3 py-2">{g.expected_students ?? "—"}</td>
-                                <td className="px-3 py-2">{g.capacity_limit ?? "—"}</td>
-                                <td className="px-3 py-2">
-                                  {obsolete ? (
-                                    <span className="text-xs font-medium text-amber-700 dark:text-amber-400">
-                                      متوقفة عن الاستخدام
-                                    </span>
-                                  ) : g.active ? (
-                                    "نشطة"
-                                  ) : (
-                                    "غير نشطة"
-                                  )}
-                                </td>
-                                <td className="px-3 py-2">
-                                  {assigned > 0 ? `مسند (${assigned})` : "غير مسند"}
-                                </td>
-                              </tr>
-                            );
-                          })}
-                        </tbody>
-                      </table>
-                    </div>
-                  )}
-                </Card>
+                <CohortDeliveryGroupsCard
+                  selected={selected}
+                  versionFacts={versionFacts}
+                  groups={groups}
+                  groupsLoading={groupsLoading}
+                  groupsError={groupsError}
+                  assignmentCounts={assignmentCounts}
+                  assignmentCountsError={assignmentCountsError}
+                />
               )}
 
-              {lastCurriculumSummary?.cohortId === effectiveCohortId ? (
-                <Card className="space-y-2 p-4 text-sm" data-testid="cohort-curriculum-summary">
-                  <p className="font-medium">
-                    تم تجهيز مقررات الدفعة من الخطة:{" "}
-                    <span dir="ltr">
-                      {lastCurriculumSummary.study_plan_code ?? lastCurriculumSummary.study_plan_id}
-                    </span>
-                  </p>
-                  <p className="text-muted-foreground">
-                    أضيف {lastCurriculumSummary.inserted_offerings} · موجود مسبقاً{" "}
-                    {lastCurriculumSummary.skipped_existing} · مقررات اختيارية معتمدة{" "}
-                    {lastCurriculumSummary.elective_candidates}
-                  </p>
-                  {lastCurriculumSummary.skipped_unselected_elective > 0 ? (
-                    <p className="text-amber-700 dark:text-amber-400">
-                      لم تُنشأ مقررات {lastCurriculumSummary.skipped_unselected_elective} من الخانات
-                      الاختيارية لعدم وجود اختيار معتمد للدفعة.
-                    </p>
-                  ) : null}
-                  <p className="text-xs text-muted-foreground">
-                    لم يُنشأ تسجيل فردي قديم أو مجموعة تشغيلية أو مجموعة محاضرات ومعامل أو جلسة.
-                  </p>
-                </Card>
-              ) : null}
-
-              {lastSummary?.cohortId === effectiveCohortId ? (
-                <Card className="space-y-2 p-4 text-sm" data-testid="generator-summary-panel">
-                  {lastSummary.curriculum && (
-                    <p>
-                      الخطة المستخدمة:{" "}
-                      <strong dir="ltr">
-                        {lastSummary.curriculum.study_plan_code ??
-                          lastSummary.curriculum.study_plan_id}
-                      </strong>{" "}
-                      · المقررات:{" "}
-                      {lastSummary.curriculum.inserted_offerings +
-                        lastSummary.curriculum.skipped_existing}
-                    </p>
-                  )}
-                  <p className="font-medium">
-                    نتيجة التوليد:{" "}
-                    {
-                      {
-                        SUCCESS: "اكتمل",
-                        NO_CHANGES: "لا توجد تغييرات",
-                        VALIDATION_FAILED: "يلزم تصحيح البيانات",
-                        PARTIAL: "اكتمل جزئيًا",
-                      }[lastSummary.status]
-                    }
-                  </p>
-                  <p className="text-muted-foreground">
-                    إنشاء {lastSummary.groups_created} · تحديث {lastSummary.groups_updated} · دون
-                    تغيير {lastSummary.groups_unchanged} · متوقفة عن الاستخدام{" "}
-                    {lastSummary.groups_obsolete}
-                  </p>
-                  {(lastSummary.validation_errors?.length ?? 0) > 0 ? (
-                    <ul className="list-disc ps-5 text-destructive">
-                      {lastSummary.validation_errors.map((e, i) => (
-                        <li key={`${e.code}-${i}`}>
-                          {e.code}
-                          {e.message ? `: ${e.message}` : ""}
-                        </li>
-                      ))}
-                    </ul>
-                  ) : null}
-                  {(lastSummary.warnings?.length ?? 0) > 0 ? (
-                    <ul className="list-disc ps-5 text-amber-700 dark:text-amber-400">
-                      {lastSummary.warnings.map((w, i) => (
-                        <li key={`${w.code}-${i}`}>
-                          {w.code}
-                          {w.message ? `: ${w.message}` : ""}
-                        </li>
-                      ))}
-                    </ul>
-                  ) : null}
-                </Card>
-              ) : null}
+              <CohortGenerationSummaries
+                effectiveCohortId={effectiveCohortId}
+                lastCurriculumSummary={lastCurriculumSummary}
+                lastSummary={lastSummary}
+              />
             </div>
           </div>
         </>
@@ -1147,31 +902,5 @@ function AcademicCohortsWorkspace() {
         </AlertDialogContent>
       </AlertDialog>
     </div>
-  );
-}
-
-function DirectoryFilter({
-  label,
-  value,
-  onChange,
-  children,
-}: {
-  label: string;
-  value: string;
-  onChange: (value: string) => void;
-  children: React.ReactNode;
-}) {
-  return (
-    <label className="min-w-0 space-y-1.5 text-xs font-medium text-muted-foreground">
-      <span>{label}</span>
-      <select
-        aria-label={label}
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        className="h-10 w-full min-w-0 rounded-md border border-input bg-background px-2 text-sm text-foreground shadow-sm focus:outline-none focus:ring-2 focus:ring-primary"
-      >
-        {children}
-      </select>
-    </label>
   );
 }

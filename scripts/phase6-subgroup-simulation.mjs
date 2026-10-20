@@ -20,7 +20,7 @@ import {
   scanConflicts,
   scheduleChildSession,
   timeToMinutes,
-} from "../src/lib/schedule-builder/subgroup-auto-scheduler.ts";
+} from "../tests/support/subgroup-auto-scheduler.ts";
 import { ORIGINAL_SESSION_STRATEGY } from "../src/lib/schedule-builder/section-subgroups.ts";
 
 function stableUuid(seed) {
@@ -60,14 +60,17 @@ function readCsv(rel) {
   const text = fs.readFileSync(path.join(root, rel), "utf8").trim();
   const lines = text.split(/\r?\n/);
   const header = parse(lines[0]);
-  return lines.slice(1).filter(Boolean).map((line) => {
-    const cells = parse(line);
-    const row = {};
-    header.forEach((h, i) => {
-      row[h] = cells[i] ?? "";
+  return lines
+    .slice(1)
+    .filter(Boolean)
+    .map((line) => {
+      const cells = parse(line);
+      const row = {};
+      header.forEach((h, i) => {
+        row[h] = cells[i] ?? "";
+      });
+      return row;
     });
-    return row;
-  });
 }
 
 function csvEscape(v) {
@@ -135,7 +138,9 @@ function effectiveRoomType(s) {
     return s.session_type === "lab" ? "computer_lab" : "lecture_hall";
   }
   if (s.required_room_type === "NEEDS_REVIEW_REQUIRED_ROOM_TYPE_CONFLICT") {
-    return s.session_inferred_room_type || (s.session_type === "lab" ? "computer_lab" : "lecture_hall");
+    return (
+      s.session_inferred_room_type || (s.session_type === "lab" ? "computer_lab" : "lecture_hall")
+    );
   }
   return s.required_room_type || s.session_inferred_room_type || "lecture_hall";
 }
@@ -161,9 +166,10 @@ function getOcc(versionId) {
 }
 
 // Sort sessions for determinism
-const sorted = [...sessions].sort((a, b) =>
-  a.schedule_version_id.localeCompare(b.schedule_version_id) ||
-  a.schedule_session_id.localeCompare(b.schedule_session_id),
+const sorted = [...sessions].sort(
+  (a, b) =>
+    a.schedule_version_id.localeCompare(b.schedule_version_id) ||
+    a.schedule_session_id.localeCompare(b.schedule_session_id),
 );
 
 // Pass 1: seed non-split / exception sessions at original times (room TBD), mark split parents retired
@@ -218,16 +224,27 @@ for (const s of sorted) {
     const k = `${slot.day_of_week}|${slot.start_time}`;
     if (seen.has(k)) continue;
     seen.add(k);
-    const trial = { ...base, day_of_week: slot.day_of_week, start_time: slot.start_time, end_time: slot.end_time };
+    const trial = {
+      ...base,
+      day_of_week: slot.day_of_week,
+      start_time: slot.start_time,
+      end_time: slot.end_time,
+    };
     const overlaps = (p) =>
       p.day_of_week === trial.day_of_week &&
       timeToMinutes(trial.start_time) < timeToMinutes(p.end_time) &&
       timeToMinutes(p.start_time) < timeToMinutes(trial.end_time);
-    const instructorBusy = peers.some((p) => p.instructor_id === trial.instructor_id && overlaps(p));
+    const instructorBusy = peers.some(
+      (p) => p.instructor_id === trial.instructor_id && overlaps(p),
+    );
     if (instructorBusy) continue;
     const sectionBusy = peers.some((p) => {
       if (!trial.section_id || p.section_id !== trial.section_id || !overlaps(p)) return false;
-      if (trial.study_system !== p.study_system && trial.study_system !== "both" && p.study_system !== "both") {
+      if (
+        trial.study_system !== p.study_system &&
+        trial.study_system !== "both" &&
+        p.study_system !== "both"
+      ) {
         return false;
       }
       const a = trial.section_subgroup_id ?? null;
@@ -315,7 +332,9 @@ for (const s of splitSources) {
   const n = Number(dec.recommended_groups_count);
   const count = Number.isFinite(n) && n > 0 ? n : 2;
   const total = Number(dec.expected_capacity || s.expected_capacity || 0);
-  const roomCap = Number(dec.available_capacity || (effectiveRoomType(s) === "computer_lab" ? 30 : 60));
+  const roomCap = Number(
+    dec.available_capacity || (effectiveRoomType(s) === "computer_lab" ? 30 : 60),
+  );
   const plan = buildSubgroupPlansForSplit(total, count);
   const duration =
     timeToMinutes(s.end_time) - timeToMinutes(s.start_time) || Number(s.duration_minutes) || 120;
@@ -344,7 +363,11 @@ for (const s of splitSources) {
   });
 
   for (const row of plan) {
-    const subgroupId = stableSubgroupId(s.section_id || s.course_id, row.ordinal, s.schedule_session_id);
+    const subgroupId = stableSubgroupId(
+      s.section_id || s.course_id,
+      row.ordinal,
+      s.schedule_session_id,
+    );
     const childId = stableChildId(s.schedule_session_id, row.ordinal);
     subgroupCreation.push({
       section_subgroup_id: subgroupId,
@@ -461,10 +484,18 @@ for (const [versionId, occ] of occupancyByVersion.entries()) {
 }
 const conflicts = conflictRows;
 
-const scheduledChildren = sessionSchedule.filter((r) => r.role === "child" && r.schedule_status === "SCHEDULED");
-const unscheduledChildren = sessionSchedule.filter((r) => r.role === "child" && r.schedule_status === "UNSCHEDULED");
-const scheduledStandalone = sessionSchedule.filter((r) => r.role === "standalone" && r.schedule_status === "SCHEDULED");
-const unscheduledStandalone = sessionSchedule.filter((r) => r.role === "standalone" && r.schedule_status === "UNSCHEDULED");
+const scheduledChildren = sessionSchedule.filter(
+  (r) => r.role === "child" && r.schedule_status === "SCHEDULED",
+);
+const unscheduledChildren = sessionSchedule.filter(
+  (r) => r.role === "child" && r.schedule_status === "UNSCHEDULED",
+);
+const scheduledStandalone = sessionSchedule.filter(
+  (r) => r.role === "standalone" && r.schedule_status === "SCHEDULED",
+);
+const unscheduledStandalone = sessionSchedule.filter(
+  (r) => r.role === "standalone" && r.schedule_status === "UNSCHEDULED",
+);
 
 const orphanRemaining = roomAllocation.filter((r) => !rooms.some((x) => x.id === r.room_id)).length;
 
@@ -519,19 +550,27 @@ writeCsv("subgroup-room-allocation-plan.csv", roomAllocation, [
   "orphan_cleared",
 ]);
 
-writeCsv("subgroup-conflict-simulation.csv", conflictRows.length ? conflictRows : [{
-  conflict_code: "none",
-  session_id: "",
-  related_session_id: "",
-  schedule_version_id: "",
-  introduced_by_simulation: "no",
-}], [
-  "conflict_code",
-  "session_id",
-  "related_session_id",
-  "schedule_version_id",
-  "introduced_by_simulation",
-]);
+writeCsv(
+  "subgroup-conflict-simulation.csv",
+  conflictRows.length
+    ? conflictRows
+    : [
+        {
+          conflict_code: "none",
+          session_id: "",
+          related_session_id: "",
+          schedule_version_id: "",
+          introduced_by_simulation: "no",
+        },
+      ],
+  [
+    "conflict_code",
+    "session_id",
+    "related_session_id",
+    "schedule_version_id",
+    "introduced_by_simulation",
+  ],
+);
 
 writeCsv("unscheduled-sessions.csv", incomplete, [
   "session_id",
@@ -563,5 +602,8 @@ const summary = {
         : "PASS — SUBGROUP_MODEL_AND_MIGRATION_READY",
 };
 
-fs.writeFileSync(path.join(outDir, "simulation-summary.json"), JSON.stringify(summary, null, 2) + "\n");
+fs.writeFileSync(
+  path.join(outDir, "simulation-summary.json"),
+  JSON.stringify(summary, null, 2) + "\n",
+);
 console.log(JSON.stringify(summary, null, 2));

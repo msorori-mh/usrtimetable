@@ -34,6 +34,9 @@ import {
 import { DoorOpen, Pencil, Trash2 } from "lucide-react";
 import { AdminExportMenu } from "@/components/admin-export-menu";
 import { roomsExportDataset } from "@/lib/admin-export/datasets";
+import { userErrorMessage } from "@/lib/user-error";
+import { confirmAction } from "@/components/confirm-dialog";
+import { QueryErrorNotice } from "@/components/app-states/query-error-notice";
 
 export const Route = createFileRoute("/_authenticated/rooms")({
   head: () => ({ meta: [{ title: "القاعات والمعامل" }] }),
@@ -85,10 +88,17 @@ function RoomsPage() {
   const [editing, setEditing] = useState<Room | null>(null);
   const [form, setForm] = useState(emptyForm());
 
-  const { data: rows, isLoading } = useQuery({
+  const {
+    data: rows,
+    isLoading,
+    isError,
+    error: rowsError,
+    refetch,
+  } = useQuery({
     queryKey: ["rooms", active?.id],
     enabled: !!active,
     queryFn: async () => {
+      // read-all-ok: rooms per college are bounded (tens to low hundreds)
       const { data, error } = await supabase
         .from("rooms")
         .select("*")
@@ -151,7 +161,9 @@ function RoomsPage() {
       setEditing(null);
     },
     onError: (e: Error) =>
-      toast.error(e.message.includes("duplicate") ? "رمز القاعة مستخدم في هذه الكلّية" : e.message),
+      toast.error(
+        e.message.includes("duplicate") ? "رمز القاعة مستخدم في هذه الكلّية" : userErrorMessage(e),
+      ),
   });
 
   const del = useMutation({
@@ -178,7 +190,7 @@ function RoomsPage() {
         toast.error(roomDeleteBlockedToastMessage());
         return;
       }
-      toast.error(msg);
+      toast.error(userErrorMessage(e));
     },
   });
 
@@ -241,15 +253,17 @@ function RoomsPage() {
               <div className="space-y-3">
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <Label>الرمز</Label>
+                    <Label htmlFor="room-f1">الرمز</Label>
                     <Input
+                      id="room-f1"
                       value={form.code}
                       onChange={(e) => setForm({ ...form, code: e.target.value })}
                     />
                   </div>
                   <div>
-                    <Label>الاسم</Label>
+                    <Label htmlFor="room-f2">الاسم</Label>
                     <Input
+                      id="room-f2"
                       value={form.name}
                       onChange={(e) => setForm({ ...form, name: e.target.value })}
                     />
@@ -257,12 +271,12 @@ function RoomsPage() {
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <Label>النوع</Label>
+                    <Label htmlFor="room-f7">النوع</Label>
                     <Select
                       value={form.room_type}
                       onValueChange={(v) => setForm({ ...form, room_type: v })}
                     >
-                      <SelectTrigger>
+                      <SelectTrigger id="room-f7">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
@@ -275,8 +289,9 @@ function RoomsPage() {
                     </Select>
                   </div>
                   <div>
-                    <Label>السعة</Label>
+                    <Label htmlFor="room-f3">السعة</Label>
                     <Input
+                      id="room-f3"
                       type="number"
                       value={form.capacity}
                       onChange={(e) => setForm({ ...form, capacity: Number(e.target.value) })}
@@ -285,30 +300,34 @@ function RoomsPage() {
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <Label>المبنى</Label>
+                    <Label htmlFor="room-f4">المبنى</Label>
                     <Input
+                      id="room-f4"
                       value={form.building}
                       onChange={(e) => setForm({ ...form, building: e.target.value })}
                     />
                   </div>
                   <div>
-                    <Label>الدور</Label>
+                    <Label htmlFor="room-f5">الدور</Label>
                     <Input
+                      id="room-f5"
                       value={form.floor}
                       onChange={(e) => setForm({ ...form, floor: e.target.value })}
                     />
                   </div>
                 </div>
                 <div>
-                  <Label>ملاحظات</Label>
+                  <Label htmlFor="room-f6">ملاحظات</Label>
                   <Input
+                    id="room-f6"
                     value={form.notes}
                     onChange={(e) => setForm({ ...form, notes: e.target.value })}
                   />
                 </div>
                 <div className="flex items-center justify-between rounded border border-border p-3">
-                  <Label>نشط</Label>
+                  <Label htmlFor="room-active">نشط</Label>
                   <Switch
+                    id="room-active"
                     checked={form.is_active}
                     onCheckedChange={(v) => setForm({ ...form, is_active: v })}
                   />
@@ -330,6 +349,10 @@ function RoomsPage() {
       <Card className="overflow-hidden">
         {isLoading ? (
           <p className="p-6 text-center text-muted-foreground">جارٍ التحميل...</p>
+        ) : isError ? (
+          <div className="p-4">
+            <QueryErrorNotice error={rowsError} onRetry={() => void refetch()} />
+          </div>
         ) : !rows || rows.length === 0 ? (
           <p className="p-6 text-center text-muted-foreground">لا توجد قاعات بعد.</p>
         ) : (
@@ -351,19 +374,27 @@ function RoomsPage() {
                 </div>
                 {canManage && (
                   <div className="flex gap-1">
-                    <Button size="sm" variant="ghost" onClick={() => startEdit(r)}>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      aria-label={`تعديل ${r.name}`}
+                      onClick={() => startEdit(r)}
+                    >
                       <Pencil className="h-3.5 w-3.5" />
                     </Button>
                     <Button
                       size="sm"
                       variant="ghost"
-                      onClick={() => {
-                        if (
-                          confirm(
-                            "حذف القاعة؟ إذا كانت مستخدمة في جلسات دراسية فسيُمنع الحذف؛ عطّل القاعة بدلًا من ذلك.",
-                          )
-                        )
-                          del.mutate(r.id);
+                      aria-label={`حذف ${r.name}`}
+                      onClick={async () => {
+                        const ok = await confirmAction({
+                          title: `حذف القاعة «${r.name}»؟`,
+                          description:
+                            "إذا كانت مستخدمة في جلسات دراسية فسيُمنع الحذف؛ عطّل القاعة بدلًا من ذلك.",
+                          confirmLabel: "حذف",
+                          destructive: true,
+                        });
+                        if (ok) del.mutate(r.id);
                       }}
                     >
                       <Trash2 className="h-3.5 w-3.5" />

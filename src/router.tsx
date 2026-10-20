@@ -1,6 +1,7 @@
 import { QueryClient } from "@tanstack/react-query";
 import { createRouter } from "@tanstack/react-router";
 import { routeTree } from "./routeTree.gen";
+import { RouteErrorState, RoutePendingState } from "@/components/route-states";
 
 export const getRouter = () => {
   // Heavy college-scoped reads: one bounded retry instead of a retry storm on
@@ -22,7 +23,13 @@ export const getRouter = () => {
     routeTree,
     context: { queryClient },
     scrollRestoration: true,
+    // Hovering/focusing a link warms its route; React Query decides freshness.
+    defaultPreload: "intent",
     defaultPreloadStaleTime: 0,
+    // Errors and loading render inside the layout instead of replacing the app shell.
+    defaultErrorComponent: RouteErrorState,
+    defaultPendingComponent: RoutePendingState,
+    defaultPendingMs: 300,
   });
 
   return router;

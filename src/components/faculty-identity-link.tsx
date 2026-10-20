@@ -15,6 +15,7 @@ import {
 import { toast } from "sonner";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { FacultyCollegeTransfer } from "@/components/faculty-college-transfer";
+import { userErrorMessage } from "@/lib/user-error";
 
 export function FacultyIdentityLink({
   instructorId,
@@ -77,7 +78,8 @@ export function FacultyIdentityLink({
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: ["instructors"] });
       void qc.invalidateQueries({ queryKey: ["report-instructor-directory"] });
-      void qc.invalidateQueries({ queryKey: ["is-ins"] });
+      // L-10: was ["is-ins"], which matched no query; the schedule report directory shows the identity.
+      void qc.invalidateQueries({ queryKey: ["university-instructor-schedule-directory"] });
       void qc.invalidateQueries({
         queryKey: ["faculty-identity-link-candidates"],
       });
@@ -90,7 +92,7 @@ export function FacultyIdentityLink({
       setSearchQuery("");
       toast.success("تم توحيد الهوية الجامعية مع الحفاظ على الإسنادات والجداول");
     },
-    onError: (error: Error) => toast.error(error.message),
+    onError: (error: Error) => toast.error(userErrorMessage(error)),
   });
 
   if (!me?.isSuperAdmin) return null;

@@ -1,0 +1,39 @@
+name: migration-drift
+
+# M-24: compare the migrations in supabase/migrations with the versions recorded in the
+# production database (supabase_migrations.schema_migrations). Read-only: the job runs a
+# single SELECT in a READ ONLY transaction. Requires the repository/environment secret
+# PROD_DB_READONLY_URL (a connection string for a read-only role); without it the job
+# exits successfully with a notice so forks and new clones stay green.
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "17 5 * * 1" # weekly, Monday 05:17 UTC
+
+permissions:
+  contents: read
+
+jobs:
+  drift:
+    name: migration drift (repository vs production)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    environment: production-readonly
+    env:
+      PROD_DB_READONLY_URL: ${{ secrets.PROD_DB_READONLY_URL }}
+    steps:
+      - name: Secret present?
+        id: secret
+        run: |
+          if [ -z "$PROD_DB_READONLY_URL" ]; then
+            echo "::notice title=migration-drift skipped::PROD_DB_READONLY_URL is not configured; nothing was compared."
+            echo "present=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "present=true" >> "$GITHUB_OUTPUT"
+          fi
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        if: steps.secret.outputs.present == 'true'
+      - name: Compare migration versions
+        if: steps.secret.outputs.present == 'true'
+        run: scripts/db/migration-drift.sh

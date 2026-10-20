@@ -2,6 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { readAllRows } from "@/lib/supabase/read-all";
 import { useActiveCollege } from "@/hooks/use-colleges";
 import { ReportShell } from "@/components/reports/report-shell";
 import { ReportFilterBar, ReportFilterField } from "@/components/reports/report-filter-bar";
@@ -31,7 +32,7 @@ function Page() {
   const [search, setSearch] = useState("");
 
   const { data: versions, error: versionsError } = useQuery({
-    queryKey: ["ds-vers", active?.id],
+    queryKey: ["reports", "department-schedule", "versions", active?.id],
     enabled: !!active,
     queryFn: async () =>
       (
@@ -43,8 +44,8 @@ function Page() {
           .throwOnError()
       ).data ?? [],
   });
-  const { data: depts } = useQuery({
-    queryKey: ["ds-depts", active?.id],
+  const { data: depts, error: deptsError } = useQuery({
+    queryKey: ["reports", "department-schedule", "departments", active?.id],
     enabled: !!active,
     queryFn: async () =>
       (
@@ -62,25 +63,28 @@ function Page() {
     error: sessionsError,
     refetch,
   } = useQuery({
-    queryKey: ["ds-sess", active?.id, versionId, deptId],
+    queryKey: ["reports-department-schedule-sessions", active?.id, versionId, deptId],
     enabled: !!active && !!versionId,
-    queryFn: async () => {
-      const { data } = await supabase
-        .from("schedule_sessions")
-        .select(
-          `id, day_of_week, start_time, end_time, session_type,
+    // H-10/M-21: read every page; any page error rejects the query.
+
+    queryFn: () =>
+      readAllRows<unknown>((from, to) =>
+        supabase
+          .from("schedule_sessions")
+          .select(
+            `id, day_of_week, start_time, end_time, session_type,
           course_offerings!inner(courses!inner(name, code, department_id, departments(name)), academic_programs(name), academic_levels(name, level_number)),
           sections(section_number),
           instructors(full_name),
           rooms(code, name)`,
-        )
-        .eq("college_id", active!.id)
-        .eq("schedule_version_id", versionId)
-        .order("day_of_week")
-        .order("start_time")
-        .throwOnError();
-      return data ?? [];
-    },
+          )
+          .eq("college_id", active!.id)
+          .eq("schedule_version_id", versionId)
+          .order("day_of_week")
+          .order("start_time")
+          .order("id")
+          .range(from, to),
+      ),
   });
 
   const allRows = useMemo(() => {
@@ -146,7 +150,7 @@ function Page() {
         rows={rows}
         headers={headers}
         isLoading={isLoading}
-        error={versionsError ?? sessionsError}
+        error={versionsError ?? deptsError ?? sessionsError}
         onRetry={() => void refetch()}
         notReadyMessage={versionId ? undefined : "اختر نسخة جدول للبدء."}
         emptyMessage={search ? "لا نتائج مطابقة للبحث." : "لا توجد محاضرات."}

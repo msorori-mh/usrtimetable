@@ -1,0 +1,30 @@
+# M-28 / M-29: weekly update proposals. For GitHub Actions, Dependabot keeps the
+# `uses: owner/action@<sha> # vX` pins current and proposes SHA pins for the actions that
+# are still referenced by tag (actions/setup-node).
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    groups:
+      actions:
+        patterns: ["*"]
+    commit-message:
+      prefix: "ci"
+
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 10
+    groups:
+      minor-and-patch:
+        update-types: ["minor", "patch"]
+    ignore:
+      # Pinned on purpose; see docs/operations/dependency-overrides.md before moving.
+      - dependency-name: "nitro"
+    commit-message:
+      prefix: "deps"

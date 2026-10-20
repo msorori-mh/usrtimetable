@@ -4,6 +4,7 @@ import {
   buildEvaluateDropTargetInput,
   evaluateDropTarget,
   isProtectedDemoVersion,
+  setProtectedVersionIds,
   toOccupancySession,
 } from "../../src/lib/schedule-builder/drag-drop-safety.ts";
 
@@ -18,7 +19,16 @@ assert(safety.includes("evaluateDropTarget"), "evaluateDropTarget present");
 assert(safety.includes("buildEvaluateDropTargetInput"), "cohort/room wiring helper present");
 assert(safety.includes("pushUndo"), "undo helpers present");
 
-const builder = read("src/routes/_authenticated/schedule-builder.tsx");
+// L-14: the builder page was split into the route + hooks/use-schedule-builder-workspace.ts + builder components.
+
+const builder = [
+  "src/routes/_authenticated/schedule-builder.tsx",
+  "src/hooks/use-schedule-builder-workspace.ts",
+  "src/components/schedule-builder/builder-context-bar.tsx",
+  "src/components/schedule-builder/builder-ui.tsx",
+]
+  .map((file) => read(file))
+  .join("\n");
 assert(builder.includes("evaluateDropTarget"), "builder uses safety");
 assert(builder.includes("buildEvaluateDropTargetInput"), "builder wires drop preview input");
 assert(!builder.includes("cohort_id: null"), "builder does not force cohort_id null");
@@ -37,7 +47,8 @@ assert(grid.includes("getDropTone"), "grid accepts tone");
 assert(grid.includes("bg-emerald-500/25"), "green slot style");
 assert(grid.includes("bg-red-500/25"), "red slot style");
 
-assert(isProtectedDemoVersion("835e50fe-3ad2-4232-8c15-0f403c668a7f"), "demo id");
+setProtectedVersionIds(["protected-version"]);
+assert(isProtectedDemoVersion("protected-version"), "protected version flag");
 const ok = evaluateDropTarget({
   sourceSlot: { day_of_week: 0, start_time: "08:00", end_time: "10:00", room_id: "r" },
   movingSession: {

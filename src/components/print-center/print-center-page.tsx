@@ -1,9 +1,12 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useId, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { ArrowRight, Download, FileSpreadsheet, Printer } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { ReportErrorState } from "@/components/reports/report-states";
+import { userErrorMessage } from "@/lib/user-error";
+import { readAllRows } from "@/lib/supabase/read-all";
 import { useActiveCollege } from "@/hooks/use-colleges";
 import { useCurrentUser } from "@/hooks/use-current-user";
 import {
@@ -43,6 +46,7 @@ import {
   EDUCATION_SOURCE_PUBLICATION_NOTICE_AR,
   isEducationSourcePublication,
 } from "@/lib/schedule-versions/education-publication";
+import { useEducationSourcePublications } from "@/lib/schedule-versions/education-publication-loader";
 import { fetchDeliveryCoverage } from "@/lib/schedule-versions/delivery-coverage";
 import type { SVStatus } from "@/lib/schedule-versions/lifecycle";
 import { entityDisplayName } from "@/lib/entity-display";
@@ -85,11 +89,14 @@ function Sel({
   items: { id: string; name: string }[];
   disabled?: boolean;
 }) {
+  const id = useId();
   return (
     <div className="space-y-1">
-      <Label className="text-xs text-muted-foreground">{label}</Label>
+      <Label htmlFor={id} className="text-xs text-muted-foreground">
+        {label}
+      </Label>
       <Select value={value} onValueChange={onChange} disabled={disabled}>
-        <SelectTrigger>
+        <SelectTrigger id={id}>
           <SelectValue />
         </SelectTrigger>
         <SelectContent>
@@ -116,13 +123,15 @@ function Toggle({
   return (
     <label className="flex items-center justify-between gap-2 text-sm py-1">
       <span>{label}</span>
-      <Switch checked={checked} onCheckedChange={onChange} />
+      <Switch checked={checked} onCheckedChange={onChange} aria-label={label} />
     </label>
   );
 }
 
 export function PrintCenterPage(props: { versionId: string }) {
   const { versionId } = props;
+  // Sealed education publication markers are data (M-11); re-render once loaded.
+  useEducationSourcePublications();
   const { active } = useActiveCollege();
   const currentUser = useCurrentUser();
   const exportAt = useMemo(() => new Date(), []);
@@ -174,6 +183,7 @@ export function PrintCenterPage(props: { versionId: string }) {
     data: version,
     isLoading: versionLoading,
     error: versionError,
+    refetch: refetchVersion,
   } = useQuery({
     queryKey: [
       "print-center-version",
@@ -216,8 +226,10 @@ export function PrintCenterPage(props: { versionId: string }) {
     },
   });
 
-  const { data: depts } = useQuery({
-    queryKey: ["print-center-depts", active?.id],
+  // M-21: every lookup throws on a Supabase error so the page can show it
+  // instead of silently offering empty filter lists.
+  const deptsQuery = useQuery({
+    queryKey: ["print-center", "departments", active?.id],
     enabled: !!active && collegeMatches,
     queryFn: async () =>
       (
@@ -226,10 +238,11 @@ export function PrintCenterPage(props: { versionId: string }) {
           .select("id, name")
           .eq("college_id", active!.id)
           .order("name")
+          .throwOnError()
       ).data ?? [],
   });
-  const { data: progs } = useQuery({
-    queryKey: ["print-center-progs", active?.id, departmentId],
+  const progsQuery = useQuery({
+    queryKey: ["print-center", "programs", active?.id, departmentId],
     enabled: !!active && collegeMatches,
     queryFn: async () => {
       let q = supabase
@@ -238,11 +251,11 @@ export function PrintCenterPage(props: { versionId: string }) {
         .eq("college_id", active!.id)
         .order("name");
       if (departmentId) q = q.eq("department_id", departmentId);
-      return (await q).data ?? [];
+      return (await q.throwOnError()).data ?? [];
     },
   });
-  const { data: levels } = useQuery({
-    queryKey: ["print-center-levels", active?.id],
+  const levelsQuery = useQuery({
+    queryKey: ["print-center", "levels", active?.id],
     enabled: !!active && collegeMatches,
     queryFn: async () =>
       (
@@ -251,22 +264,26 @@ export function PrintCenterPage(props: { versionId: string }) {
           .select("id, name, level_number, program_id")
           .eq("college_id", active!.id)
           .order("level_number")
+          .throwOnError()
       ).data ?? [],
   });
-  const { data: instructors } = useQuery({
-    queryKey: ["print-center-ins", active?.id],
+  const instructorsQuery = useQuery({
+    queryKey: ["print-center", "instructors", active?.id],
     enabled: !!active && collegeMatches,
-    queryFn: async () =>
-      (
-        await supabase
+    // H-10: a college's instructor list can exceed one PostgREST page.
+    queryFn: () =>
+      readAllRows<{ id: string; full_name: string }>((from, to) =>
+        supabase
           .from("instructors")
           .select("id, full_name")
           .eq("college_id", active!.id)
           .order("full_name")
-      ).data ?? [],
+          .order("id")
+          .range(from, to),
+      ),
   });
-  const { data: rooms } = useQuery({
-    queryKey: ["print-center-rooms", active?.id],
+  const roomsQuery = useQuery({
+    queryKey: ["print-center", "rooms", active?.id],
     enabled: !!active && collegeMatches,
     queryFn: async () =>
       (
@@ -275,8 +292,16 @@ export function PrintCenterPage(props: { versionId: string }) {
           .select("id, code, name")
           .eq("college_id", active!.id)
           .order("code")
+          .throwOnError()
       ).data ?? [],
   });
+  const depts = deptsQuery.data;
+  const progs = progsQuery.data;
+  const levels = levelsQuery.data;
+  const instructors = instructorsQuery.data;
+  const rooms = roomsQuery.data;
+  const lookupQueries = [deptsQuery, progsQuery, levelsQuery, instructorsQuery, roomsQuery];
+  const lookupError = lookupQueries.find((q) => q.isError)?.error ?? null;
 
   const filters: PrintCenterFilters = useMemo(
     () => ({
@@ -299,7 +324,12 @@ export function PrintCenterPage(props: { versionId: string }) {
     programFiltersComplete(filters) &&
     levelFiltersComplete(filters);
 
-  const { data: sessionsBundle, isLoading: sessionsLoading } = useQuery({
+  const {
+    data: sessionsBundle,
+    isLoading: sessionsLoading,
+    error: sessionsError,
+    refetch: refetchSessions,
+  } = useQuery({
     queryKey: ["print-center-sessions", versionId, active?.id, filters],
     enabled: !!active && collegeMatches && !!version && printAuthorized && filtersReady,
     queryFn: async () => {
@@ -462,7 +492,7 @@ export function PrintCenterPage(props: { versionId: string }) {
         </p>
         <Button variant="outline" asChild>
           <Link to="/timetable/$versionId" params={{ versionId }}>
-            <ArrowRight className="h-4 w-4 ml-1" /> عودة للمحرر
+            <ArrowRight className="h-4 w-4 me-1" /> عودة للمحرر
           </Link>
         </Button>
       </div>
@@ -477,10 +507,20 @@ export function PrintCenterPage(props: { versionId: string }) {
     );
   }
 
-  if (versionError || (version && !printAuthorized)) {
+  if (versionError) {
+    return (
+      <div className="space-y-4" dir="rtl">
+        <ReportErrorState
+          message={userErrorMessage(versionError, "تعذر تحميل نسخة الجدول.")}
+          onRetry={() => void refetchVersion()}
+        />
+      </div>
+    );
+  }
+  if (version && !printAuthorized) {
     return (
       <div role="alert" className="rounded-md border p-4" dir="rtl">
-        {versionError instanceof Error ? versionError.message : DRAFT_PRINT_ADMIN_ONLY_AR}
+        {DRAFT_PRINT_ADMIN_ONLY_AR}
       </div>
     );
   }
@@ -490,7 +530,7 @@ export function PrintCenterPage(props: { versionId: string }) {
       <div className="space-y-4" dir="rtl">
         <Button variant="ghost" size="sm" asChild>
           <Link to="/timetable/$versionId" params={{ versionId }}>
-            <ArrowRight className="h-4 w-4 ml-1" /> عودة للمحرر
+            <ArrowRight className="h-4 w-4 me-1" /> عودة للمحرر
           </Link>
         </Button>
         <div className="rounded-md border border-amber-300 bg-amber-50 dark:bg-amber-950/30 p-4 text-sm">
@@ -525,7 +565,7 @@ export function PrintCenterPage(props: { versionId: string }) {
           <div>
             <Button variant="ghost" size="sm" asChild>
               <Link to="/timetable/$versionId" params={{ versionId }}>
-                <ArrowRight className="h-4 w-4 ml-1" /> عودة لمحرر الجدول
+                <ArrowRight className="h-4 w-4 me-1" /> عودة لمحرر الجدول
               </Link>
             </Button>
             <h1 className="text-2xl font-bold mt-1">مركز الطباعة والتصدير</h1>
@@ -536,12 +576,12 @@ export function PrintCenterPage(props: { versionId: string }) {
           <div className="flex gap-2 flex-wrap">
             <Button variant="default" size="sm" asChild>
               <Link to="/reports/current-timetable">
-                <Printer className="h-4 w-4 ml-1" /> طباعة الجدول الحالي
+                <Printer className="h-4 w-4 me-1" /> طباعة الجدول الحالي
               </Link>
             </Button>
             <Button variant="outline" size="sm" asChild>
               <Link to="/reports/rooms-report">
-                <Printer className="h-4 w-4 ml-1" /> تقرير القاعات
+                <Printer className="h-4 w-4 me-1" /> تقرير القاعات
               </Link>
             </Button>
             <Button
@@ -550,7 +590,7 @@ export function PrintCenterPage(props: { versionId: string }) {
               onClick={handlePrintClick}
               disabled={pages.length === 0 || outputBlocked}
             >
-              <Printer className="h-4 w-4 ml-1" /> طباعة
+              <Printer className="h-4 w-4 me-1" /> طباعة
             </Button>
             <Button
               variant="outline"
@@ -567,7 +607,7 @@ export function PrintCenterPage(props: { versionId: string }) {
                 )
               }
             >
-              <Download className="h-4 w-4 ml-1" /> CSV
+              <Download className="h-4 w-4 me-1" /> CSV
             </Button>
             <Button
               variant="outline"
@@ -584,7 +624,7 @@ export function PrintCenterPage(props: { versionId: string }) {
                 )
               }
             >
-              <FileSpreadsheet className="h-4 w-4 ml-1" /> Excel
+              <FileSpreadsheet className="h-4 w-4 me-1" /> Excel
             </Button>
           </div>
         </div>
@@ -794,7 +834,17 @@ export function PrintCenterPage(props: { versionId: string }) {
       </div>
 
       <div className="report-print-body print-center-body space-y-6">
-        {sessionsLoading ? (
+        {lookupError || sessionsError ? (
+          <div className="report-no-print">
+            <ReportErrorState
+              message={userErrorMessage(lookupError ?? sessionsError, "تعذر تحميل بيانات الطباعة.")}
+              onRetry={() => {
+                for (const q of lookupQueries) if (q.isError) void q.refetch();
+                if (sessionsError) void refetchSessions();
+              }}
+            />
+          </div>
+        ) : sessionsLoading ? (
           <Card className="p-8 text-center text-muted-foreground report-no-print">
             جارٍ التحميل…
           </Card>

@@ -1,6 +1,8 @@
 import { fetchStudentMembershipIndex } from "@/lib/academic-delivery/student-memberships";
 import { groupsShareStudents } from "@/lib/auto-scheduler/student-partitions";
 import { supabase } from "@/integrations/supabase/client";
+import { chunkIds, readAllRows } from "@/lib/supabase/read-all";
+import { fetchServerVersionValidation } from "./server-validation";
 import { matchesVerifiedHostedSession, type HostedSessionShape } from "./hosted-session-policy";
 import { buildInstructorCategoryMap, requiresAvailability } from "@/lib/instructor-category";
 import { isInstructorAvailabilityEnforced } from "@/lib/scheduling/instructor-availability-policy";
@@ -21,6 +23,7 @@ import {
   type ApprovedException,
 } from "./exceptions";
 import { getCohortComponentInstructorReadiness } from "@/lib/scheduling/cohort-component-instructor-service";
+import type { CohortComponentInstructorReadiness } from "@/lib/scheduling/cohort-component-instructor";
 import {
   cohortComponentInstructorViolationMessageAr,
   cohortComponentInstructorViolationMessageEn,
@@ -90,23 +93,49 @@ interface ExistingSession {
   replaced_by_split?: boolean | null;
 }
 
+/** `.in()` reads in URL-safe chunks; any error is thrown (never silently empty). */
+type PageableQuery<T> = {
+  order: (column: string) => PageableQuery<T>;
+  range: (from: number, to: number) => PromiseLike<{ data: T[] | null; error: unknown }>;
+};
+
+/**
+ * Reads rows for many ids: ids are chunked (URL length) and every chunk is read
+ * page by page (PostgREST row cap), so availability/assignment rows of a large
+ * college are never silently truncated (H-10).
+ */
+async function selectInChunks<T>(
+  ids: readonly string[],
+  build: (chunk: string[]) => unknown,
+): Promise<{ data: T[]; error: null }> {
+  const data: T[] = [];
+  for (const chunk of chunkIds(ids)) {
+    const rows = await readAllRows<T>((from, to) =>
+      (build(chunk) as PageableQuery<T>).order("id").range(from, to),
+    );
+    data.push(...rows);
+  }
+  return { data, error: null };
+}
+
 async function fetchExistingSessions(
   collegeId: string,
   versionId: string,
   excludeSessionId?: string,
 ): Promise<ExistingSession[]> {
-  let q = supabase
-    .from("schedule_sessions")
-    .select(
-      "id, instructor_id, room_id, section_id, section_subgroup_id, day_of_week, start_time, end_time, replaced_by_split, cohort_id, delivery_group_id, course_offering_id",
-    )
-    .eq("college_id", collegeId)
-    .eq("schedule_version_id", versionId)
-    .eq("replaced_by_split", false);
-  if (excludeSessionId) q = q.neq("id", excludeSessionId);
-  const { data, error } = await q;
-  if (error) throw error;
-  return (data ?? []) as ExistingSession[];
+  const rows = await readAllRows<ExistingSession>((from, to) => {
+    let q = supabase
+      .from("schedule_sessions")
+      .select(
+        "id, instructor_id, room_id, section_id, section_subgroup_id, day_of_week, start_time, end_time, replaced_by_split, cohort_id, delivery_group_id, course_offering_id",
+      )
+      .eq("college_id", collegeId)
+      .eq("schedule_version_id", versionId)
+      .eq("replaced_by_split", false);
+    if (excludeSessionId) q = q.neq("id", excludeSessionId);
+    return q.order("id").range(from, to);
+  });
+  return rows as ExistingSession[];
 }
 
 /**
@@ -145,38 +174,31 @@ export function applyApprovedExceptions(
   return { conflicts: enriched, ...summary };
 }
 
-/**
- * Collapse repeated findings for the same rule and the same (unordered) session
- * pair. A batch pass reports A↔B from both sides; only one row is meaningful.
- */
-export function dedupeConflicts(conflicts: Conflict[]): Conflict[] {
-  const seen = new Set<string>();
-  const out: Conflict[] = [];
-  for (const c of conflicts) {
-    const a = c.schedule_session_id ?? "";
-    const b = c.related_session_id ?? "";
-    const pair = b && a > b ? `${b}|${a}` : `${a}|${b}`;
-    const key = `${c.code}|${pair}`;
-    if (seen.has(key)) continue;
-    seen.add(key);
-    out.push(c);
-  }
-  return out;
-}
+import { dedupeConflicts, effectiveExpectedStudents } from "./conflict-dedupe";
+export { dedupeConflicts };
 
+/**
+ * Light client pre-check of proposed (unsaved) sessions for interactive previews.
+ * It is NOT the publish gate: whole-version validation and every save are evaluated by
+ * the server (validate_schedule_version, save/move RPCs), which also applies ITCS 14:00,
+ * student daily hours, extended days and linked instructor identities (M-12).
+ * Version-wide findings (cohort_component_single_instructor) are only added when
+ * `includeVersionWide` is set, so they never block an unrelated single-session edit.
+ */
 export async function validateProposed(params: {
   collegeId: string;
   scheduleVersionId: string;
   sessions: ProposedSession[];
   excludeExistingSessionIds?: string[];
   approvedExceptions?: ApprovedException[];
+  includeVersionWide?: boolean;
 }): Promise<ValidationResult> {
   const { collegeId, scheduleVersionId, sessions } = params;
   const conflicts: Conflict[] = [];
-  const instructorReadiness = await getCohortComponentInstructorReadiness({
-    collegeId,
-    scheduleVersionId,
-  });
+  const instructorReadiness: Pick<CohortComponentInstructorReadiness, "ok" | "violations"> =
+    params.includeVersionWide
+      ? await getCohortComponentInstructorReadiness({ collegeId, scheduleVersionId })
+      : { ok: true, violations: [] };
   const instructorViolations = instructorReadiness.violations.length
     ? instructorReadiness.violations
     : instructorReadiness.ok
@@ -240,76 +262,74 @@ export async function validateProposed(params: {
     { data: taRows },
     { data: schedulingSettings, error: schedulingSettingsError },
   ] = await Promise.all([
-    roomIds.length
-      ? supabase.from("rooms").select("id, capacity, college_id, room_type").in("id", roomIds)
-      : Promise.resolve({
-          data: [] as Array<{
-            id: string;
-            capacity: number;
-            college_id: string;
-            room_type: string | null;
-          }>,
-        }),
-    roomIds.length
-      ? supabase
-          .from("room_availability")
-          .select("room_id, day_of_week, start_time, end_time, college_id")
-          .in("room_id", roomIds)
-      : Promise.resolve({
-          data: [] as Array<{
-            room_id: string;
-            day_of_week: number;
-            start_time: string;
-            end_time: string;
-            college_id: string;
-          }>,
-        }),
-    supabase
-      .from("instructor_availability")
-      .select(
-        "instructor_id, day_of_week, start_time, end_time, is_preference, availability_type, college_id",
-      )
-      .in("instructor_id", instructorIds)
-      .eq("is_preference", false),
-    offeringIds.length
-      ? supabase
-          .from("course_offerings")
-          .select("id, expected_students, enrollment_count_status, college_id")
-          .in("id", offeringIds)
-      : Promise.resolve({
-          data: [] as Array<{
-            id: string;
-            expected_students: number;
-            enrollment_count_status: string | null;
-            college_id: string;
-          }>,
-        }),
+    selectInChunks<{ id: string; capacity: number; college_id: string; room_type: string | null }>(
+      roomIds,
+      (ids) => supabase.from("rooms").select("id, capacity, college_id, room_type").in("id", ids),
+    ),
+    selectInChunks<{
+      room_id: string;
+      day_of_week: number;
+      start_time: string;
+      end_time: string;
+      college_id: string;
+    }>(roomIds, (ids) =>
+      supabase
+        .from("room_availability")
+        .select("room_id, day_of_week, start_time, end_time, college_id")
+        .in("room_id", ids),
+    ),
+    selectInChunks<{
+      instructor_id: string;
+      day_of_week: number;
+      start_time: string;
+      end_time: string;
+      is_preference: boolean | null;
+      availability_type: string | null;
+      college_id: string;
+    }>(instructorIds, (ids) =>
+      // read-all-ok: selectInChunks pages every chunk (order("id").range)
+      supabase
+        .from("instructor_availability")
+        .select(
+          "instructor_id, day_of_week, start_time, end_time, is_preference, availability_type, college_id",
+        )
+        .in("instructor_id", ids)
+        .eq("is_preference", false),
+    ),
+    selectInChunks<{
+      id: string;
+      expected_students: number;
+      enrollment_count_status: string | null;
+      college_id: string;
+    }>(offeringIds, (ids) =>
+      supabase
+        .from("course_offerings")
+        .select("id, expected_students, enrollment_count_status, college_id")
+        .in("id", ids),
+    ),
     supabase
       .from("time_slot_templates")
       .select("study_system, day_of_week, start_time, end_time, is_active, college_id")
       .eq("college_id", collegeId)
-      .eq("is_active", true),
-    instructorIds.length
-      ? supabase.from("instructors").select("id, instructor_type_id").in("id", instructorIds)
-      : Promise.resolve({
-          data: [] as Array<{
-            id: string;
-            instructor_type_id: string | null;
-          }>,
-        }),
-    taIds.length
-      ? supabase
-          .from("teaching_assignments")
-          .select("id, required_room_type, college_id, plan_course_component_id")
-          .in("id", taIds)
-      : Promise.resolve({
-          data: [] as Array<{
-            id: string;
-            required_room_type: string | null;
-            college_id: string;
-            plan_course_component_id?: string | null;
-          }>,
-        }),
+      .eq("is_active", true)
+      .then((r) => {
+        if (r.error) throw r.error;
+        return r;
+      }),
+    selectInChunks<{ id: string; instructor_type_id: string | null }>(instructorIds, (ids) =>
+      supabase.from("instructors").select("id, instructor_type_id").in("id", ids),
+    ),
+    selectInChunks<{
+      id: string;
+      required_room_type: string | null;
+      college_id: string;
+      plan_course_component_id?: string | null;
+    }>(taIds, (ids) =>
+      supabase
+        .from("teaching_assignments")
+        .select("id, required_room_type, college_id, plan_course_component_id")
+        .in("id", ids),
+    ),
     supabase
       .from("scheduling_settings")
       .select("enforce_instructor_availability")
@@ -531,7 +551,7 @@ export async function validateProposed(params: {
             enrollment_count_status?: string | null;
           }
         | undefined;
-      const expected = s.expected_students ?? offering?.expected_students ?? 0;
+      const expected = effectiveExpectedStudents(s.expected_students, offering?.expected_students);
       const enrollStatus =
         s.enrollment_count_status ?? offering?.enrollment_count_status ?? "unverified";
       if (room && !intakeMode) {
@@ -714,58 +734,27 @@ export async function validateProposed(params: {
 }
 
 /**
- * Validate all stored sessions of a schedule version, persist a conflict_check
- * row plus conflict_results, and return the results.
+ * Validate all stored sessions of a schedule version on the SERVER
+ * (public.validate_schedule_version — the same computation as the publish gate), persist a
+ * conflict_check row plus conflict_results, and return the results.
  */
 export async function validateScheduleVersion(params: {
   collegeId: string;
   scheduleVersionId: string;
   persist?: boolean; // default true
 }): Promise<{ checkId: string | null; result: ValidationResult }> {
-  const { collegeId, scheduleVersionId } = params;
+  const { scheduleVersionId } = params;
+  const collegeId = params.collegeId;
   const persist = params.persist ?? true;
 
-  const { data: sessions, error } = await supabase
-    .from("schedule_sessions")
-    .select("*")
-    .eq("college_id", collegeId)
-    .eq("schedule_version_id", scheduleVersionId);
-  if (error) throw error;
-
-  const proposed: ProposedSession[] = (sessions ?? []).map((s) => ({
-    id: s.id,
-    cohort_id: s.cohort_id,
-    delivery_group_id: s.delivery_group_id,
-    schedule_version_id: s.schedule_version_id,
-    course_offering_id: s.course_offering_id,
-    teaching_assignment_id: s.teaching_assignment_id,
-    instructor_id: s.instructor_id,
-    room_id: s.room_id,
-    section_id: s.section_id,
-    section_group_id: s.section_group_id,
-    study_system: s.study_system as StudySystem,
-    day_of_week: s.day_of_week,
-    start_time: s.start_time,
-    end_time: s.end_time,
-    session_type: s.session_type,
-    expected_students: s.expected_students,
-  }));
-
-  const approvedExceptions = await loadApprovedExceptions({
-    scheduleVersionId,
-    collegeId,
-  });
-  // Single batch pass: shared version/group/room/availability data is read once
-  // for the whole version instead of once per session. Every rule still runs
-  // per session against all peers (self-comparison is skipped inside the loop).
-  const batch = await validateProposed({
-    collegeId,
-    scheduleVersionId,
-    sessions: proposed,
-    approvedExceptions,
-  });
-  const conflicts = dedupeConflicts(batch.conflicts);
-  const result = applyApprovedExceptions(conflicts, scheduleVersionId, approvedExceptions);
+  const server = await fetchServerVersionValidation(scheduleVersionId);
+  const conflicts = dedupeConflicts(server.conflicts);
+  const result: ValidationResult = {
+    conflicts,
+    totalHardConflicts: server.totalHardCount,
+    approvedHardConflicts: server.approvedCount,
+    unapprovedHardConflicts: server.hardCount,
+  };
 
   if (!persist) return { checkId: null, result };
 
@@ -788,10 +777,11 @@ export async function validateScheduleVersion(params: {
   if (result.conflicts.length > 0) {
     // Map codes → constraint_type_id (best-effort)
     const codes = Array.from(new Set(result.conflicts.map((c) => c.code)));
-    const { data: ctypes } = await supabase
+    const { data: ctypes, error: ctypesError } = await supabase
       .from("constraint_types")
       .select("id, code")
       .in("code", codes);
+    if (ctypesError) throw ctypesError;
     const codeMap = new Map((ctypes ?? []).map((c) => [c.code, c.id]));
 
     const rows = result.conflicts.map((c) => ({

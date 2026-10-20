@@ -24,9 +24,11 @@ jobs:
   scope:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: oven-sh/setup-bun@v2
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
+        with:
+          bun-version: "1.4.2"
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: "22"
       - run: bun install --frozen-lockfile
@@ -35,7 +37,7 @@ jobs:
       - name: Existing identity linking and reconciliation UI
         run: bun test tests/faculty-identity-link-ui.test.ts tests/faculty-home-reconcile-form.test.ts
       - name: Install isolated database test dependency
-        run: npm install --prefix /tmp/faculty-test --no-package-lock --ignore-scripts @electric-sql/pglite@0.5.8
+        run: npm install --prefix /tmp/faculty-test --no-package-lock --ignore-scripts @electric-sql/pglite@0.3.14
       - name: Verify college scope and role boundaries
         env:
           FACULTY_DB_MODULE: /tmp/faculty-test/node_modules/@electric-sql/pglite/dist/index.js

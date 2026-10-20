@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { readAllResult } from "@/lib/supabase/read-all";
 import type { Database, Tables } from "@/integrations/supabase/types";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -10,6 +11,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { toast } from "sonner";
 import { ImportedTimetableReport } from "./imported-timetable-report";
 import { CollegeSourceTimetable } from "./college-source-timetable";
+import { educationSourceVersionFor } from "@/lib/schedule-versions/education-publication";
+import { useEducationSourcePublications } from "@/lib/schedule-versions/education-publication-loader";
 import { SourceRowsImport } from "./source-rows-import";
 
 type Source = Tables<"existing_schedule_source_rows">;
@@ -23,6 +26,7 @@ export function ExistingScheduleWorkspace({
   canManage: boolean;
 }) {
   const cache = useQueryClient();
+  const educationSourcePublications = useEducationSourcePublications();
   const [termChoice, setTermChoice] = useState("");
   const [search, setSearch] = useState("");
   const [pendingOnly, setPendingOnly] = useState(false);
@@ -70,19 +74,41 @@ export function ExistingScheduleWorkspace({
     enabled,
     queryFn: async () => {
       const responses = await Promise.all([
-        supabase
-          .from("existing_schedule_source_rows")
-          .select("*")
-          .eq("college_id", collegeId)
-          .eq("term_id", termId!)
-          .order("source_id"),
-        supabase
-          .from("rooms")
-          .select("id,name,code")
-          .eq("college_id", collegeId)
-          .eq("is_active", true),
-        supabase.from("instructors").select("id,full_name").eq("college_id", collegeId),
-        supabase.from("study_plans").select("id,name").eq("college_id", collegeId),
+        readAllResult((from, to) =>
+          supabase
+            .from("existing_schedule_source_rows")
+            .select("*")
+            .eq("college_id", collegeId)
+            .eq("term_id", termId!)
+            .order("source_id")
+            .order("id")
+            .range(from, to),
+        ),
+        readAllResult((from, to) =>
+          supabase
+            .from("rooms")
+            .select("id,name,code")
+            .eq("college_id", collegeId)
+            .eq("is_active", true)
+            .order("id")
+            .range(from, to),
+        ),
+        readAllResult((from, to) =>
+          supabase
+            .from("instructors")
+            .select("id,full_name")
+            .eq("college_id", collegeId)
+            .order("id")
+            .range(from, to),
+        ),
+        readAllResult((from, to) =>
+          supabase
+            .from("study_plans")
+            .select("id,name")
+            .eq("college_id", collegeId)
+            .order("id")
+            .range(from, to),
+        ),
       ]);
       for (const r of responses) if (r.error) throw r.error;
       return {
@@ -220,12 +246,13 @@ export function ExistingScheduleWorkspace({
       />
     );
   }
-  if (
-    showCollegeSourceTimetable &&
-    collegeId === "1ee291b2-bec9-43d3-b42b-5a4f46946399" &&
-    termId === "93705393-609d-4605-ae94-9572cd8b2090" &&
-    versionId === "7430bad7-2de7-5c90-9368-b214a199d6c3"
-  ) {
+  // The sealed education source timetable (college, term, version) is data, not literals (M-11).
+  const sealedSource = educationSourcePublications.data
+    ? educationSourceVersionFor(collegeId, termId)
+    : null;
+  const isSealedEducationSource =
+    !!sealedSource && !!versionId && sealedSource.version_id === versionId;
+  if (showCollegeSourceTimetable && isSealedEducationSource) {
     return (
       <CollegeSourceTimetable rows={rows} onBack={() => setShowCollegeSourceTimetable(false)} />
     );
@@ -269,20 +296,16 @@ export function ExistingScheduleWorkspace({
           محفوظة مرة واحدة. النواقص لا تُحذف من الجدول.
         </p>
         <div className="flex flex-wrap gap-3">
-          {collegeId === "1ee291b2-bec9-43d3-b42b-5a4f46946399" &&
-            termId === "93705393-609d-4605-ae94-9572cd8b2090" &&
-            versionId === "7430bad7-2de7-5c90-9368-b214a199d6c3" && (
-              <Button onClick={() => setShowCollegeSourceTimetable(true)}>
-                جدول الكلية حسب ملفات الأقسام
-              </Button>
-            )}
-          {collegeId === "1ee291b2-bec9-43d3-b42b-5a4f46946399" &&
-            termId === "93705393-609d-4605-ae94-9572cd8b2090" &&
-            versionId === "7430bad7-2de7-5c90-9368-b214a199d6c3" && (
-              <Button variant="outline" asChild>
-                <a href="/reports/education-source-timetable">فتح جدول الأقسام في صفحة مستقلة</a>
-              </Button>
-            )}
+          {isSealedEducationSource && (
+            <Button onClick={() => setShowCollegeSourceTimetable(true)}>
+              جدول الكلية حسب ملفات الأقسام
+            </Button>
+          )}
+          {isSealedEducationSource && (
+            <Button variant="outline" asChild>
+              <a href="/reports/education-source-timetable">فتح جدول الأقسام في صفحة مستقلة</a>
+            </Button>
+          )}
           <Button onClick={() => setShowSourceReport(true)}>
             تقرير الجداول المستوردة — جميع صفوف المصدر
           </Button>
@@ -349,7 +372,7 @@ export function ExistingScheduleWorkspace({
           <p role="status">جارٍ تحميل الجداول…</p>
         ) : (
           <div className="max-h-[650px] overflow-auto">
-            <table className="w-full text-right text-sm">
+            <table className="w-full text-start text-sm">
               <thead className="sticky top-0 bg-background">
                 <tr>
                   {[

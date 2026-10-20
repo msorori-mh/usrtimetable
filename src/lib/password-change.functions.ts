@@ -2,7 +2,17 @@ import { createServerFn } from "@tanstack/react-start";
 import { createClient } from "@supabase/supabase-js";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
-import { PASSWORD_POLICY_AR, validPersonalPassword } from "@/lib/password-policy";
+import {
+  PASSWORD_POLICY_AR,
+  describePasswordIssues,
+  passwordPolicyIssues,
+  validPersonalPassword,
+} from "@/lib/password-policy";
+import {
+  INITIAL_PASSWORD_CHANGE_POLICY,
+  verifyCallerAccess,
+  type CallerClient,
+} from "@/lib/admin-access";
 
 /** Loaded inside handlers only: the server-only module must not enter client chunks. */
 async function admin() {
@@ -16,10 +26,18 @@ export const completeInitialPasswordChange = createServerFn({ method: "POST" })
   .inputValidator(
     z.object({
       currentPassword: z.string().min(1).max(200),
-      newPassword: z.string().refine(validPersonalPassword, PASSWORD_POLICY_AR),
+      newPassword: z.string().refine((v) => validPersonalPassword(v), PASSWORD_POLICY_AR),
     }),
   )
   .handler(async ({ data, context }) => {
+    // H-11: the caller's own session must be valid and MFA-complete. A pending
+    // password change is expected here, and aal2 is not required.
+    await verifyCallerAccess(
+      context.supabase as unknown as CallerClient,
+      context.userId,
+      context.claims,
+      INITIAL_PASSWORD_CHANGE_POLICY,
+    );
     const supabaseAdmin = await admin();
     // Fail-closed throttle: brute-force attempts on the temporary credential are
     // capped per actor without ever locking the account out globally.
@@ -30,6 +48,7 @@ export const completeInitialPasswordChange = createServerFn({ method: "POST" })
     if (limitError || allowed !== true)
       throw new Error("تم تجاوز عدد المحاولات المسموح مؤقتًا. أعد المحاولة بعد قليل.");
     const { data: roles, error: roleError } = await supabaseAdmin
+      // read-all-ok: rows of a single user (one role/college list), far below the page cap
       .from("user_roles")
       .select("role")
       .eq("user_id", context.userId);
@@ -45,6 +64,18 @@ export const completeInitialPasswordChange = createServerFn({ method: "POST" })
       );
     if (data.newPassword === data.currentPassword)
       throw new Error("اختر كلمة مرور مختلفة عن كلمة المرور المؤقتة.");
+    // M-3: personal context (email local part, account name) is known only here.
+    const { data: profile, error: profileError } = await supabaseAdmin
+      .from("profiles")
+      .select("full_name")
+      .eq("id", context.userId)
+      .maybeSingle();
+    if (profileError) throw new Error("تعذر التحقق من بيانات الحساب.");
+    const contextIssues = passwordPolicyIssues(data.newPassword, {
+      email: user.email,
+      name: profile?.full_name ?? null,
+    });
+    if (contextIssues.length > 0) throw new Error(describePasswordIssues(contextIssues));
 
     // Verify the current credential in an isolated client, without replacing the
     // administrator/service client or persisting the temporary verification session.

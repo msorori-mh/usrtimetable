@@ -18,6 +18,7 @@ async function reportCanViewAcrossColleges() {
   const { data, error } = await supabase.auth.getUser();
   if (error) throw error;
   if (!data.user) throw new Error("يجب تسجيل الدخول لعرض التقرير.");
+  // read-all-ok: the signed-in user's own roles (a handful of rows).
   const roles = await supabase.from("user_roles").select("role").eq("user_id", data.user.id);
   if (roles.error) throw roles.error;
   return canViewInstructorAcrossColleges((roles.data ?? []).map((r) => r.role));
@@ -217,6 +218,7 @@ export async function fetchInstructorTeachingCollegeIds(input: {
       for (let i = 0; i < sessionIds.length; i += 100) chunks.push(sessionIds.slice(i, i + 100));
       if (!chunks.length) chunks.push([]);
       for (const chunk of chunks) {
+        // read-all-ok: existence probe, bounded by .limit(1) below.
         let query = supabase
           .from("schedule_sessions")
           .select("id")

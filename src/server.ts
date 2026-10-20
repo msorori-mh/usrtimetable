@@ -2,6 +2,11 @@ import "./lib/error-capture";
 
 import { consumeLastCapturedError } from "./lib/error-capture";
 import { renderErrorPage } from "./lib/error-page";
+import {
+  buildSecurityHeaders,
+  cspReportOnlyFromEnv,
+  mergeSecurityHeaders,
+} from "./lib/security-headers";
 
 type ServerEntry = {
   fetch: (request: Request, env: unknown, ctx: unknown) => Promise<Response> | Response;
@@ -37,18 +42,59 @@ async function normalizeCatastrophicSsrResponse(response: Response): Promise<Res
   });
 }
 
+function envValue(env: unknown, name: string): string | undefined {
+  const fromBinding =
+    env && typeof env === "object" ? (env as Record<string, unknown>)[name] : undefined;
+  if (typeof fromBinding === "string") return fromBinding;
+  const proc = (globalThis as { process?: { env?: Record<string, string | undefined> } }).process;
+  return proc?.env?.[name];
+}
+
+/**
+ * M-1: every response (SSR documents, server functions, assets, error pages)
+ * carries the security headers. Headers already set by a route are kept.
+ */
+function withSecurityHeaders(request: Request, env: unknown, response: Response): Response {
+  let hostname = "";
+  let pathname = "";
+  try {
+    ({ hostname, pathname } = new URL(request.url));
+  } catch {
+    hostname = "";
+  }
+  const headers = buildSecurityHeaders({
+    hostname,
+    pathname,
+    reportOnly: cspReportOnlyFromEnv(envValue(env, "CSP_REPORT_ONLY")),
+    supabaseUrl: envValue(env, "SUPABASE_URL"),
+  });
+  try {
+    mergeSecurityHeaders(response.headers, headers);
+    return response;
+  } catch {
+    // Immutable headers (e.g. a passthrough fetch Response): copy once.
+    const copy = new Response(response.body, response);
+    mergeSecurityHeaders(copy.headers, headers);
+    return copy;
+  }
+}
+
 export default {
   async fetch(request: Request, env: unknown, ctx: unknown) {
     try {
       const handler = await getServerEntry();
       const response = await handler.fetch(request, env, ctx);
-      return await normalizeCatastrophicSsrResponse(response);
+      return withSecurityHeaders(request, env, await normalizeCatastrophicSsrResponse(response));
     } catch (error) {
       console.error(error);
-      return new Response(renderErrorPage(), {
-        status: 500,
-        headers: { "content-type": "text/html; charset=utf-8" },
-      });
+      return withSecurityHeaders(
+        request,
+        env,
+        new Response(renderErrorPage(), {
+          status: 500,
+          headers: { "content-type": "text/html; charset=utf-8" },
+        }),
+      );
     }
   },
 };

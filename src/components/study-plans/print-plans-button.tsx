@@ -16,6 +16,7 @@ import {
   type PrintableCourse,
 } from "@/lib/study-plans/print";
 import { requestPrint, PRINT_REQUEST_DISPATCHED_AR } from "@/lib/print-center/print-action";
+import { userErrorMessage } from "@/lib/user-error";
 
 export function PrintPlansButton({
   collegeId,
@@ -59,7 +60,7 @@ export function PrintPlansButton({
       }
       setHtml(buildStudyPlansPrint(collegeName, result));
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "تعذر تحميل مقررات الخطط للطباعة.");
+      toast.error(userErrorMessage(error, "تعذر تحميل مقررات الخطط للطباعة."));
     } finally {
       setBusy(false);
     }

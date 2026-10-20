@@ -1,4 +1,5 @@
 import type { LeadershipCollege } from "./leadership";
+import { formatNumber } from "@/lib/format";
 
 export const ACADEMIC_STAFFING_TITLE = "الاحتياج الأكاديمي والدرجات الوظيفية";
 export const ACADEMIC_STAFFING_STATUS = "جاري التطوير";
@@ -87,7 +88,7 @@ const knownCount = (value: unknown): number | null =>
   typeof value === "number" && Number.isFinite(value) && Number.isInteger(value) && value >= 0
     ? value
     : null;
-const format = (value: number) => value.toLocaleString("ar");
+const format = (value: number) => formatNumber(value);
 const unavailable = (detail: string): StaffingObservation => ({ state: "unavailable", detail });
 const normalizeRank = (value: string) =>
   value

@@ -8,12 +8,13 @@ import { attendanceSearchMessage } from "@/lib/auto-scheduler/attendance-search"
 import { previewCompaction } from "@/lib/auto-scheduler/compact-worker-client";
 import { validateJointPlan } from "@/lib/auto-scheduler/joint-model";
 import { supabase } from "@/integrations/supabase/client";
+import { chunkIds, readAllRows } from "@/lib/supabase/read-all";
 import { scoreScheduleVersion } from "@/lib/conflict-engine/scorer";
 import {
   createScheduleSessionFromAssignmentV2,
   listScheduleBuilderV2WorkItems,
 } from "@/lib/schedule-builder/v2-assignment-service";
-import type { AutoRunMode, AutoRunResult, UnplacedItem } from "@/lib/auto-scheduler/greedy";
+import type { AutoRunMode, AutoRunResult, UnplacedItem } from "@/lib/auto-scheduler/types";
 import { loadCompactSnapshot } from "@/lib/auto-scheduler/compact-service";
 import { measure, compactSlots, minutes, type Session } from "@/lib/auto-scheduler/compact";
 import {
@@ -72,6 +73,44 @@ import { cohortComponentInstructorViolationMessageAr } from "@/lib/scheduling/co
 
 const ALGORITHM_VERSION = "v2-atomic-generation-repair-2-single-component-instructor";
 
+/**
+ * H-10: paginated read in `{ data, error }` shape. A version or college can
+ * exceed PostgREST's 1000-row response cap; generation must never plan
+ * against a truncated session or cohort list.
+ */
+async function pagedRead<T>(
+  page: (
+    from: number,
+    to: number,
+  ) => PromiseLike<{ data: T[] | readonly unknown[] | null; error: unknown }>,
+): Promise<{ data: T[] | null; error: { message: string } | null }> {
+  try {
+    return { data: await readAllRows<T>(page), error: null };
+  } catch (error) {
+    const message =
+      error && typeof error === "object" && "message" in error
+        ? String((error as { message: unknown }).message)
+        : String(error);
+    return { data: null, error: { message } };
+  }
+}
+
+/** `.in("id", ids)` reads chunked so long id lists never overflow the request URL. */
+async function readByIdChunks<T>(
+  ids: string[],
+  page: (chunk: string[]) => PromiseLike<{ data: T[] | null; error: unknown }>,
+): Promise<{ data: T[] | null; error: { message: string } | null }> {
+  const out: T[] = [];
+  for (const chunk of chunkIds(ids)) {
+    const result = await page(chunk);
+    if (result.error) {
+      const e = result.error as { message?: unknown };
+      return { data: null, error: { message: String(e?.message ?? e) } };
+    }
+    out.push(...(result.data ?? []));
+  }
+  return { data: out, error: null };
+}
 /** Fail-closed Arabic note when the partition mapping cannot be used. */
 export const PARTITION_FALLBACK_WARNING_AR =
   "لا يمكن قراءة خرائط شُعب الطلاب — تم الاحتفاظ بمنع التعارض على مستوى الدفعة بالكامل.";
@@ -230,12 +269,26 @@ export async function runV2AutoSchedule(params: {
       .select("study_system, day_of_week, start_time, end_time")
       .eq("college_id", params.collegeId)
       .eq("is_active", true),
-    supabase
-      .from("schedule_sessions")
-      .select(
-        "id, day_of_week, start_time, end_time, room_id, instructor_id, cohort_id, delivery_group_id, teaching_assignment_id",
-      )
-      .eq("schedule_version_id", params.scheduleVersionId),
+    pagedRead<{
+      id: string;
+      day_of_week: number;
+      start_time: string;
+      end_time: string;
+      room_id: string;
+      instructor_id: string;
+      cohort_id: string | null;
+      delivery_group_id: string | null;
+      teaching_assignment_id: string | null;
+    }>((from, to) =>
+      supabase
+        .from("schedule_sessions")
+        .select(
+          "id, day_of_week, start_time, end_time, room_id, instructor_id, cohort_id, delivery_group_id, teaching_assignment_id",
+        )
+        .eq("schedule_version_id", params.scheduleVersionId)
+        .order("id")
+        .range(from, to),
+    ),
     supabase.from("room_types").select("id, code").eq("college_id", params.collegeId),
     supabase
       .from("room_availability")
@@ -328,12 +381,18 @@ export async function runV2AutoSchedule(params: {
         .filter((id): id is string => !!id),
     ),
   );
-  const { data: components, error: componentsError } = componentIds.length
-    ? await supabase
-        .from("plan_course_components")
-        .select("id, plan_course_id, component_type, weekly_contact_hours, required_room_type_id")
-        .in("id", componentIds)
-    : { data: [], error: null };
+  const { data: components, error: componentsError } = await readByIdChunks<{
+    id: string;
+    plan_course_id: string;
+    component_type: string;
+    weekly_contact_hours: number | null;
+    required_room_type_id: string | null;
+  }>(componentIds, (chunk) =>
+    supabase
+      .from("plan_course_components")
+      .select("id, plan_course_id, component_type, weekly_contact_hours, required_room_type_id")
+      .in("id", chunk),
+  );
   if (componentsError) {
     throw new Error(`V2_AUTO_QUERY_FAILED[plan_course_components]: ${componentsError.message}`);
   }
@@ -341,23 +400,40 @@ export async function runV2AutoSchedule(params: {
   const planCourseIds = Array.from(
     new Set((components ?? []).map((c) => c.plan_course_id).filter(Boolean)),
   );
-  const { data: planCourses, error: planCoursesError } = planCourseIds.length
-    ? await supabase
+  const { data: planCourses, error: planCoursesError } = await readByIdChunks<
+    PlanCourseCadence & { id: string }
+  >(
+    planCourseIds as string[],
+    (chunk) =>
+      supabase
         .from("plan_courses")
         .select(
           "id, lectures_per_week, lecture_session_duration, labs_per_week, lab_session_duration, required_room_type_for_lecture, required_room_type_for_lab",
         )
-        .in("id", planCourseIds)
-    : { data: [], error: null };
+        .in("id", chunk) as unknown as PromiseLike<{
+        data: (PlanCourseCadence & { id: string })[] | null;
+        error: unknown;
+      }>,
+  );
   if (planCoursesError) {
     throw new Error(`V2_AUTO_QUERY_FAILED[plan_courses]: ${planCoursesError.message}`);
   }
   const planCourseById = new Map((planCourses ?? []).map((p) => [p.id, p as PlanCourseCadence]));
 
-  const { data: attendanceCohorts, error: attendanceError } = await supabase
-    .from("academic_cohorts")
-    .select("id,program_id,level_id,study_system,term_id")
-    .eq("college_id", params.collegeId);
+  const { data: attendanceCohorts, error: attendanceError } = await pagedRead<{
+    id: string;
+    program_id: string | null;
+    level_id: string | null;
+    study_system: string | null;
+    term_id: string | null;
+  }>((from, to) =>
+    supabase
+      .from("academic_cohorts")
+      .select("id,program_id,level_id,study_system,term_id")
+      .eq("college_id", params.collegeId)
+      .order("id")
+      .range(from, to),
+  );
   if (attendanceError || !attendanceCohorts?.length) {
     throw new Error("تعذر قراءة مستويات الدفعات للتحقق من حد خمسة أيام.");
   }
@@ -754,6 +830,14 @@ export async function runV2AutoSchedule(params: {
       id: string;
     }
   >();
+  // M-14: difficulty ranking stays on the main thread (it shares the planning
+  // snapshot with the save path), but work is chunked by a frame budget instead
+  // of yielding after every item; feasibility checks themselves are now O(1)
+  // lookups (indexed snapshot + memoized context), see compact.ts.
+  const RANKING_FRAME_BUDGET_MS = 12;
+  let rankingFrameStart = performance.now();
+  const rankingScope = { ...planningSnapshot, sessions: planningSessions };
+  const roomsByCapacity = [...(rooms ?? [])];
   for (const item of jointSaved ? [] : workItems) {
     if (params.signal?.aborted) break;
     const component = componentById.get(item.plan_course_component_id || item.component_id);
@@ -766,7 +850,7 @@ export async function runV2AutoSchedule(params: {
       planCourse: component ? planCourseById.get(component.plan_course_id) : null,
     });
     const durationMinutes = Math.max(0, ...cadence.durations) * 60;
-    const roomIds = (rooms ?? [])
+    const roomIds = roomsByCapacity
       .filter((room) => room.capacity >= item.expected_students)
       .map((room) => room.id);
     const candidateCount =
@@ -775,10 +859,7 @@ export async function runV2AutoSchedule(params: {
             snapshot: planningSnapshot,
             sessions: planningSessions,
             session: seedFor(item, durationMinutes),
-            slots: compactSlots(
-              { ...planningSnapshot, sessions: planningSessions },
-              seedFor(item, durationMinutes),
-            ),
+            slots: compactSlots(rankingScope, seedFor(item, durationMinutes)),
             roomIds,
           })
         : 0;
@@ -788,14 +869,20 @@ export async function runV2AutoSchedule(params: {
       expectedStudents: item.expected_students,
       id: item.teaching_assignment_id,
     });
-    params.onProgress?.({
-      processedItems: 0,
-      totalItems: workItems.length,
-      placed: 0,
-      unplaced: 0,
-      label: `فحص خيارات الجدولة: ${difficulties.size} / ${workItems.length}`,
-    });
-    await new Promise<void>((resolve) => setTimeout(resolve, 0));
+    if (
+      performance.now() - rankingFrameStart >= RANKING_FRAME_BUDGET_MS ||
+      difficulties.size === workItems.length
+    ) {
+      params.onProgress?.({
+        processedItems: 0,
+        totalItems: workItems.length,
+        placed: 0,
+        unplaced: 0,
+        label: `فحص خيارات الجدولة: ${difficulties.size} / ${workItems.length}`,
+      });
+      await new Promise<void>((resolve) => setTimeout(resolve, 0));
+      rankingFrameStart = performance.now();
+    }
   }
   workItems.sort((a, b) =>
     compareDifficulty(

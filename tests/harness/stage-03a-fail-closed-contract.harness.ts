@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -18,12 +18,16 @@ for (const relation of [
   "room_types",
 ]) {
   assert.ok(
-    readiness.includes(`["${relation}",`),
+    // H-10: each relation is read through readAllOrThrow(P, "<relation>", …) (paginated).
+    readiness.includes(`["${relation}",`) ||
+      new RegExp(`\\(\\s*P,\\s*"${relation}",`).test(readiness),
     `${relation} must be included in the fail-closed query result set`,
   );
 }
 assert.ok(
-  readiness.includes("READINESS_QUERY_FAILED[${relation}]"),
+  readiness.includes("READINESS_QUERY_FAILED[${relation}]") ||
+    (readiness.includes('const P = "READINESS_QUERY_FAILED"') &&
+      readiness.includes("throw new Error(`${prefix}[${relation}]: ${message}`)")),
   "base query failures preserve the failing relation and throw",
 );
 assert.ok(
@@ -83,23 +87,17 @@ assert.equal(v2Scheduler.includes('.from("sections")'), false, "no Legacy sectio
 assert.equal(v2Scheduler.includes("section_id"), false, "no Legacy section identity");
 assert.equal(v2Scheduler.includes('.from("course_offerings")'), false, "no Legacy offering query");
 
-const scheduler = read("src/lib/auto-scheduler/greedy.ts");
-for (const marker of [
-  "AUTO_SCHEDULE_QUERY_FAILED[scheduling_settings]",
-  "AUTO_SCHEDULE_QUERY_FAILED[time_slot_templates]",
-  "AUTO_SCHEDULE_QUERY_FAILED[teaching_assignments]",
-  "AUTO_SCHEDULE_QUERY_FAILED[rooms]",
-  "AUTO_SCHEDULE_QUERY_FAILED[instructor_availability]",
-  "AUTO_SCHEDULE_DELETE_FAILED",
-  "AUTO_SCHEDULE_INSERT_FAILED",
-]) {
-  assert.ok(scheduler.includes(marker), `scheduler fail-closed marker: ${marker}`);
-}
+// L-12: the legacy greedy placer (src/lib/auto-scheduler/greedy.ts) was never called and
+// carried an unguarded full_rebuild delete path; it has been removed. Only its result types
+// remain, in a runtime-free module. The live scheduler is v2.ts (asserted above).
 assert.equal(
-  scheduler.includes("if (error || !data) return null"),
+  existsSync(path.join(root, "src/lib/auto-scheduler/greedy.ts")),
   false,
-  "scheduler insert failure cannot become an ordinary unplaced candidate",
+  "legacy greedy scheduler (unguarded full_rebuild delete path) stays removed",
 );
+const runTypes = read("src/lib/auto-scheduler/types.ts");
+assert.ok(runTypes.includes("export type AutoRunMode"), "auto-run types are shared from types.ts");
+assert.equal(runTypes.includes("supabase"), false, "types.ts has no runtime data access");
 
 const lifecycleMigration = read(
   "supabase/migrations/20260718120000_source_only_atomic_schedule_version_lifecycle.sql",

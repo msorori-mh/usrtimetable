@@ -84,7 +84,6 @@ export interface RoomsReportSummaryRow {
 }
 
 export const ROOMS_REPORT_SUMMARY_HEADERS: { key: keyof RoomsReportSummaryRow; label: string }[] = [
-  { key: "room_code", label: "الرمز" },
   { key: "room_name", label: "القاعة" },
   { key: "room_type", label: "النوع" },
   { key: "capacity", label: "السعة" },

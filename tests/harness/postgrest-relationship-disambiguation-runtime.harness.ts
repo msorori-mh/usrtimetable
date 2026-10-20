@@ -40,12 +40,14 @@ function cohortSelectionFixture() {
 
 function run() {
   const cohortsPage = read("src/routes/_authenticated/academic-cohorts.tsx");
+  // L-14: the cohort directory reads moved into a hook; check the page and the hook together.
+  const cohortsData = cohortsPage + read("src/hooks/use-cohort-directory-data.ts");
   assert(
-    !cohortsPage.includes("academic_programs(name)"),
+    !cohortsData.includes("academic_programs(name)"),
     "cohort list path does not use ambiguous academic_programs embed",
   );
   assert(
-    cohortsPage.includes('from("academic_programs")'),
+    /from\(\s*"academic_programs"\s*\)/.test(cohortsData),
     "cohort list resolves program labels via separate flat query",
   );
   assert(
@@ -70,7 +72,7 @@ function run() {
 
   const readinessLib = read("src/lib/reports/readiness.ts");
   assert(
-    readinessLib.includes('from("academic_cohorts").select("id, active, term_id")'),
+    /from\("academic_cohorts"\)\s*\.select\("id, active, term_id"\)/.test(readinessLib),
     "readiness new-flow cohort signal uses flat select (no ambiguous embeds)",
   );
   assert(

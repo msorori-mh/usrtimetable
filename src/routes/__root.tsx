@@ -11,8 +11,9 @@ import { useEffect, type ReactNode } from "react";
 import appCss from "../styles.css?url";
 /* Side-effect import ensures theme CSS loads on client navigation (Phase 1.6B-VERIFY). */
 import "../styles.css";
-import { reportLovableError } from "../lib/lovable-error-reporting";
+import { reportAppError } from "../lib/error-reporting";
 import { Toaster } from "@/components/ui/sonner";
+import { ConfirmHost } from "@/components/confirm-dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { createAuthRefreshCoordinator } from "@/lib/auth/refresh-on-auth-change";
 
@@ -40,7 +41,7 @@ function ErrorComponent({ error, reset }: { error: unknown; reset: () => void })
   console.error(error);
   const router = useRouter();
   useEffect(() => {
-    reportLovableError(error, { boundary: "tanstack_root_error_component" });
+    reportAppError(error, { boundary: "tanstack_root_error_component" });
   }, [error]);
 
   return (
@@ -145,6 +146,7 @@ function RootComponent() {
       <AuthListener />
       <Outlet />
       <Toaster richColors position="top-center" dir="rtl" />
+      <ConfirmHost />
     </QueryClientProvider>
   );
 }

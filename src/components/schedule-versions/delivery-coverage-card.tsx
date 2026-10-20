@@ -71,15 +71,29 @@ export function DeliveryCoverageCard({
   scheduleVersionId,
   coverage,
   isLoading,
+  error,
   studySystem = "all",
 }: {
   collegeId: string;
   scheduleVersionId: string;
   coverage: DeliveryCoverage | undefined;
   isLoading?: boolean;
+  /** M-21: pass the coverage query's error so a failed read is not shown as "nothing". */
+  error?: unknown;
   studySystem?: string;
 }) {
   const [gapsOpen, setGapsOpen] = useState(false);
+
+  if (error && !coverage) {
+    return (
+      <div
+        role="alert"
+        className="rounded-md border border-destructive/40 bg-destructive/5 p-2 text-[11px] text-destructive"
+      >
+        تعذّر حساب اكتمال نسخة الجدول؛ لا تعتمد النسخة قبل إعادة المحاولة.
+      </div>
+    );
+  }
 
   if (isLoading && !coverage) {
     return (
@@ -164,7 +178,7 @@ export function DeliveryCoverageCard({
         onClick={() => setGapsOpen(true)}
         data-testid="delivery-coverage-gaps-trigger"
       >
-        <ListChecks className="h-4 w-4 ml-1" /> عرض النواقص
+        <ListChecks className="h-4 w-4 me-1" /> عرض النواقص
       </Button>
 
       {gapsOpen && (

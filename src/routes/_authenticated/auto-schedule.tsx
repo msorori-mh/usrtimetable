@@ -29,7 +29,8 @@ import {
 } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
 import { logAudit } from "@/lib/audit";
-import type { AutoRunMode } from "@/lib/auto-scheduler/greedy";
+import type { AutoRunMode } from "@/lib/auto-scheduler/types";
+import { invalidateSessionReadModels } from "@/lib/schedule-versions/session-writes";
 import { runV2AutoSchedule, type AutoScheduleProgress } from "@/lib/auto-scheduler/v2";
 import { fetchCollegeReadiness } from "@/lib/reports/readiness";
 import {
@@ -46,6 +47,7 @@ import {
   autoRunOutcomeMessage,
   fetchDeliveryCoverage,
 } from "@/lib/schedule-versions/delivery-coverage";
+import { formatDateTime } from "@/lib/format";
 
 export const Route = createFileRoute("/_authenticated/auto-schedule")({
   head: () => ({ meta: [{ title: "الجدولة التلقائية" }] }),
@@ -222,6 +224,9 @@ function AutoSchedulePage() {
       qc.invalidateQueries({
         queryKey: ["sv-delivery-coverage", active?.id, versionId],
       });
+      // L-10: generation changes sessions — refresh every session read model (legacy editor,
+      // Schedule Builder, eligibility, reports), not only the run list.
+      void invalidateSessionReadModels(qc);
     },
     onError: (e) => {
       setOutcome(null);
@@ -297,11 +302,13 @@ function AutoSchedulePage() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {Object.entries(AUTO_SCOPE_LABELS).filter(([value]) => supportsParallel || value === "all").map(([value, label]) => (
-                      <SelectItem key={value} value={value}>
-                        {supportsParallel ? label : "النظام العام فقط"}
-                      </SelectItem>
-                    ))}
+                    {Object.entries(AUTO_SCOPE_LABELS)
+                      .filter(([value]) => supportsParallel || value === "all")
+                      .map(([value, label]) => (
+                        <SelectItem key={value} value={value}>
+                          {supportsParallel ? label : "النظام العام فقط"}
+                        </SelectItem>
+                      ))}
                   </SelectContent>
                 </Select>
               </div>
@@ -343,7 +350,7 @@ function AutoSchedulePage() {
                   else setConfirmOpen(true);
                 }}
               >
-                <Sparkles className="h-4 w-4 ml-1" />
+                <Sparkles className="h-4 w-4 me-1" />
                 {run.isPending ? "جارٍ التشغيل..." : "تشغيل الجدولة التلقائية"}
               </Button>
               {run.isPending ? (
@@ -377,10 +384,15 @@ function AutoSchedulePage() {
                 studySystem={studySystem}
                 coverage={coverage.data}
                 isLoading={coverage.isLoading}
+                error={coverage.error}
               />
             ) : null}
             {runError ? (
-              <div role="alert" data-testid="auto-run-error" className="rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive">
+              <div
+                role="alert"
+                data-testid="auto-run-error"
+                className="rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive"
+              >
                 تعذر إكمال الجدولة: {runError}
               </div>
             ) : null}
@@ -572,8 +584,8 @@ function AutoSchedulePage() {
                             : "إعادة بناء"}
                       </Badge>
                     )}
-                    <span className="text-xs text-muted-foreground mr-auto">
-                      {new Date(latest.created_at).toLocaleString("ar")}
+                    <span className="text-xs text-muted-foreground ms-auto">
+                      {formatDateTime(latest.created_at)}
                     </span>
                   </div>
 
@@ -708,7 +720,7 @@ function AutoSchedulePage() {
               <div className="space-y-1 text-xs">
                 {runs.slice(1).map((r) => (
                   <div key={r.id} className="flex justify-between border-b py-1">
-                    <span>{new Date(r.created_at).toLocaleString("ar")}</span>
+                    <span>{formatDateTime(r.created_at)}</span>
                     <span>
                       وُضع {r.placed_sessions} / غير مجدول {r.unplaced_sessions} / جودة{" "}
                       {r.quality_score_after ?? "—"}

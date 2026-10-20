@@ -5,6 +5,8 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import type { Tables } from "@/integrations/supabase/types";
+import { readAllRows } from "@/lib/supabase/read-all";
 import { useAccessibleColleges, useActiveCollege } from "@/hooks/use-colleges";
 import { useCurrentUser } from "@/hooks/use-current-user";
 import { ReportShell } from "@/components/reports/report-shell";
@@ -211,14 +213,42 @@ function Report() {
     queryKey: ["report-instructor-directory", active?.id],
     enabled: !!active,
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("instructors")
-        .select(
-          "id, college_id, full_name, full_name_ar, employee_number, affiliation_college_id, affiliation_department_id, specialization, academic_rank, instructor_type_id, max_weekly_hours, administrative_release_hours, administrative_position, administrative_department_id, administrative_support_department_id, employment_type, availability_status, email, phone, is_active",
-        )
-        .eq("college_id", active!.id)
-        .order("full_name");
-      if (error) throw error;
+      // H-10: page through the college's instructor records.
+      const data = await readAllRows<
+        Pick<
+          Tables<"instructors">,
+          | "id"
+          | "college_id"
+          | "full_name"
+          | "full_name_ar"
+          | "employee_number"
+          | "affiliation_college_id"
+          | "affiliation_department_id"
+          | "specialization"
+          | "academic_rank"
+          | "instructor_type_id"
+          | "max_weekly_hours"
+          | "administrative_release_hours"
+          | "administrative_position"
+          | "administrative_department_id"
+          | "administrative_support_department_id"
+          | "employment_type"
+          | "availability_status"
+          | "email"
+          | "phone"
+          | "is_active"
+        >
+      >((from, to) =>
+        supabase
+          .from("instructors")
+          .select(
+            "id, college_id, full_name, full_name_ar, employee_number, affiliation_college_id, affiliation_department_id, specialization, academic_rank, instructor_type_id, max_weekly_hours, administrative_release_hours, administrative_position, administrative_department_id, administrative_support_department_id, employment_type, availability_status, email, phone, is_active",
+          )
+          .eq("college_id", active!.id)
+          .order("full_name")
+          .order("id")
+          .range(from, to),
+      );
       const { data: homes, error: homeError } = await facultyWorkflow.rpc(
         "get_faculty_home_profiles",
         { p_college_id: active!.id },
@@ -238,7 +268,7 @@ function Report() {
         .map((h): InstructorRow => {
           const local =
             nativeByNumber.get(h.university_number) ??
-            (data ?? []).find((i) => h.members.some((m) => m.id === i.id));
+            data.find((i) => h.members.some((m) => m.id === i.id));
           return {
             id: h.identity_id,
             full_name: h.name,

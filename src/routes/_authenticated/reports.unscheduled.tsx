@@ -19,6 +19,7 @@ import { filterRowsBySearch } from "@/lib/reports/search";
 import { readAllReportRows } from "@/lib/reports/read-all";
 import { fetchLatestUnplacedReasons } from "@/lib/reports/queries/operational-queries";
 import { importedTimetableRows } from "@/lib/reports/imported-timetable";
+import { formatDateTime } from "@/lib/format";
 
 export const Route = createFileRoute("/_authenticated/reports/unscheduled")({
   head: () => ({ meta: [{ title: "المحاضرات غير المجدولة" }] }),
@@ -348,7 +349,7 @@ function Page() {
         title="نواقص التغطية"
         hint={
           query.data?.lastRunAt
-            ? `آخر أسباب الجدولة من تشغيل: ${new Date(query.data.lastRunAt).toLocaleString("ar")}`
+            ? `آخر أسباب الجدولة من تشغيل: ${formatDateTime(query.data.lastRunAt)}`
             : "لا يوجد تشغيل تلقائي محفوظ لهذه النسخة؛ يعرض التقرير حالة التغطية الحالية."
         }
       >

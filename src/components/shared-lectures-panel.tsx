@@ -8,6 +8,10 @@ import {
   fetchSharedLectures,
 } from "@/lib/academic-delivery/shared-lectures";
 import { toast } from "sonner";
+import { confirmAction } from "@/components/confirm-dialog";
+import { QueryErrorNotice } from "@/components/app-states/query-error-notice";
+import { userErrorMessage } from "@/lib/user-error";
+import { formatDecimal, formatNumber } from "@/lib/format";
 
 export function SharedLecturesPanel({ collegeId }: { collegeId: string }) {
   const manage = useCanManageActiveCollege();
@@ -35,7 +39,10 @@ export function SharedLecturesPanel({ collegeId }: { collegeId: string }) {
       qc.invalidateQueries();
       toast.success("تم تحديث المحاضرة المشتركة");
     },
-    onError: () => toast.error("تعذر تغيير الدمج. راجع السعة والإسنادات الحالية، ثم حدّث الصفحة."),
+    onError: (error: unknown) =>
+      toast.error(
+        userErrorMessage(error, "تعذر تغيير الدمج. راجع السعة والإسنادات الحالية، ثم حدّث الصفحة."),
+      ),
   });
   return (
     <Card className="mb-4 p-4">
@@ -45,7 +52,15 @@ export function SharedLecturesPanel({ collegeId }: { collegeId: string }) {
         مستقلة.
       </p>
       {links.isError || candidates.isError ? (
-        <p role="alert">تعذر تحميل بيانات المحاضرات المشتركة.</p>
+        <QueryErrorNotice
+          className="mb-3"
+          title="تعذر تحميل بيانات المحاضرات المشتركة."
+          error={links.error ?? candidates.error}
+          onRetry={() => {
+            void links.refetch();
+            if (manage) void candidates.refetch();
+          }}
+        />
       ) : null}
       {(links.data ?? []).map((l) => (
         <div
@@ -53,20 +68,29 @@ export function SharedLecturesPanel({ collegeId }: { collegeId: string }) {
           className="flex items-center justify-between gap-2 border-t py-2 text-sm"
         >
           <span>
-            {l.course_name} — مشترك — {l.total_students} طالبًا
+            {l.course_name} — مشترك — {formatNumber(l.total_students)} طالبًا
           </span>
           {manage ? (
             <Button
               size="sm"
               variant="outline"
               disabled={action.isPending}
-              onClick={() =>
-                action.mutate({
-                  anchor: l.anchor_group_id,
-                  member: l.member_group_id,
-                  remove: true,
-                })
-              }
+              aria-label={`فك دمج ${l.course_name}`}
+              onClick={async () => {
+                const ok = await confirmAction({
+                  title: `فك دمج المحاضرة المشتركة «${l.course_name}»؟`,
+                  description:
+                    "تعود المحاضرة النظرية مجموعتين مستقلتين وتحتاج كل منهما إسنادًا وجدولة.",
+                  confirmLabel: "فك الدمج",
+                  destructive: true,
+                });
+                if (ok)
+                  action.mutate({
+                    anchor: l.anchor_group_id,
+                    member: l.member_group_id,
+                    remove: true,
+                  });
+              }}
             >
               فك الدمج
             </Button>
@@ -81,7 +105,8 @@ export function SharedLecturesPanel({ collegeId }: { collegeId: string }) {
             >
               <div>
                 <p>
-                  {c.course_name} — {c.total_students} طالبًا — {c.weekly_hours} ساعات
+                  {c.course_name} — {formatNumber(c.total_students)} طالبًا —{" "}
+                  {formatDecimal(c.weekly_hours)} ساعات
                 </p>
                 <p className="text-xs text-muted-foreground">
                   {c.anchor_cohort_code} + {c.member_cohort_code}
@@ -90,9 +115,15 @@ export function SharedLecturesPanel({ collegeId }: { collegeId: string }) {
               <Button
                 size="sm"
                 disabled={action.isPending}
-                onClick={() =>
-                  action.mutate({ anchor: c.anchor_group_id, member: c.member_group_id })
-                }
+                aria-label={`دمج نظري ${c.course_name} (${c.anchor_cohort_code} + ${c.member_cohort_code})`}
+                onClick={async () => {
+                  const ok = await confirmAction({
+                    title: `دمج نظري «${c.course_name}» للدفعتين ${c.anchor_cohort_code} و${c.member_cohort_code}؟`,
+                    description: "تصبح المحاضرة النظرية واحدة بإسناد واحد وسعة الدفعتين معًا.",
+                    confirmLabel: "دمج",
+                  });
+                  if (ok) action.mutate({ anchor: c.anchor_group_id, member: c.member_group_id });
+                }}
               >
                 دمج النظري
               </Button>

@@ -114,7 +114,15 @@ function run() {
   const detailsSheet = readSrc("src/components/schedule-builder/session-details-sheet.tsx");
   const editDlg = readSrc("src/components/schedule-builder/enrollment-edit-dialog.tsx");
   const splitDlg = readSrc("src/components/schedule-builder/split-proposal-dialog.tsx");
-  const page = readSrc("src/routes/_authenticated/schedule-builder.tsx");
+  // L-14: the builder page was split into the route + hooks/use-schedule-builder-workspace.ts + builder components.
+  const page = [
+    "src/routes/_authenticated/schedule-builder.tsx",
+    "src/hooks/use-schedule-builder-workspace.ts",
+    "src/components/schedule-builder/builder-context-bar.tsx",
+    "src/components/schedule-builder/builder-ui.tsx",
+  ]
+    .map((file) => readSrc(file))
+    .join("\n");
   const subgroupsSrc = readSrc("src/lib/schedule-builder/section-subgroups.ts");
 
   // 1. confirmed displays as confirmed

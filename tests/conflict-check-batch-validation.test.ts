@@ -1,6 +1,7 @@
 /**
- * Conflict-check page hang fix: validateScheduleVersion must load shared data
- * once and validate the whole version in a single batch pass.
+ * Conflict-check page: validateScheduleVersion validates the whole version with ONE
+ * server call (public.validate_schedule_version, the same computation as the publish
+ * gate — Q-2 / M-12) instead of a browser batch pass, then persists the results.
  *
  * Scope: pure in-memory mocks. No database writes, no schedule data changes,
  * no published version is touched.
@@ -39,9 +40,11 @@ const sessions = Array.from({ length: SESSION_COUNT }, (_, i) => ({
 /** Count of table reads per table, to prove data is loaded once per run. */
 let reads: Record<string, number> = {};
 let insertedResults: unknown[] = [];
-let enforceInstructorAvailability = false;
-let instructorAvailabilityRows: unknown[] = [];
-let schedulingPolicyError: { message: string } | null = null;
+const enforceInstructorAvailability = false;
+const instructorAvailabilityRows: unknown[] = [];
+const schedulingPolicyError: { message: string } | null = null;
+let serverConflicts: unknown[] = [];
+let serverError: { message: string } | null = null;
 
 function rowsFor(table: string): unknown[] {
   switch (table) {
@@ -120,6 +123,25 @@ mock.module("../src/integrations/supabase/client.ts", () => ({
     from: (table: string) => builder(table),
     rpc: async (name: string) => {
       reads[`rpc:${name}`] = (reads[`rpc:${name}`] ?? 0) + 1;
+      if (name === "validate_schedule_version") {
+        if (serverError) return { data: null, error: serverError };
+        const hard = serverConflicts.filter(
+          (c) => (c as { severity?: string }).severity !== "soft",
+        ).length;
+        return {
+          data: {
+            version_id: DRAFT,
+            session_count: SESSION_COUNT,
+            hard_count: hard,
+            approved_count: 0,
+            waived_count: 0,
+            total_hard_count: hard,
+            soft_count: 0,
+            conflicts: serverConflicts,
+          },
+          error: null,
+        };
+      }
       if (name === "get_cohort_component_instructor_readiness") {
         return {
           data: { ok: true, violation_count: 0, violations: [] },
@@ -152,9 +174,10 @@ mock.module("../src/lib/academic-delivery/student-memberships.ts", () => ({
 const { validateScheduleVersion, dedupeConflicts } =
   await import("../src/lib/conflict-engine/validator");
 
-describe("validateScheduleVersion batch pass", () => {
-  it("validates 275 sessions in one shared-data pass without hanging", async () => {
+describe("validateScheduleVersion server pass", () => {
+  it("validates the whole version with one server call and no browser rule pass", async () => {
     reads = {};
+    serverConflicts = [];
     const started = Date.now();
     const { checkId, result } = await validateScheduleVersion({
       collegeId: COLLEGE,
@@ -173,45 +196,28 @@ describe("validateScheduleVersion batch pass", () => {
     assert.equal(result.totalHardConflicts, 0, "zero hard conflicts");
     assert.equal(result.unapprovedHardConflicts, 0);
     assert.equal(result.conflicts.length, 0);
-
-    // The hang cause: one read set per session. Each shared table must be read
-    // at most once for the whole version.
+    assert.equal(reads["rpc:validate_schedule_version"], 1, "one server validation");
     for (const table of [
+      "schedule_sessions",
       "rooms",
-      "room_availability",
       "instructor_availability",
       "course_offerings",
-      "time_slot_templates",
-      "instructors",
-      "scheduling_settings",
-      "schedule_version_conflict_exceptions",
     ]) {
-      assert.ok(
-        (reads[table] ?? 0) <= 1,
-        `${table} must be read at most once, got ${reads[table]}`,
-      );
+      assert.equal(reads[table] ?? 0, 0, `${table} must not be re-validated in the browser`);
     }
-    assert.equal(reads["rpc:existing_schedule_intake_version"], 1);
-    assert.equal(reads["rpc:get_cohort_component_instructor_readiness"], 1);
-    assert.equal(reads["memberships"], 1);
     assert.ok(elapsed < 10_000, `must finish quickly, took ${elapsed}ms`);
   });
 
-  it("uses the per-college availability switch in the client conflict validator", async () => {
+  it("returns the server's conflicts (including rules the browser never checked)", async () => {
     reads = {};
-    enforceInstructorAvailability = true;
-    instructorAvailabilityRows = [
+    serverConflicts = [
       {
-        instructor_id: sessions[0].instructor_id,
-        day_of_week: sessions[0].day_of_week,
-        start_time: sessions[0].start_time,
-        end_time: sessions[0].end_time,
-        availability_type: "unavailable",
-        is_preference: false,
-        college_id: COLLEGE,
+        code: "itcs_theory_after_14",
+        severity: "hard",
+        schedule_session_id: sessions[0].id,
+        approved_exception: false,
       },
     ];
-
     try {
       const { result } = await validateScheduleVersion({
         collegeId: COLLEGE,
@@ -220,18 +226,16 @@ describe("validateScheduleVersion batch pass", () => {
       });
       assert.equal(result.totalHardConflicts, 1);
       assert.equal(result.unapprovedHardConflicts, 1);
-      assert.equal(result.conflicts[0]?.code, "instructor_availability");
+      assert.equal(result.conflicts[0]?.code, "itcs_theory_after_14");
       assert.equal(result.conflicts[0]?.schedule_session_id, sessions[0].id);
-      assert.equal(reads.scheduling_settings, 1, "policy is read once per validation run");
     } finally {
-      enforceInstructorAvailability = false;
-      instructorAvailabilityRows = [];
+      serverConflicts = [];
     }
   });
 
-  it("fails closed when the per-college scheduling policy cannot be read", async () => {
+  it("fails closed when the server validation cannot run", async () => {
     reads = {};
-    schedulingPolicyError = { message: "policy read denied" };
+    serverError = { message: "validation denied" };
     try {
       await assert.rejects(
         validateScheduleVersion({
@@ -239,11 +243,10 @@ describe("validateScheduleVersion batch pass", () => {
           scheduleVersionId: DRAFT,
           persist: false,
         }),
-        /SCHEDULING_POLICY_READ_FAILED: policy read denied/,
+        /validation denied/,
       );
-      assert.equal(reads.scheduling_settings, 1);
     } finally {
-      schedulingPolicyError = null;
+      serverError = null;
     }
   });
 

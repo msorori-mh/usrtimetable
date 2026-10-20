@@ -30,6 +30,8 @@ import {
 import { termTypeLabel } from "@/lib/reports/leadership";
 import { leadershipViewerKey, LEADERSHIP_QUERY_POLICY } from "@/lib/reports/leadership-decisions";
 import "@/components/reports/university-overview.css";
+import { formatDateTime } from "@/lib/format";
+import { userErrorMessage } from "@/lib/user-error";
 
 export const Route = createFileRoute("/_authenticated/reports/university-overview")({
   head: () => ({ meta: [{ title: "التقرير التنفيذي الشامل | جامعة إقليم سبأ" }] }),
@@ -85,9 +87,7 @@ function UniversityOverviewPage({ viewerKey }: { viewerKey: string }) {
     } catch (error) {
       return {
         rows: [],
-        error: new ReportScopeError(
-          error instanceof Error ? error.message : "تعذر التحقق من بيانات التقرير",
-        ),
+        error: new ReportScopeError(userErrorMessage(error, "تعذر التحقق من بيانات التقرير")),
       };
     }
   }, [query.data, mode]);
@@ -338,12 +338,7 @@ function UniversityOverviewPage({ viewerKey }: { viewerKey: string }) {
       >
         {data && (
           <p className="uo-snapshot">
-            {periodLabel} <span>·</span> تحديث{" "}
-            {new Date(data.generated_at).toLocaleString("ar-YE", {
-              timeZone: "Asia/Riyadh",
-              dateStyle: "medium",
-              timeStyle: "short",
-            })}
+            {periodLabel} <span>·</span> تحديث {formatDateTime(data.generated_at)}
             {query.isError && (
               <span className="uo-row-note"> · تعذر التحديث؛ تُعرض آخر قراءة ناجحة</span>
             )}

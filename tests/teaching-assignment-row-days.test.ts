@@ -84,7 +84,14 @@ describe("assignmentRowDaysLabel", () => {
 });
 
 describe("teaching-assignments day column wiring", () => {
-  const src = readFileSync("src/routes/_authenticated/teaching-assignments.tsx", "utf8");
+  const src = [
+    "src/routes/_authenticated/teaching-assignments.tsx",
+    "src/components/teaching-assignments/teaching-assignment-groups-table.tsx",
+    "src/components/teaching-assignments/instructor-search-summary-card.tsx",
+    "src/hooks/use-teaching-assignment-filter-options.ts",
+  ]
+    .map((file) => readFileSync(file, "utf8"))
+    .join("\n");
 
   it("renders the day column next to program and study system", () => {
     expect(src).toContain(">اليوم</th>");
@@ -145,7 +152,14 @@ describe("summarizeInstructorAttendanceDays", () => {
 });
 
 describe("attendance days card wiring", () => {
-  const src = readFileSync("src/routes/_authenticated/teaching-assignments.tsx", "utf8");
+  const src = [
+    "src/routes/_authenticated/teaching-assignments.tsx",
+    "src/components/teaching-assignments/teaching-assignment-groups-table.tsx",
+    "src/components/teaching-assignments/instructor-search-summary-card.tsx",
+    "src/hooks/use-teaching-assignment-filter-options.ts",
+  ]
+    .map((file) => readFileSync(file, "utf8"))
+    .join("\n");
 
   it("renders the attendance days element in the instructor summary card", () => {
     expect(src).toContain('data-testid="ta-v2-instructor-attendance-days"');

@@ -172,16 +172,22 @@ export async function loadCompactSnapshot(collegeId: string, versionId: string):
     if (extra.error || extra.data?.length !== batch.length)
       throw new Error("تعذر تحميل المحاضرين المرتبطين بإسنادات الكلية.");
     raw.instructors.push(...extra.data);
-    const windows = await db
-      .from("instructor_availability")
-      .select("*")
-      .in("instructor_id", batch)
-      .order("id")
-      .range(0, 999);
-    if (windows.error) throw new Error(windows.error.message);
+    // H-10: 200 instructors can own more than 1000 windows — page until exhausted.
+    const windowRows: unknown[] = [];
+    for (let from = 0; ; from += 1000) {
+      const windows = await db
+        .from("instructor_availability")
+        .select("*")
+        .in("instructor_id", batch)
+        .order("id")
+        .range(from, from + 999);
+      if (windows.error) throw new Error(windows.error.message);
+      windowRows.push(...(windows.data ?? []));
+      if ((windows.data ?? []).length < 1000) break;
+    }
     const existingWindows = new Set((raw.availability as Array<{ id: string }>).map((w) => w.id));
     raw.availability.push(
-      ...(windows.data ?? []).filter((w) => !existingWindows.has((w as { id: string }).id)),
+      ...windowRows.filter((w) => !existingWindows.has((w as { id: string }).id)),
     );
     const knownTypes = new Set((raw.types as Array<{ id: string }>).map((t) => t.id));
     const typeIds = [
@@ -240,9 +246,7 @@ interface BatchResult {
 const atomicDb = supabase as unknown as {
   rpc(
     name:
-      | "apply_schedule_compaction"
-      | "apply_schedule_relayout"
-      | "get_schedule_compaction_result",
+      "apply_schedule_compaction" | "apply_schedule_relayout" | "get_schedule_compaction_result",
     args: Record<string, unknown>,
   ): Promise<{
     data: BatchResult | null;

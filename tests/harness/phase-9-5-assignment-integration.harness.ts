@@ -254,7 +254,15 @@ function runStaticContracts() {
   const service = read(paths.service);
   const ui = read(paths.ui);
   const panel = read(paths.panel);
-  const route = read(paths.route);
+  // L-14: the builder page was split into the route + hooks/use-schedule-builder-workspace.ts + builder components.
+  const route = [
+    paths.route,
+    "src/hooks/use-schedule-builder-workspace.ts",
+    "src/components/schedule-builder/builder-context-bar.tsx",
+    "src/components/schedule-builder/builder-ui.tsx",
+  ]
+    .map(read)
+    .join("\n");
   const sql = read(paths.migration);
 
   assert(sql.includes("BEGIN;") && sql.trimEnd().endsWith("COMMIT;"), "migration is transactional");

@@ -41,7 +41,7 @@ function Page() {
   );
 
   const { data: rooms, error: roomsError } = useQuery({
-    queryKey: ["rt-rooms", ctx.collegeId],
+    queryKey: ["reports", "room-timetable", "rooms", ctx.collegeId],
     enabled: !!ctx.collegeId,
     queryFn: async () => {
       const { data, error } = await supabase
@@ -61,7 +61,13 @@ function Page() {
     error: sessionsError,
     refetch,
   } = useQuery({
-    queryKey: ["rt-sess", ctx.collegeId, ctx.versionId, ctx.studySystem, roomId],
+    queryKey: [
+      "reports-room-timetable-sessions",
+      ctx.collegeId,
+      ctx.versionId,
+      ctx.studySystem,
+      roomId,
+    ],
     enabled: !!ctx.collegeId && !!ctx.versionId && !!roomId,
     queryFn: async () => {
       const raw = await fetchRoomTimetableSessions({
