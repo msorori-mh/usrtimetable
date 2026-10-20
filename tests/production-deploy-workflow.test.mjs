@@ -42,6 +42,7 @@ test("the SHA must be on main and have passed every pr-gate job before anything 
     "Build the Cloudflare Worker",
     "Validate and bind the generated config",
     "Deploy the production Worker",
+    "Upload the runtime secrets to the production Worker",
     "Post-deploy smoke check",
   ].map((name) => workflow.indexOf(name));
   for (const [i, pos] of order.entries()) assert.ok(pos >= 0, `step ${i} missing`);
@@ -64,14 +65,20 @@ test("the SHA must be on main and have passed every pr-gate job before anything 
     assert.ok(workflow.includes(`"${name}"`), `pr-gate job "${name}" not checked by production`);
 });
 
-test("deploy uses the pinned actions/wrangler of staging and never touches the database", () => {
-  const staging = readFileSync(".github/workflows/deploy-staging.yml", "utf8");
-  const wranglerPin = staging.match(/cloudflare\/wrangler-action@([0-9a-f]{40})/)[1];
-  assert.ok(workflow.includes(`cloudflare/wrangler-action@${wranglerPin}`));
+test("deploy uses the pinned wrangler of staging and never touches the database", () => {
   assert.match(workflow, /actions\/checkout@[0-9a-f]{40}/);
   assert.match(workflow, /oven-sh\/setup-bun@[0-9a-f]{40}/);
-  assert.match(workflow, /wranglerVersion: "4\.136\.3"/);
-  assert.match(workflow, /command: deploy --config \.output\/server\/wrangler\.json/);
+  // Deploy first, then upload secrets (wrangler-action uploads secrets before the first
+  // deploy, which fails while the Worker does not exist yet).
+  const deployAt = workflow.indexOf(
+    "bunx wrangler@4.136.3 deploy --config .output/server/wrangler.json",
+  );
+  const secretsAt = workflow.indexOf(
+    'bunx wrangler@4.136.3 secret bulk "$RUNNER_TEMP/worker-secrets.json" --config .output/server/wrangler.json',
+  );
+  assert.ok(deployAt > 0, "pinned wrangler deploy missing");
+  assert.ok(secretsAt > deployAt, "secrets must be uploaded after the deploy");
+  assert.match(workflow, /rm -f "\$RUNNER_TEMP\/worker-secrets\.json"/);
   assert.match(workflow, /deploy-preflight\.mjs --production --prepare-build-config/);
   assert.doesNotMatch(workflow, /supabase\s+(?:db\s+)?(?:push|reset|migration|link)/i);
   assert.doesNotMatch(workflow, /\bpsql\b|pg_restore|schema_migrations/i);
@@ -83,16 +90,24 @@ test("build uses production public vars; the Worker gets exactly the four runtim
     workflow,
     /VITE_SUPABASE_PUBLISHABLE_KEY: \$\{\{ secrets\.PROD_SUPABASE_PUBLISHABLE_KEY \}\}/,
   );
-  const secretsBlock = workflow
-    .match(/secrets: \|\n((?:\s{12}\S+\n)+)/)[1]
-    .trim()
-    .split(/\s+/);
-  assert.deepEqual(secretsBlock, [
+  const upload = workflow.slice(
+    workflow.indexOf("- name: Upload the runtime secrets to the production Worker"),
+    workflow.indexOf("- name: Post-deploy smoke check"),
+  );
+  const secretEnv = [...upload.matchAll(/^ {10}([A-Z_]+): \$\{\{ secrets\.PROD_\1 \}\}$/gm)].map(
+    (m) => m[1],
+  );
+  assert.deepEqual(secretEnv, [
     "SUPABASE_URL",
     "SUPABASE_PUBLISHABLE_KEY",
     "SUPABASE_SERVICE_ROLE_KEY",
     "SITE_URL",
   ]);
+  assert.ok(
+    upload.includes(
+      'const k=["SUPABASE_URL","SUPABASE_PUBLISHABLE_KEY","SUPABASE_SERVICE_ROLE_KEY","SITE_URL"]',
+    ),
+  );
   assert.doesNotMatch(workflow, /STAGING_/);
   assert.doesNotMatch(workflow, /VITE_[A-Z_]*SERVICE_ROLE/);
   assert.doesNotMatch(workflow, /\\\$\{\{/);

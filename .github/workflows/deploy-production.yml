@@ -127,26 +127,37 @@ jobs:
           PRODUCTION_REQUIRE_BUILD: "1"
         run: node scripts/staging/deploy-preflight.mjs --production --prepare-build-config
 
+      # wrangler-action uploads secrets BEFORE deploying, which fails on the very first deploy
+      # (the Worker does not exist yet). Deploy first, then upload the runtime secrets; secrets
+      # persist across later deploys. Errors are surfaced as annotations (no secret values).
       - name: Deploy the production Worker
         id: deploy
-        uses: cloudflare/wrangler-action@953926a2e2182532811c01a25e53647d93bf07c0 # v4
-        with:
-          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          packageManager: bun
-          wranglerVersion: "4.136.3"
-          command: deploy --config .output/server/wrangler.json
-          gitHubToken: ${{ secrets.GITHUB_TOKEN }}
-          secrets: |
-            SUPABASE_URL
-            SUPABASE_PUBLISHABLE_KEY
-            SUPABASE_SERVICE_ROLE_KEY
-            SITE_URL
+        shell: bash
+        run: |
+          set -o pipefail
+          if ! bunx wrangler@4.136.3 deploy --config .output/server/wrangler.json 2>&1 | tee wrangler-deploy.log; then
+            echo "::error title=wrangler deploy::$(tail -c 3500 wrangler-deploy.log | tr '\r\n' '  ')"
+            exit 1
+          fi
+
+      - name: Upload the runtime secrets to the production Worker
+        shell: bash
         env:
           SUPABASE_URL: ${{ secrets.PROD_SUPABASE_URL }}
           SUPABASE_PUBLISHABLE_KEY: ${{ secrets.PROD_SUPABASE_PUBLISHABLE_KEY }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.PROD_SUPABASE_SERVICE_ROLE_KEY }}
           SITE_URL: ${{ secrets.PROD_SITE_URL }}
+        run: |
+          set -o pipefail
+          umask 077
+          node -e 'const k=["SUPABASE_URL","SUPABASE_PUBLISHABLE_KEY","SUPABASE_SERVICE_ROLE_KEY","SITE_URL"];const o={};for(const n of k){if(!process.env[n])throw new Error("missing "+n);o[n]=process.env[n]}require("fs").writeFileSync(process.env.RUNNER_TEMP+"/worker-secrets.json",JSON.stringify(o))'
+          rc=0
+          bunx wrangler@4.136.3 secret bulk "$RUNNER_TEMP/worker-secrets.json" --config .output/server/wrangler.json 2>&1 | tee wrangler-secrets.log || rc=$?
+          rm -f "$RUNNER_TEMP/worker-secrets.json"
+          if [ "$rc" -ne 0 ]; then
+            echo "::error title=wrangler secret bulk::$(tail -c 3500 wrangler-secrets.log | tr '\r\n' '  ')"
+            exit 1
+          fi
 
       - name: Post-deploy smoke check (/ and /auth return 200 with security headers)
         env:
