@@ -8,8 +8,9 @@ import {
 } from "../src/lib/password-policy";
 
 describe("M-3 new-password policy", () => {
-  test("rejects short passwords that the previous 8-character rule accepted", () => {
-    for (const value of ["abcdefgh", "Personal12!", "k9#Lm2vQ", "ابجدهوزح"])
+  // Decision 2026-10-20: minimum 8 characters (matches the Supabase Auth setting).
+  test("rejects passwords shorter than 8 characters", () => {
+    for (const value of ["abcdefg", "Pers12!", "k9#Lm2v", "ابجدهوز"])
       expect(passwordPolicyIssues(value)).toContain("too_short");
   });
 
@@ -91,7 +92,7 @@ describe("M-3 new-password policy", () => {
     const issues = passwordPolicyIssues("aaaa");
     expect(issues).toEqual(["too_short", "single_character"]);
     const text = describePasswordIssues(issues);
-    expect(text).toContain("أقل من 12 حرفًا");
+    expect(text).toContain("أقل من 8 أحرف");
     expect(text).toContain("حرف واحد مكرر");
     expect(describePasswordIssues([])).toBe("");
   });

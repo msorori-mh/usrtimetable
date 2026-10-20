@@ -5,11 +5,11 @@ import { resolve } from "node:path";
 import { build } from "esbuild";
 import { validPersonalPassword, requiresInitialPassword } from "../src/lib/password-policy.ts";
 
-test("M-3: new passwords need 12+ characters, at most 72 bytes, no composition rules", () => {
+test("M-3: new passwords need 8+ characters, at most 72 bytes, no composition rules", () => {
   for (const value of [
     "",
-    "abcdefgh",
-    "Personal12!",
+    "abcdefg",
+    "Pers12!",
     "A".repeat(73),
     "أ".repeat(37),
     "123456789012",
@@ -151,7 +151,7 @@ test("server enforces the new policy and keeps first-login identity and completi
   await assert.rejects(() => change(input), /الأدمن/);
   assert.equal(updated, 0);
   role = "read_only";
-  for (const weak of ["abcdefg", "Personal123", "123456789012", "password1234"])
+  for (const weak of ["abcdefg", "Pers12!", "123456789012", "password1234"])
     await assert.rejects(() => change({ ...input, data: { ...input.data, newPassword: weak } }));
   // Personal context (e-mail local part / name) is rejected server-side.
   await assert.rejects(

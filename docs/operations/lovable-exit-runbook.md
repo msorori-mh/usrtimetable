@@ -68,7 +68,7 @@ pooler (6543)، لأن `pg_restore`/`SET session_replication_role` تحتاج ج
 | --- | --- | --- |
 | تعطيل التسجيل العام | Authentication → Sign In / Providers → *Allow new users to sign up* | **Off** (الحسابات تُنشأ من لوحة الإدارة بمفتاح الخدمة) |
 | مزود البريد | Authentication → Sign In / Providers → Email | مفعّل، *Confirm email* مفعّل، *Secure email change* مفعّل |
-| طول كلمة المرور | Authentication → Sign In / Providers → Email → Minimum password length | **12** |
+| طول كلمة المرور | Authentication → Sign In / Providers → Email → Minimum password length | **8** (قرار 20 أكتوبر؛ يطابق `PASSWORD_MIN_LENGTH`) |
 | متطلبات كلمة المرور | نفس الصفحة → Password requirements | أحرف صغيرة وكبيرة وأرقام ورموز |
 | حماية كلمات المرور المسربة | نفس الصفحة → *Prevent use of leaked passwords* | **On** (يتطلب Pro) |
 | MFA | Authentication → Multi-Factor → TOTP | **Enabled** (التسجيل والتحقق) |

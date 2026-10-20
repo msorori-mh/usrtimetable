@@ -7,12 +7,12 @@
  * share one implementation.
  */
 
-export const PASSWORD_MIN_LENGTH = 12;
+export const PASSWORD_MIN_LENGTH = 8;
 /** bcrypt (Supabase Auth) silently ignores bytes beyond 72. */
 export const PASSWORD_MAX_BYTES = 72;
 
 export const PASSWORD_POLICY_AR =
-  "١٢ حرفًا على الأقل (وبحد أقصى ٧٢ بايت)، دون تكرار حرف واحد أو نمط قصير، ودون تسلسلات بسيطة مثل 123456 أو abcdef أو qwerty، ولا تحتوي على اسمك أو بريدك، وليست من كلمات المرور الشائعة. لا يُشترط إدخال رموز خاصة.";
+  "8 أحرف على الأقل (وبحد أقصى 72 بايت)، دون تكرار حرف واحد أو نمط قصير، ودون تسلسلات بسيطة مثل 123456 أو abcdef أو qwerty، ولا تحتوي على اسمك أو بريدك، وليست من كلمات المرور الشائعة. لا يُشترط إدخال رموز خاصة.";
 
 export type PasswordContext = {
   email?: string | null;
@@ -30,7 +30,7 @@ export type PasswordIssue =
   | "common_password";
 
 export const PASSWORD_ISSUE_AR: Record<PasswordIssue, string> = {
-  too_short: `أقل من ${PASSWORD_MIN_LENGTH} حرفًا`,
+  too_short: `أقل من ${PASSWORD_MIN_LENGTH} أحرف`,
   too_long: `أطول من ${PASSWORD_MAX_BYTES} بايت (قلّل عدد الأحرف، خاصة العربية)`,
   single_character: "مكوّنة من حرف واحد مكرر",
   repeated_pattern: "تكرار لنمط قصير",
