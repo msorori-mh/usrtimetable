@@ -104,6 +104,11 @@ $fn$;
 REVOKE ALL ON FUNCTION public.physical_room_group_sizes() FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.physical_room_group_sizes() TO authenticated, service_role;
 
+-- The rooms UPDATE above can queue deferred trigger events on schedule_versions (eligibility
+-- revision bump); fire them now, or the ALTER TABLE below fails with "pending trigger events"
+-- on a database with real rooms (found replaying on the production export).
+SET CONSTRAINTS ALL IMMEDIATE;
+
 -- Protected versions (was the literal 835e50fe-... in the purge function and two client files).
 ALTER TABLE public.schedule_versions ADD COLUMN IF NOT EXISTS protected boolean NOT NULL DEFAULT false;
 COMMENT ON COLUMN public.schedule_versions.protected IS
