@@ -45,6 +45,13 @@ BEGIN
      WHERE p.prosecdef
        AND n.nspname NOT IN ('pg_catalog', 'information_schema')
        AND n.nspname NOT LIKE 'pg\_%'
+       -- Platform-managed schemas and routines we do not own (e.g. pgbouncer.get_auth on a
+       -- managed Supabase project) are out of scope: ALTER ROUTINE would fail with
+       -- "must be owner". Found on the first production restore.
+       AND n.nspname NOT IN ('auth', 'storage', 'realtime', 'vault', 'graphql', 'graphql_public',
+                             'extensions', 'pgbouncer', 'cron', 'net', 'supabase_functions',
+                             'supabase_migrations', 'pgsodium', 'pgsodium_masks')
+       AND pg_has_role(p.proowner, 'USAGE')
        AND c LIKE 'search_path=%'
        AND c NOT LIKE '%pg_temp%'
   LOOP
@@ -63,6 +70,13 @@ BEGIN
      WHERE p.prosecdef
        AND n.nspname NOT IN ('pg_catalog', 'information_schema')
        AND n.nspname NOT LIKE 'pg\_%'
+       -- Platform-managed schemas and routines we do not own (e.g. pgbouncer.get_auth on a
+       -- managed Supabase project) are out of scope: ALTER ROUTINE would fail with
+       -- "must be owner". Found on the first production restore.
+       AND n.nspname NOT IN ('auth', 'storage', 'realtime', 'vault', 'graphql', 'graphql_public',
+                             'extensions', 'pgbouncer', 'cron', 'net', 'supabase_functions',
+                             'supabase_migrations', 'pgsodium', 'pgsodium_masks')
+       AND pg_has_role(p.proowner, 'USAGE')
        AND NOT EXISTS (SELECT 1 FROM unnest(p.proconfig) c WHERE c LIKE 'search_path=%')
   LOOP
     INSERT INTO security_private.search_path_changes (migration, routine, old_search_path)
