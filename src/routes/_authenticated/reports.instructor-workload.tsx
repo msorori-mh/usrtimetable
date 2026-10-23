@@ -237,7 +237,7 @@ function WorkloadPage() {
         let q = supabase
           .from("instructors")
           .select(
-            "id, full_name, employee_number, academic_rank, max_weekly_hours, administrative_release_hours, department_id, instructor_type_id, departments(name), instructor_types(name_ar)",
+            "id, full_name, employee_number, academic_rank, max_weekly_hours, administrative_release_hours, department_id, instructor_type_id, departments!instructors_department_id_fkey(name), instructor_types(name_ar)",
           )
           .eq("college_id", active!.id);
         if (deptId !== "all") q = q.eq("department_id", deptId);
