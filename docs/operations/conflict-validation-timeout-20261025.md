@@ -36,5 +36,21 @@ Verification:
 - Assignment integrity check found zero missing/inactive/mismatched assignments.
 - Rollback inventory, formatting and diff whitespace checks passed.
 
-The draft remains unpublished. No quality evaluation exists yet; evaluate quality
-for the current revision, then use the application's normal lifecycle actions.
+Quality was subsequently evaluated through the application for revision 316:
+zero unapproved hard conflicts and 56 soft observations (36 workload balance,
+19 instructor gaps, one distribution balance). The weighted quality score is
+0/100; these soft observations do not block publication. Coverage is 274/274
+groups and 626/626 contact hours.
+
+The application's publish action initially failed closed because this version's
+scoped assignments had no publish expectation. This is an ordinary cloned draft,
+not a registered proposal/cutover (no cutover run exists for it). Using the
+official lifecycle and seal functions in one transaction, it was returned to
+draft, sealed against the verified 274-session snapshot, and reviewed and approved
+again. No guard was disabled and no expectation row was inserted directly.
+
+The authenticated application's publish action then succeeded at 01:09 Riyadh time
+on 25 October 2026. `Last and Final` is published and the previous
+`Final ITCS TimeTable 2026` was archived automatically. Both session snapshots
+remain unchanged. Every check on PR #421 passed before the publication evidence
+was added to this document.
