@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { reportSessionKindAr } from "@/lib/reports/session-mappers";
 import { useQuery } from "@tanstack/react-query";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
@@ -371,7 +372,7 @@ export function FacultyUniversityReport() {
                       s.college,
                       s.course,
                       [s.program, s.group_name].filter(Boolean).join(" / ") || "—",
-                      s.type === "lab" ? "عملي" : "نظري",
+                      reportSessionKindAr(s.type),
                       s.study_system === "parallel" ? "موازي" : "عام",
                       s.room ?? "غير محددة",
                     ].map((v, i) => (

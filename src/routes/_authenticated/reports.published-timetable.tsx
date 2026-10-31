@@ -1,4 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { reportSessionKindAr } from "@/lib/reports/session-mappers";
 import { useQuery } from "@tanstack/react-query";
 import { useMemo, useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
@@ -301,7 +302,7 @@ function Page() {
       course: entityDisplayName(s.course_offerings?.courses ?? {}, ""),
       day: DAY_NAMES_AR[s.day_of_week] ?? "",
       time: `${fmtTime(s.start_time)} - ${fmtTime(s.end_time)}`,
-      session_type: s.session_type === "lab" ? "عملي" : "نظري",
+      session_type: reportSessionKindAr(s.session_type),
       instructor: s.instructors?.full_name ?? "",
       room: s.rooms ? entityDisplayName(s.rooms, "") : "",
     }));
