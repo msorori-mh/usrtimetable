@@ -2,8 +2,20 @@ import { describe, expect, test } from "bun:test";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 
-const up = readFileSync(resolve(import.meta.dir, "../supabase/migrations/20261031120000_shared_lecture_partner_partition_fallback.sql"), "utf8");
-const down = readFileSync(resolve(import.meta.dir, "../supabase/rollbacks/20261031120000_shared_lecture_partner_partition_fallback.down.sql"), "utf8");
+const up = readFileSync(
+  resolve(
+    import.meta.dir,
+    "../supabase/migrations/20261031120000_shared_lecture_partner_partition_fallback.sql",
+  ),
+  "utf8",
+);
+const down = readFileSync(
+  resolve(
+    import.meta.dir,
+    "../supabase/rollbacks/20261031120000_shared_lecture_partner_partition_fallback.down.sql",
+  ),
+  "utf8",
+);
 
 describe("shared lecture memberships fall back to cohort partitions", () => {
   test("partner facts without partner partitions no longer hide cohort partitions", () => {
