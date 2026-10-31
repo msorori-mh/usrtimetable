@@ -1,4 +1,9 @@
-import { DAY_NAMES_AR, compactAcademicLevelLabel, fmtTime, hoursBetween } from "@/lib/reports/formatters";
+import {
+  DAY_NAMES_AR,
+  compactAcademicLevelLabel,
+  fmtTime,
+  hoursBetween,
+} from "@/lib/reports/formatters";
 import type { Row } from "@/lib/reports/export";
 import { entityDisplayName } from "@/lib/entity-display";
 
@@ -43,6 +48,13 @@ export interface TimetableReportSession {
 export interface CohortDeliveryGroupLabelMaps {
   cohorts: ReadonlyMap<string, string>;
   deliveryGroups: ReadonlyMap<string, string>;
+}
+
+/** Short label for report columns: practical, tutorial (تطبيقات) or theory. */
+export function reportSessionKindAr(type: string | null | undefined): string {
+  if (type === "lab") return "عملي";
+  if (type === "tutorial") return "تطبيقات";
+  return "نظري";
 }
 
 export function sessionTypeLabel(type: string): string {
