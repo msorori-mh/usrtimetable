@@ -5,6 +5,14 @@
 -- check fell back to a cohort-wide sum (two tutorial groups at the same hour counted
 -- for the same students). Use the current cohort partitions when the version holds
 -- no partner partitions for that group. Version-scoped colleges (ITCS) are unchanged.
+-- Only where the version delivery facts exist (skipped on a bare replayed schema).
+DO $mig$
+BEGIN
+  IF to_regclass('schedule_version_delivery_private.partner_partition_facts') IS NULL THEN
+    RAISE NOTICE 'schedule_version_delivery_private not present; 20261031120000_shared_lecture_partner_partition_fallback skipped';
+    RETURN;
+  END IF;
+  EXECUTE $fn$
 CREATE OR REPLACE FUNCTION public.schedule_version_student_memberships(p_version uuid, p_groups uuid[])
  RETURNS TABLE(delivery_group_id uuid, cohort_id uuid, partition_id uuid, partition_headcount integer, shared_lecture boolean, expected_students integer)
  LANGUAGE plpgsql
@@ -132,4 +140,7 @@ BEGIN
   LEFT JOIN members m ON m.id=r.id
   LEFT JOIN sized z ON z.group_id=r.id;
 END;
-$function$;
+$function$
+$fn$;
+END
+$mig$;
